@@ -43,6 +43,8 @@ dependencies = [
 Repository = "https://github.com/django-vidar/django-vidar"
 Issues = "https://github.com/django-vidar/django-vidar/issues"
 
+[tool.setuptools.packages.find]
+include = ["vidar"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "example.settings"
