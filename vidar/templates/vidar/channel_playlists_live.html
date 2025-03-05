@@ -1,0 +1,49 @@
+{% extends 'vidar/base.html' %}
+
+{% load playlist_tools bootstrap4 %}
+{% block site_title %}Vidar / {{ channel }} / Live Playlists{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+        <li class="breadcrumb-item"><a href="{{ channel.get_absolute_url }}">{{ channel }}</a></li>
+        <li class="breadcrumb-item active">Live Playlists</li>
+    </ul>
+
+    <h1 style="text-align: center">{{ channel }} <a href="{{ channel.base_url }}/playlists" target="_blank" rel="noreferrer">{{ playlists|length }} Live Playlists</a></h1>
+
+    <table class="table">
+        <tbody>
+            {% for playlist in playlists %}
+                <tr>
+                    {% is_subscribed_to_playlist playlist.id as subbed_playlist %}
+                    <td>
+                        {% if subbed_playlist.hidden %}<i class="fa-regular fa-eye-slash mr-2"></i>{% endif %}
+                        <a href="https://www.youtube.com/playlist?list={{ playlist.id }}" rel="noreferrer" target="_blank">{{ playlist.title }}</a>
+                    </td>
+                    <td>{{ playlist.video_count }}</td>
+                    <td class="text-right">
+                        {% if subbed_playlist %}
+                            <strong><a href="{{ subbed_playlist.get_absolute_url }}">View Locally</a></strong>
+                        {% elif perms.vidar.add_playlist %}
+                            <a href="{% url 'vidar:playlist-create' %}?youtube_id={{ playlist.id|urlencode }}">Subscribe</a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <hr />
+
+    <p>
+        <form method="post">{% csrf_token %}
+            {% bootstrap_form mirroring_playlists_form %}
+            {% buttons %}
+                <input type="submit" name="submit" value="Save" class="btn btn-primary">
+            {% endbuttons %}
+        </form>
+    </p>
+{% endblock %}

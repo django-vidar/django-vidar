@@ -1,0 +1,170 @@
+{% extends 'vidar/base.html' %}
+{% load bootstrap4 %}
+
+{% block site_title %}{% spaceless %}
+    {% if general_form.instance.pk %}
+        Vidar / {{ general_form.instance }} / Edit
+    {% else %}
+        Vidar / New Channel
+    {% endif %}
+{% endspaceless %}{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+        {% if general_form.instance.pk %}
+            <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+            <li class="breadcrumb-item active">Edit</li>
+        {% else %}
+            <li class="breadcrumb-item active">New Channel</li>
+        {% endif %}
+    </ul>
+
+    {% if not general_form.instance.pk %}
+    <div class="row">
+        <div class="col"></div>
+        <div class="col-justify-right">
+            <p>
+                Bookmark this link to quickly subscribe to a channel:
+                <a href="javascript:void(window.open('{{ settings.BASE_DOMAIN }}{% url 'vidar:channel-create' %}?url='+encodeURIComponent(document.location.href)));">Subscribe To Channel</a>
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="post" class="form">{% csrf_token %}
+        <div class="row">
+            <div class="col">
+                {% if general_form.instance.pk %}
+                    <h1>Edit: {{ object }}</h1>
+                {% else %}
+                    <h1>New Channel</h1>
+                {% endif %}
+            </div>
+            <div class="col-justify-right">
+                {% buttons %}
+                    <input type="submit" name="submit" value="Save" class="btn btn-primary">
+                {% endbuttons %}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                {% bootstrap_form general_form %}
+            </div>
+        </div>
+        <hr />
+        <div class="row">
+            <div class="col">
+                <h2>Videos</h2>
+                {% bootstrap_form videos_form %}
+            </div>
+            <div class="col">
+                <h2>Shorts</h2>
+                {% bootstrap_form shorts_form %}
+            </div>
+            <div class="col">
+                <h3>Livestreams</h3>
+                {% bootstrap_form livestreams_form %}
+            </div>
+        </div>
+        <hr />
+        <div class="row">
+            <div class="col">
+                {% bootstrap_form sub_form layout='horizontal' %}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <h2>Playback Options</h2>
+                {% bootstrap_form playback_form layout='horizontal' %}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <h2>Playlist Mirroring Options</h2>
+                {% bootstrap_form mirroring_form %}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <h2>Administrative Options</h2>
+                {% bootstrap_form admin_form layout='horizontal' %}
+            </div>
+        </div>
+        {% buttons %}
+            <input type="submit" name="submit" value="Save" class="btn btn-primary">
+        {% endbuttons %}
+    </form>
+
+    {% if channel.id and perms.vidar.delete_channel %}
+        <div class="row">
+            <div class="col text-right">
+                <a href="{% url 'vidar:channel-delete' channel.id %}" class="btn btn-sm btn-danger">Delete Channel</a>
+            </div>
+        </div>
+    {% endif %}
+
+{% endblock %}
+
+{% block footer %}
+
+    <script type="text/javascript">
+
+        function assign_crontab(crontab_type) {
+            $.get("{% url 'vidar:htmx-crontab-generate' %}?type=" + crontab_type + "&field=upload_date&source=channel{% if general_form.instance.pk %}&channel={{ general_form.instance.pk }}{% endif %}", function(data, status){
+                console.log(crontab_type, data);
+                document.getElementById('id_scanner_crontab').value = data;
+            });
+        }
+
+        $('#id_full_archive_after').pickadate({
+            format: 'yyyy-mm-dd',
+            selectYears: true,
+            selectMonths: true,
+            editable: true,
+            min: new Date(),
+        });
+        $('#id_full_archive_cutoff').pickadate({
+            format: 'yyyy-mm-dd',
+            selectYears: true,
+            selectMonths: true,
+            editable: true,
+            min: new Date(),
+        });
+        $('#id_full_index_after').pickadate({
+            format: 'yyyy-mm-dd',
+            selectYears: true,
+            selectMonths: true,
+            editable: true,
+            min: new Date(),
+        });
+
+        $('#id_swap_index_videos_after').pickadate({
+            format: 'yyyy-mm-dd',
+            selectYears: true,
+            selectMonths: true,
+            editable: true,
+            min: new Date(),
+        });
+
+        $('#id_swap_index_shorts_after').pickadate({
+            format: 'yyyy-mm-dd',
+            selectYears: true,
+            selectMonths: true,
+            editable: true,
+            min: new Date(),
+        });
+
+        $('#id_swap_index_livestreams_after').pickadate({
+            format: 'yyyy-mm-dd',
+            selectYears: true,
+            selectMonths: true,
+            editable: true,
+            min: new Date(),
+        });
+
+    </script>
+
+{% endblock %}

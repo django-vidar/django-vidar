@@ -1,0 +1,80 @@
+{% extends 'vidar/base.html' %}
+{% load bootstrap4 %}
+
+{% block site_title %}Vidar / {{ channel }} / Confirm Delete{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+        <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:channel-manage' object.id %}">Manage</a></li>
+        <li class="breadcrumb-item active">Confirm Delete</li>
+    </ul>
+
+    <p>{{ starred_videos.count }} videos are starred.</p>
+
+    <form method="post" class="form">{% csrf_token %}
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="keep_archived_videos" name="keep_archived_videos" checked="checked">
+            <label class="form-check-label" for="keep_archived_videos">Keep Archived Videos</label>
+        </div>
+        {% with object.playlists.count as opc %}
+            {% if opc %}
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="delete_playlists" name="delete_playlists" checked="checked">
+                    <label class="form-check-label" for="delete_playlists">
+                            Delete {{ opc }} Playlist{{ opc|pluralize }} - If checked, videos below that are tied to these playlists may be deletable depending on if the video is tied to other playlists.
+                    </label>
+                </div>
+            {% endif %}
+        {% endwith %}
+        {% if object.playlists.exists %}
+            <div>
+                <ul>
+                    {% for playlist in object.playlists.all %}
+                        <li>Playlist: <a href="{{ playlist.get_absolute_url }}">{{ playlist.title }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% with starred_videos.count as vpc %}
+            {% if vpc > 0 %}
+                <p>{{ vpc }} Video{{ vpc|pluralize }} (below) are starred and will NOT be deleted regardless of settings.</p>
+
+                <ul>
+                    {% for video in starred_videos %}
+                        <li><a href="{{ video.get_absolute_url }}">{{ video }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        {% with videos_with_playlists.count as vpc %}
+            {% if vpc > 0 %}
+                <p>{{ vpc }} Video{{ vpc|pluralize }} (below) attached to playlist(s) will NOT be deleted
+                    unless they are tied to the playlists listed above and those playlists are set to be deleted.</p>
+
+                <ul>
+                    {% for video in videos_with_playlists %}
+                        <li>
+                            <a href="{{ video.get_absolute_url }}">{{ video }}</a>
+                            <ul>
+                                {% for playlist in video.playlists.all %}
+                                    <li>Playlist: <a href="{{ playlist.get_absolute_url }}">{{ playlist.title }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        {% buttons %}
+            <input type="submit" name="submit" value="Delete Channel: {{ object }}" class="btn btn-danger">
+        {% endbuttons %}
+    </form>
+
+{% endblock %}

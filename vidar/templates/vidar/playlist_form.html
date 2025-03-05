@@ -1,0 +1,67 @@
+{% extends 'vidar/base.html' %}
+{% load bootstrap4 %}
+{% block site_title %}Vidar / {% if form.instance.pk %}Playlist / {{ object.title }}{% else %}Playlist / New{% endif %}{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:playlist-index' %}">Playlists</a></li>
+        {% if form.instance.pk %}
+            <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+            <li class="breadcrumb-item active">Edit</li>
+        {% else %}
+            <li class="breadcrumb-item active">New Playlist</li>
+        {% endif %}
+    </ul>
+
+    {% if form.instance.pk %}
+        <h1>Editing {% if custom_playlist %}Custom Playlist:{% endif %} {{ object }}</h1>
+    {% else %}
+        <h1>New {% if custom_playlist %}Custom{% endif %} Playlist</h1>
+    {% endif %}
+
+    <form method="post" class="form">{% csrf_token %}
+        {% bootstrap_form form %}
+        <div class="row">
+            <div class="col">
+                {% buttons %}
+                    <input type="submit" name="submit" value="Save" class="btn btn-primary">
+                {% endbuttons %}
+            </div>
+            <div class="col-justify-right">
+                {% if form.instance.pk and perms.vidar.delete_playlist %}
+                    <a href="{% url 'vidar:playlist-delete' pk=playlist.pk %}" class="btn btn-danger">delete</a>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+
+    <hr>
+
+    {% if form.instance.id and playlist.provider_object_id %}
+    <p class="text-right m-4">
+        <form action="{{ object.get_absolute_url }}" method="post" class="text-right">{% csrf_token %}
+            <input type="submit" name="convert-to-custom"
+                   value="Convert to a custom playlist. There is no undo. It will no longer be scannable."
+                   class="btn btn-sm btn-primary">
+        </form>
+    </p>
+    {% endif %}
+
+{% endblock %}
+
+{% block footer %}
+
+    <script type="text/javascript">
+
+        function assign_crontab(crontab_type) {
+            $.get("{% url 'vidar:htmx-crontab-generate' %}?type=" + crontab_type + "&field=upload_date&source=playlist{% if form.instance.pk %}&playlist={{ form.instance.pk }}{% endif %}", function(data, status){
+                console.log(crontab_type, data);
+                document.getElementById('id_crontab').value = data;
+            });
+        }
+
+    </script>
+
+{% endblock %}

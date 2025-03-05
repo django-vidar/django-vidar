@@ -1,0 +1,108 @@
+{% extends 'vidar/base.html' %}
+{% block site_title %}{{ paginator.count }} Watch History{% endblock %}
+
+{% load video_tools %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item active">Watch History</li>
+    </ul>
+
+    <div class="row">
+        <div class="col">
+            <h1>Watch History</h1>
+        </div>
+        <div class="col-justify-right">
+            <a href="javascript:;" onclick="toggle_localstorage_boolean_key('vidar-watch-history', trigger_autoplay_buttons_status)" id="vidar-watch-history" class="btn btn-success btn-sm">
+                Watch History Enabled
+            </a>
+        </div>
+    </div>
+
+    <div id="history"
+         hx-get="{% url 'vidar:watch-history' %}"
+         hx-target="#history"
+         hx-select="#history" hx-trigger="load delay:30s"
+    >
+        {% include 'vidar/pagination.html' %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                        <th><a href="javascript:;" onclick="showoptions();" id="show-options" class="btn btn-sm btn-primary">Show Options</a></th>
+                        <th class="delete-history hidden"></th>
+                    </tr>
+                </thead>
+                <tbody hx-target="closest tr" hx-swap="outerHTML">
+                    {% for item in object_list %}
+                        <tr>
+                            <td>{% include 'vidar/snippets/video-link-to-channel.html' with video=item.video %}</td>
+                            <td>
+                                <a href="{{ item.video.get_absolute_url }}{% if item.playlist %}?next=playlist&playlist={{ item.playlist_id }}{% endif %}">
+                                    {{ item.video|truncatechars:80 }}
+                                </a>
+                                {% if item.video.audio %}
+                                    (<a href="{{ item.video.get_absolute_url }}?view=audio{% if item.playlist %}&next=playlist&playlist={{ item.playlist_id }}{% endif %}">Audio</a>)
+                                {% endif %}
+                                {% if item.considered_fully_played %}&nbsp; <i title="Completed {{ item.updated }}" class="fa fas fa-check"></i>{% endif %}
+                            </td>
+                            <td><span title="{{ item.completion_percentage }}%" data-toggle="tooltip">{{ item.seconds|convert_seconds_to_hh_mm_ss }}</span></td>
+                            <td>
+                                {% if item.playlist %}
+                                    {% link_to_playlist_page item.playlist item.video as playlist_page_num %}
+                                    <a href="{{ item.playlist.get_absolute_url }}{% if playlist_page_num > 1 %}?page={{ playlist_page_num }}{% endif %}" title="{{ item.playlist }}" data-toggle="tooltip">{{ item.updated }}</a>
+                                {% else %}
+                                    {{ item.updated }}
+                                {% endif %}
+                            </td>
+                            <td class="delete-history hidden">
+                                <button hx-delete="{% url 'vidar:watch-history-delete' pk=item.id %}" class="btn btn-danger btn-sm">Delete</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include 'vidar/pagination.html' %}
+    </div>
+
+{% endblock %}
+
+
+{% block footer %}
+
+    <script type="text/javascript">
+    if (localStorage.getItem("vidar-watch-history") === null) {
+        localStorage.setItem("vidar-watch-history", "true");
+    }
+    function trigger_autoplay_buttons_status() {
+        set_enable_disable_buttons_details('vidar-watch-history');
+    }
+    trigger_autoplay_buttons_status();
+
+    function showoptions() {
+        let sp = document.querySelector('.delete-history');
+
+        let examples = document.querySelectorAll('.delete-history');
+        for (var i = 0; i < examples.length; i++) {
+          examples[i].classList.toggle('hidden');
+        }
+
+        if (sp.classList.contains('hidden')) {
+            document.getElementById('show-options').text = 'Show Options';
+        } else {
+            document.getElementById('show-options').text = 'Hide Options';
+        }
+    }
+    window.addEventListener("storage", (event) => {
+        trigger_autoplay_buttons_status();
+    });
+
+    </script>
+
+{% endblock %}

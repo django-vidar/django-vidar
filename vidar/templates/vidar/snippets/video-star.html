@@ -1,0 +1,11 @@
+{% if video.starred or video.file or force_show %}
+    {% if perms.vidar.star_video %}
+        <a href="javascript:;" hx-post="{% url 'vidar:video-swap-datetime' video.pk %}?field=starred">
+            {% if video.starred %}
+                <i class="fa-solid fa-star" title="{{ video.starred }}" data-toggle="tooltip"></i>
+            {% else %}
+                <i class="fa-regular fa-star"></i>
+            {% endif %}
+        </a>
+    {% endif %}
+{% endif %}

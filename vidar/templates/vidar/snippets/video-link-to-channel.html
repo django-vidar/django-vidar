@@ -1,0 +1,7 @@
+{% if video.channel %}
+    {% if perms.vidar.view_channel %}
+        <a href="{{ video.channel.get_absolute_url }}{% with video.channel_page_number as cpn %}{% if cpn > 1 %}?page={{ cpn }}&{% else %}?{% endif %}{% endwith %}highlight={{ video.pk }}">{{ video.channel }}</a>
+    {% else %}
+        {{ video.channel }}
+    {% endif %}
+{% endif %}

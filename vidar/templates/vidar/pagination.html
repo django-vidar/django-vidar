@@ -1,0 +1,44 @@
+{% load pagination_helpers %}
+
+{% if is_paginated %}
+    <ul class="pagination pagination-sm justify-content-center flex-wrap">
+        {% if page_obj.number != 1 %}
+            <li class="page-item"><a href="{{ pagination_base_url|default:"?" }}{{ page_url_param|default:"page" }}=1{{ url_extra }}" class="page-link">&#8249;&#8249; First</a></li>
+        {% else %}
+            <li class="page-item disabled"><a href="javascript:;" aria-disabled="true" class="page-link">&#8249;&#8249; First</a></li>
+        {% endif %}
+
+        {% if page_obj.has_previous %}
+            <li class="page-item"><a href="{{ pagination_base_url|default:"?" }}{{ page_url_param|default:"page" }}={{ page_obj.previous_page_number }}{{ url_extra }}" class="page-link">&#8249; Prev</a></li>
+        {% else %}
+            <li class="page-item disabled"><a href="javascript:;" aria-disabled="true" class="page-link">&#8249; Prev</a></li>
+        {% endif %}
+
+        {% proper_pagination paginator page_obj.number pagination_neighbors|default:4 pagination_include_first|default:0 pagination_include_last|default:0 pagination_include_separator|default:"" as pagination_results %}
+        {% for i in pagination_results %}
+            {% if i == pagination_include_separator|default:"" %}
+                <li class="page-item disabled"><a href="javascript:;" aria-disabled="true" class="page-link">{{ pagination_include_separator|default:"" }}</a></li>
+            {% elif page_obj.number == i %}
+                <li class="active page-item"><span class="page-link">{{ i }} <span class="sr-only">(current)</span></span></li>
+            {% else %}
+                <li class="page-item"><a href="{{ pagination_base_url|default:"?" }}{{ page_url_param|default:"page" }}={{ i }}{{ url_extra }}" class="page-link">{{ i }}</a></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <li class="page-item"><a href="{{ pagination_base_url|default:"?" }}{{ page_url_param|default:"page" }}={{ page_obj.next_page_number }}{{ url_extra }}" class="page-link">Next &#8250;</a></li>
+        {% else %}
+            <li class="page-item disabled"><a href="javascript:;" aria-disabled="true" class="page-link">Next &#8250;</a></li>
+        {% endif %}
+
+        {% if page_obj.number != paginator.num_pages %}
+            <li class="page-item">
+                <a href="{{ pagination_base_url|default:"?" }}{{ page_url_param|default:"page" }}={{ paginator.num_pages }}{{ url_extra }}" class="page-link">
+                    Last {% if pagination_include_last_page_in_last_button|default_if_none:True %}({{ paginator.num_pages }}){% endif %} &#8250;&#8250;
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><a href="javascript:;" aria-disabled="true" class="page-link">Last ({{ paginator.num_pages }}) &#8250;&#8250;</a></li>
+        {% endif %}
+    </ul>
+{% endif %}

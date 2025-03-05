@@ -1,0 +1,89 @@
+{% extends 'vidar/base.html' %}
+
+{% load vidar_utils %}
+{% block site_title %}Vidar / Schedule{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if channel.pk %}
+            <li class="breadcrumb-item"><a href="{{ channel.get_absolute_url }}">{{ channel }}</a></li>
+            <li class="breadcrumb-item active">{% if date_selected %}{{ date_selected }} {% endif %}Schedule</li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-history' %}?channel={{ channel.pk }}">History</a></li>
+        {% else %}
+            <li class="breadcrumb-item active">{% if date_selected %}{{ date_selected }} {% endif %}Schedule</li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-history' %}">History</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-calendar' %}">Calendar</a></li>
+        {% endif %}
+    </ul>
+
+    <h1><a href="{% url 'vidar:schedule' %}">{% if date_selected %}{{ date_selected }} {% endif %}{{ total_scans_per_day }} Schedule</a></h1>
+
+    <p>This table shows all channels and playlists being scanned today at the time they are being scanned.</p>
+    <p>You can <a href="?sparse">Show Sparse Crontabs Only</a> which will only show items NOT set to daily scans.</p>
+
+    <div class="row mb-2">
+        <div class="col">
+            <a href="?channels">Show Channels Only</a> /
+            <a href="?playlists">Show Playlists Only</a>
+        </div>
+        <div class="col text-right">
+            <a href="javascript:;" onclick="showall();" id="show-past-events">Show Past Events</a>
+        </div>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Channels</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for dt, channels in todays_schedule.items %}
+            <tr id="{{ dt.hour }}" class="{% if dt < now %}schedule-past {% if not request.GET %}hidden{% endif %}{% endif %}">
+                <td>{{ dt|time }}</td>
+                <td>
+                    <ul>
+                    {% for channel in channels %}
+                        <li>{{ channel|get_type_name }}: <a href="{{ channel.get_absolute_url }}">{{ channel }}</a></li>
+                    {% endfor %}
+                    </ul>
+                </td>
+                <td>
+                    {% for channel in channels %}
+                        <li>{% if channel.scanner_crontab %}{{ channel.scanner_crontab }}{% else %}{{ channel.crontab }}{% endif %}</li>
+                    {% endfor %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+{% endblock %}
+
+
+{% block footer %}
+
+    <script type="text/javascript">
+
+    function showall() {
+        let sp = document.querySelector('.schedule-past');
+
+        let examples = document.querySelectorAll('.schedule-past');
+        for (var i = 0; i < examples.length; i++) {
+            examples[i].classList.toggle('hidden');
+        }
+
+        if (sp.classList.contains('hidden')) {
+            document.getElementById('show-past-events').text = 'Show Past Events';
+        } else {
+            document.getElementById('show-past-events').text = 'Hide Past Events';
+        }
+    }
+
+    </script>
+
+{% endblock %}

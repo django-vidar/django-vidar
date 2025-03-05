@@ -1,0 +1,152 @@
+{% extends 'vidar/base.html' %}
+
+{% block content %}
+
+    <div class="row justify-content-center">
+        <div class="col text-center text-md-left">
+            <h1><a href="{% url 'vidar:index' %}">Statistics</a> - {{ downloaded_videos_count }}/{{ total_videos_count }}</h1>
+        </div>
+        <div class="col-justify-right">
+            {% if perms.vidar.view_video %}
+                <a href="{% url 'vidar:index' %}" class="btn btn-primary">Videos</a>
+                <a href="{% url 'vidar:index' %}?view=audio" class="btn btn-primary">Audio</a>
+            {% endif %}
+            {% if perms.vidar.view_channel %}
+                <a href="{% url 'vidar:channel-index' %}" class="btn btn-primary">Channels</a>
+            {% endif %}
+            {% if perms.vidar.view_playlist %}
+                <a href="{% url 'vidar:playlist-index' %}" class="btn btn-primary">Playlists</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 col-sm-12">
+
+            <h3>Daily Upload Date Stats</h3>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Counter</th>
+                        <th>Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for period, counter in upload_date_period_counters.items %}
+                    <tr>
+                        <td>
+                            {% if period == 'Total' %}
+                                {{ period }}
+                            {% else %}
+                                <a href="{% url 'vidar:index' %}?upload_date={{ period|date:"Y-m-d" }}" title="See videos downloaded on this date">{{ period }}</a>
+                            {% endif %}
+                        </td>
+                        <td>{{ counter.0 }}/{{ counter.2 }}</td>
+                        <td>{{ counter.1|filesizeformat }}</td>
+                    </tr>
+                {% endfor %}
+                    <tr>
+                        <td>Overall Daily Avg</td>
+                        <td></td>
+                        <td>{{ average_day_download_size|filesizeformat }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Daily Downloaded Stats</h3>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Counter</th>
+                        <th>Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for period, counter in date_downloaded_period_counters.items %}
+                    <tr>
+                        <td>
+                            {% if period == 'Total' %}
+                                {{ period }}
+                            {% else %}
+                                <a href="{% url 'vidar:index' %}?date_downloaded={{ period|date:"Y-m-d" }}" title="See videos downloaded on this date">{{ period }}</a>
+                            {% endif %}
+                        </td>
+                        <td>{{ counter.0 }}</td>
+                        <td>{{ counter.1|filesizeformat }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+            <h3>Weekly Downloaded Stats</h3>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Week</th>
+                        <th>Count</th>
+                        <th>Sum Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in average_ddl_week_size|slice:5 %}
+                        <tr>
+                            <td>{{ item.dl|date:"W (m-d)" }}</td>
+                            <td>{{ item.count }}</td>
+                            <td>{{ item.fs|filesizeformat }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="col-md-6 col-sm-12">
+
+            <h3>By Year Downloaded</h3>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Count</th>
+                        <th>Sum Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in average_year_date_downloaded_size %}
+                        <tr>
+                            <td><a href="{% url 'vidar:index' %}?year={{ item.dl.year }}">{{ item.dl.year }}</a></td>
+                            <td>{{ item.count }}</td>
+                            <td>{{ item.fs|filesizeformat }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <h3>By Year Uploaded</h3>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Count</th>
+                        <th>Sum Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in average_year_upload_date_size %}
+                        <tr>
+                            <td><a href="{% url 'vidar:index' %}?year={{ item.dl.year }}">{{ item.dl.year }}</a></td>
+                            <td>{{ item.count }}</td>
+                            <td>{{ item.fs|filesizeformat }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+{% endblock %}

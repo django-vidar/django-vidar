@@ -1,0 +1,28 @@
+{% extends 'vidar/base.html' %}
+{% load bootstrap4 %}
+{% block site_title %}Vidar / Playlist / {{ object.title }} / Confirm Delete{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:playlist-index' %}">Playlists</a></li>
+        <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+        <li class="breadcrumb-item active">Confirm Delete</li>
+    </ul>
+
+    <p>If you check the checkbox below:</p>
+    <ul>
+        <li>Videos not tied to a channel will be fully deleted from the system.</li>
+        <li>All others will remain in the system but have their files removed.</li>
+    </ul>
+    <p>Otherwise, the video will remain and only the playlist will be deleted.</p>
+
+    <form method="post" class="form">{% csrf_token %}
+        {% bootstrap_form form %}
+        {% buttons %}
+            <input type="submit" name="submit" value="Delete Playlist {{ object }}" class="btn btn-danger">
+        {% endbuttons %}
+    </form>
+
+{% endblock %}

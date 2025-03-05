@@ -1,0 +1,26 @@
+{% extends 'vidar/base.html' %}
+{% load bootstrap4 %}
+
+{% block site_title %}Vidar / Video / {{ video }} / Manage{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:playlist-index' %}">Playlists</a></li>
+        <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+        <li class="breadcrumb-item active">Add Videos By Search Value</li>
+    </ul>
+
+    <h3>Add Videos to "{{ object }}" By Search Value</h3>
+
+    <p>All videos with a title containing the search value supplied below will be added to the playlist.</p>
+
+    <form method="post" class="form">{% csrf_token %}
+        {% bootstrap_form form %}
+        {% buttons %}
+            <input type="submit" name="submit" value="Add Videos" class="btn btn-primary">
+        {% endbuttons %}
+    </form>
+
+{% endblock %}

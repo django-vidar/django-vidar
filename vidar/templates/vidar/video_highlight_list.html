@@ -1,0 +1,112 @@
+{% extends 'vidar/base.html' %}
+
+{% load video_tools %}
+
+{% block site_messages %}{% endblock %}
+{% block site_title %}Vidar / Video / {{ video }} / Highlights{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if video.channel %}
+            <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+            <li class="breadcrumb-item"><a href="{{ video.channel.get_absolute_url }}">{{ video.channel }}</a></li>
+        {% endif %}
+        <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+        <li class="breadcrumb-item active">Highlights</li>
+    </ul>
+
+    <h3>{{ video }} - Highlights</h3>
+
+    <div class="table-responsive" id="highlights-data">
+
+        {% include 'core/messages.html' %}
+
+        <table class="table table-hover table-striped">
+            <thead>
+                <tr>
+                    <th>Point</th>
+                    <th title="Optional" data-toggle="tooltip">End Point</th>
+                    <th>Note</th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for highlight in highlights.all %}
+                <tr>
+                    <td>
+                        <a href="javascript:;" onclick="setVideoTime({{ highlight.point }})" title="{{ highlight.note }}" data-toggle="tooltip">
+                            {{ highlight.point|convert_seconds_to_hh_mm_ss }}
+                        </a>
+                    </td>
+                    <td>{{ highlight.end_point|convert_seconds_to_hh_mm_ss }}</td>
+                    <td>{{ highlight.note }}</td>
+                    <td>
+                        <form method="post" hx-post="{% url 'vidar:video-highlight-list' video.pk %}"
+                          hx-select="#highlights-data"
+                          hx-target="#highlights-data"
+                              hx-ext="debug"
+                        >{% csrf_token %}
+                            <input type="hidden" name="highlight" value="{{ highlight.id }}">
+                            <a href="{% url 'vidar:highlights-update' highlight.id %}" class="btn btn-primary btn-sm">Edit</a>
+                            <input type="submit" name="delete" value="Delete" class="btn btn-danger btn-sm">
+                        </form>
+                    </td>
+                    <td><a href="{{ highlight.video.url }}?t={{ highlight.point }}s" target="_blank" rel="noreferrer nofollow">Live</a></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <form method="post"
+                  hx-post="{% url 'vidar:video-highlight-list' video.pk %}"
+                  hx-select="#highlights-data"
+                  hx-target="#highlights-data"
+                  hx-ext="debug"
+                  hx-on::after-request="this.reset()"
+            >{% csrf_token %}
+            <tfoot>
+                <tr>
+                    <th>
+                        <input type="text" placeholder="Start Point" name="point" id="start_point">
+                        <small class="form-text text-muted">Seconds or HH:MM:SS within video
+                            <a href="javascript:;" onclick="copyVideoTime('#start_point');" tabindex="-1">copy</a></small>
+                    </th>
+                    <th>
+                        <input type="text" placeholder="End Point (Optional)" name="end_point" id="end_point">
+                        <small class="form-text text-muted">Seconds or HH:MM:SS within video
+                            <a href="javascript:;" onclick="copyVideoTime('#end_point');" tabindex="-1">copy</a></small>
+                    </th>
+                    <th><input type="text" placeholder="Note" name="note"></th>
+                    <th><input type="submit" name="create" value="Create" class="btn btn-primary" hx-ext="debug"></th>
+                    <th></th>
+                </tr>
+            </tfoot>
+            </form>
+        </table>
+    </div>
+
+    {% if video.file %}
+        <video id="videoPlayer" poster="{% if video.thumbnail %}{{ video.thumbnail.url }}{% endif %}" controls style="max-width: 100%" preload="none">
+            <source src="{{ video.file.url }}">
+        </video>
+    {% endif %}
+
+{% endblock %}
+
+{% block footer %}
+    <script type="text/javascript">
+    let video = document.getElementById('videoPlayer');
+    function setVideoTime(seconds) {
+        video.currentTime = seconds;
+    }
+    function copyVideoTime(event) {
+        document.querySelector(event).value = video.currentTime;
+    }
+    </script>
+{% endblock %}

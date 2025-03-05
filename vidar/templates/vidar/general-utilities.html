@@ -1,0 +1,68 @@
+{% extends 'vidar/base.html' %}
+{% block site_title %}Vidar / Utilities{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item active">Utilities</li>
+    </ul>
+
+    <h1>General Utilities</h1>
+
+    <div class="row">
+        <div class="col">
+            <p>If you change the default  VIDEO_DIRECTORY_SCHEMA or VIDEO_FILENAME_SCHEMA, you should
+            run this utility to rename video files to new naming schema.</p>
+            <form action="{% url 'vidar:utilities' %}" method="post">{% csrf_token %}
+                <input type="submit" name="videos_rename_files" value="Update all video file paths" class="btn btn-primary">
+            </form>
+        </div>
+        <div class="col">
+            <p>If you change or customize a channels "Directory Schema" or "Video directory schema" or
+                "Video filename schema" fields, you should run this task to correct the videos filenames</p>
+            <form method="post">{% csrf_token %}
+                {{ channel_choice_form.as_div }}
+                <div class="input-group">
+                    <input type="submit" name="channel_rename_files" value="Update Channel Files" class="btn btn-primary">
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <hr />
+
+    <div class="row mt-4">
+        <div class="col">
+            <p>For channels setup with year separation, copy video thumbnail into year directory as cover.jpg</p>
+            <form method="post">{% csrf_token %}
+                {{ channel_cover_copy_form.as_div }}
+                <div class="input-group">
+                    <input type="submit" name="video_thumbnail_copy_to_year" value="Copy video thumbnail as yearly cover.jpg" class="btn btn-primary">
+                </div>
+            </form>
+        </div>
+        <div class="col">
+            <p>Scan all channels for new videos.</p>
+            <form method="post">{% csrf_token %}
+                <div class="form-group">
+                    <input type="number" min="5" value="10" name="countdown" class="input form-control" />
+                    <small class="form-text text-muted">
+                        Seconds between scans
+                    </small>
+                </div>
+                <div class="form-group">
+                    <div class="form-check">
+                        <input type="checkbox" name="indexing_enabled" class="form-check-input" id="id_indexing_enabled" checked="checked">
+                        <label class="form-check-label" for="id_indexing_enabled">Indexing Enabled</label>
+                        <small class="form-text text-muted">Only scan channels with indexing enabled..</small>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <input type="submit" name="scan_all" value="Scan All Channels" class="btn btn-info">
+                </div>
+            </form>
+        </div>
+    </div>
+
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends 'vidar/base.html' %}
+
+{% block content %}
+
+    <div class="row justify-content-center">
+        <div class="col text-center text-md-left">
+            <h1><a href="{% url 'vidar:index' %}">Vidar</a></h1>
+        </div>
+        <div class="col-justify-right">
+            {% if perms.vidar.view_video %}
+                <a href="{% url 'vidar:index' %}?view=audio" class="btn btn-primary">Audio</a>
+            {% endif %}
+            {% if perms.vidar.view_channel %}
+                <a href="{% url 'vidar:channel-index' %}" class="btn btn-primary">Channels</a>
+            {% endif %}
+            {% if perms.vidar.view_playlist %}
+                <a href="{% url 'vidar:playlist-index' %}" class="btn btn-primary">Playlists</a>
+            {% endif %}
+            {% if perms.vidar.add_video %}
+                <a href="{% url 'vidar:video-create' %}" class="btn btn-primary">Add Video</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if perms.vidar.view_video %}
+    <div class="row" style="margin-top: 10px; margin-bottom: 10px;">
+        <div class="col text-center">
+            Order By<br />
+            <a href="{% spaceless %}
+                {% if request.GET.o == '-inserted' %}
+                    {% querystring o='inserted' %}
+                {% elif request.GET.o == 'inserted' %}
+                    {% querystring o=None %}
+                {% else %}
+                    {% querystring o='-inserted' %}
+                {% endif %}
+            {% endspaceless %}">Inserted</a>
+            / <a href="{% spaceless %}
+                {% if request.GET.o == '-downloaded' %}
+                    {% querystring o='downloaded' %}
+                {% elif request.GET.o == 'downloaded' %}
+                    {% querystring o=None %}
+                {% else %}
+                    {% querystring o='-downloaded' %}
+                {% endif %}
+            {% endspaceless %}">Downloaded</a>
+            <br />
+            <a href="{% spaceless %}
+                {% if request.GET.o == '-upload_date' %}
+                    {% querystring o='upload_date' %}
+                {% elif request.GET.o == 'upload_date' %}
+                    {% querystring o=None %}
+                {% else %}
+                    {% querystring o='-upload_date' %}
+                {% endif %}
+            {% endspaceless %}">Upload Date</a> /
+            <a href="{% spaceless %}
+                {% if request.GET.o == '-last_privacy_status_check' %}
+                    {% querystring o='last_privacy_status_check' %}
+                {% elif request.GET.o == 'last_privacy_status_check' %}
+                    {% querystring o=None %}
+                {% else %}
+                    {% querystring o='-last_privacy_status_check' %}
+                {% endif %}
+            {% endspaceless %}">Last Checked</a>
+        </div>
+        <div class="col text-center">
+
+            <input type="text" name="q"
+                hx-get="{% url 'vidar:index' %}{% if request.GET.view == "audio" %}?view=audio{% endif %}"
+                hx-trigger="keyup delay:500ms changed"
+                hx-target="#video-list-data"
+                hx-select="#video-list-data"
+                hx-push-url="true"
+                placeholder="Search..."
+                   value="{{ request.GET.q }}"
+            >
+
+        </div>
+        <div class="col text-center">
+            Status<br />
+            <a href="{% querystring archived=None watched=None starred=None missing=True %}" title="Indexed, NOT Downloaded" data-toggle="tooltip">Missing</a> /
+            <a href="{% querystring missing=None watched=None starred=None archived=True %}" title="Indexed AND Downloaded" data-toggle="tooltip">Archived</a><br />
+            <a href="{% querystring archived=None watched=None missing=None starred=True %}">Starred</a>
+        </div>
+    </div>
+
+    <div id="video-list-data">
+        {% include 'vidar/snippets/video_list_table.html' %}
+    </div>
+    {% endif %}
+
+    <p>
+        {% if perms.vidar.view_index_download_stats %}<a href="{% url 'vidar:statistics' %}">Statistics</a><br />{% endif %}
+        {% if blocked_video_count and perms.vidar.view_videoblocked %}<a href="{% url 'vidar:blocked-index' %}">{{ blocked_video_count }} Blocked Video{{ blocked_video_count|pluralize }}</a>{% endif %}
+    </p>
+
+
+{% endblock %}
+
+{% block footer %}
+    <script type="text/javascript">
+
+    $(function () {
+        document.querySelectorAll('.audioPlayer').forEach(function(player) {
+            player.volume = {{ request.user.vidar_playback_volume|default:1.0 }};
+        });
+    })
+    </script>
+{% endblock %}

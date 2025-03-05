@@ -1,0 +1,106 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "django-vidar"
+description = "A project to make archiving videos easier."
+version = "2025.3.4"
+requires-python = ">= 3.10"
+readme = "README.rst"
+keywords = ["django", "yt-dlp", "video", "archive"]
+authors = [
+  {name = "IARP", email = "iarp.opensource@gmail.com"},
+]
+classifiers = [
+	"Development Status :: 3 - Alpha",
+
+	"License :: OSI Approved :: MIT License",
+
+	"Programming Language :: Python :: 3.10",
+	"Programming Language :: Python :: 3.11",
+	"Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+	"django>=5.1",
+	"django-bootstrap4",
+	"django-mathfilters",
+	"django-positions",
+	"django-mptt",
+	"celery",
+	"django-celery-beat",
+	"django-celery-results",
+	"redis",
+	"requests",
+	"beautifulsoup4",
+	"yt-dlp>=2025.2.19",
+	"moviepy",
+	"Pillow>=10.0.0",
+]
+
+[project.urls]
+Repository = "https://github.com/django-vidar/django-vidar"
+Issues = "https://github.com/django-vidar/django-vidar/issues"
+
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "example.settings"
+python_files = [
+    "tests.py",
+    "test_*.py",
+    "*_tests.py"
+]
+
+[tool.black]
+line-length = 120
+target-version = ['py312']
+skip-string-normalization = true
+
+[tool.isort]
+py_version = 311
+extend_skip_glob = [
+    '*/migrations/*',
+	'*tests/*',
+]
+line_length = 120
+indent = 4
+combine_star = true
+combine_as_imports = true
+include_trailing_comma = true
+multi_line_output = 3
+lines_after_imports = 2
+known_django = ["django"]
+extra_standard_library = ["types", "requests"]
+known_first_party = []
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+
+[tool.flake8]
+max-line-length = 120
+count = true
+# Black
+extend_ignore = [
+	# "E722",  # do not use bare except
+	"E252",  #  missing whitespace around parameter equals
+	"E127",  # continuation line over-indented for visual indent
+]  # "E501"
+exclude = [
+	".tox",
+	"venv",
+	"*migrations*",
+	"temp.py",
+]
+per_file_ignores = [
+	"vidar/urls.py:E501"
+]
+
+[tool.coverage.run]
+omit = [
+	"*.tox*",
+	"*venv*",
+	"*migrations*",
+	"*__init__*",
+]
+[tool.coverage.html]
+directory = "coverage_html_report"

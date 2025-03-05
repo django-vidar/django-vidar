@@ -1,0 +1,41 @@
+{% extends 'vidar/base.html' %}
+
+{% block site_title %}Vidar / Update Video Details Queue{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item active">Update Video Details Queue</li>
+    </ul>
+
+    <h1>{{ paginator.count }}/{{ total_checkable_videos }} Update Video Details Queue</h1>
+
+    {% include 'vidar/pagination.html' %}
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Channel</th>
+                    <th>Video</th>
+                    <th>Last Checked</th>
+                    <th><span title="Times Checked" data-toggle="tooltip">#</span></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for video in videos %}
+                <tr>
+                    <td>{% include 'vidar/snippets/video-link-to-channel.html' %}</td>
+                    <td><a href="{{ video.get_absolute_url }}">{{ video }}</a></td>
+                    <td>{{ video.last_privacy_status_check|default_if_none:"Never Checked" }}</td>
+                    <td>{{ video.system_notes.update_video_details_automated|length }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'vidar/pagination.html' %}
+
+{% endblock %}

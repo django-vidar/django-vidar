@@ -1,0 +1,31 @@
+{% extends 'vidar/base.html' %}
+{% load bootstrap4 %}
+{% block site_title %}Vidar / {{ channel }} / Indexing{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+        <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:channel-manage' object.id %}">Manage</a></li>
+        <li class="breadcrumb-item active">Indexing</li>
+    </ul>
+
+    <form method="post" class="form">{% csrf_token %}
+        <div class="row">
+            <div class="col">
+                <h2>Index Channel Content: {{ object }}</h2>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                {% bootstrap_form form %}
+            </div>
+        </div>
+        {% buttons %}
+            <input type="submit" name="submit" value="Fully Index Channel Content" class="btn btn-primary">
+        {% endbuttons %}
+    </form>
+
+{% endblock %}

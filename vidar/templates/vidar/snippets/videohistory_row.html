@@ -1,0 +1,19 @@
+<tr>
+    <td style="width: 210px;"><a href="{{ history.video.channel.get_absolute_url }}">{{ history.video.channel }}</a></td>
+    <td><a href="{{ history.video.get_absolute_url }}#change-history">{{ history.video }}</a></td>
+    <td>{{ history.inserted }}</td>
+</tr>
+<tr>
+    <td class="text-right">
+        {% if history.title_changed %}
+            Title
+        {% elif history.description_changed %}
+            Description
+        {% elif history.privacy_status_changed %}
+            Privacy
+        {% endif %}
+    </td>
+    <td colspan="2">
+        {{ history.diff|linebreaksbr }}
+    </td>
+</tr>

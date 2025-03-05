@@ -1,0 +1,51 @@
+{% extends 'vidar/base.html' %}
+{% load bootstrap4 %}
+
+{% block site_title %}{% spaceless %}
+    {% if form.instance.pk %}
+        Vidar / {{ form.instance }} / Edit
+    {% else %}
+        Vidar / New Video
+    {% endif %}
+{% endspaceless %}{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if form.instance.pk %}
+
+            {% if form.instance.channel and perms.vidar.view_channel %}
+                <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+                <li class="breadcrumb-item">
+                    {% include 'vidar/snippets/video-link-to-channel.html' with video=form.instance %}
+                </li>
+            {% endif %}
+
+            <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+            <li class="breadcrumb-item active">Edit</li>
+        {% else %}
+            <li class="breadcrumb-item active">New Video</li>
+        {% endif %}
+    </ul>
+
+    {% if not form.instance.pk %}
+    <div class="row">
+        <div class="col"></div>
+        <div class="col-justify-right">
+            <p>
+                Bookmark this link to quickly download a video:
+                <a href="javascript:void(window.open('{{ settings.BASE_DOMAIN }}{% url 'vidar:video-create' %}?url='+encodeURIComponent(document.location.href)));">Download Video</a>
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="post" class="form">{% csrf_token %}
+        {% bootstrap_form form %}
+        {% buttons %}
+            <input type="submit" name="submit" value="Save" class="btn btn-primary">
+        {% endbuttons %}
+    </form>
+
+{% endblock %}

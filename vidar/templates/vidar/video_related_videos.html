@@ -1,0 +1,74 @@
+{% extends 'vidar/base.html' %}
+
+{% block site_title %}Vidar / Video / {{ video }} / Related Videos{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if video.channel %}
+            <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+            <li class="breadcrumb-item"><a href="{{ video.channel.get_absolute_url }}">{{ video.channel }}</a></li>
+        {% endif %}
+        <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+        <li class="breadcrumb-item active">Related</li>
+    </ul>
+
+    <h1>{{ video }}</h1>
+
+    <div class="row" style="margin-top: 10px; margin-bottom: 10px;">
+        <div class="col text-center">
+        </div>
+        <div class="col text-center">
+
+            <input type="text" name="q"
+                hx-get="{% url 'vidar:video-related' video.pk %}"
+                hx-select="#video-list-data"
+                hx-trigger="keyup delay:500ms changed"
+                hx-target="#video-list-data"
+                placeholder="Search..."
+                   value="{{ request.GET.q }}"
+            >
+
+        </div>
+        <div class="col text-center">
+
+            <a href="?show-all" class="hidden">Show All</a>
+            <a href="?related" class="btn btn-primary">Show Related Only</a>
+
+        </div>
+    </div>
+
+    <div id="video-list-data">
+
+        {% include 'vidar/pagination.html' %}
+
+        <table class="table table-striped table-hover">
+
+            <thead></thead>
+
+            <tbody>
+                {% for related_video in object_list %}
+                    <tr>
+                        <td>{{ related_video.channel|default_if_none:"" }}</td>
+                        <td><a href="{{ related_video.get_absolute_url }}">{{ related_video }}</a></td>
+                        <td>
+                            <form method="post">{% csrf_token %}
+                                {% if related_video.pk in related_video_pks %}
+                                    <input type="submit" name="submit" value="Remove" class="btn btn-danger">
+                                {% else %}
+                                    <input type="submit" name="submit" value="Relate" class="btn btn-primary">
+                                {% endif %}
+                                <input type="hidden" name="related_id" value="{{ related_video.id }}">
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+
+        {% include 'vidar/pagination.html' %}
+    </div>
+
+{% endblock %}

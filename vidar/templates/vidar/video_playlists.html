@@ -1,0 +1,68 @@
+{% extends 'vidar/base.html' %}
+{% block site_title %}Vidar / Video / {{ video }} / Playlists{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if video.channel %}
+            <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+            <li class="breadcrumb-item"><a href="{{ video.channel.get_absolute_url }}">{{ video.channel }}</a></li>
+        {% endif %}
+        <li class="breadcrumb-item"><a href="{{ video.get_absolute_url }}">{{ video }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:video-playlists' video.pk %}">Playlists</a></li>
+    </ul>
+
+    <div class="row">
+        <div class="col">
+            <h1>Playlists</h1>
+        </div>
+        <div class="col-justify-right">
+            {% if perms.vidar.add_playlist %}<a href="{% url 'vidar:video-playlists-add' video.pk %}" class="btn btn-primary">Add</a>{% endif %}
+        </div>
+    </div>
+
+    <div class="table-responsive" id="{{ type }}">
+    <table class="table table-hover table-striped">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Item Count</th>
+            <th>Last Scanned</th>
+            <th>Latest Video</th>
+            <th title="Missing from the live playlist" data-toggle="tooltip">Missing</th>
+            <th>Q</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for playlist in video.playlists.all %}
+            <tr data-playlist-id="{{ playlist.pk }}">
+                <td>
+                    {% if perms.vidar.view_playlist %}
+                        <a href="{{ playlist.get_absolute_url }}">{{ playlist.title }}</a>
+                    {% else %}
+                        {{ playlist.title }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% with playlist.archived_videos.count as avc %}
+                        {% with playlist.videos.count as pis %}
+                            {% if avc != pis %}
+                                {{ avc }} /
+                            {% endif %}
+                            {{ pis }}
+                        {% endwith %}
+                    {% endwith %}
+                </td>
+                <td><span title="{{ playlist.last_scanned }}">{{ playlist.last_scanned.date }}</span></td>
+                <td>{{ playlist.latest_video_by_upload_date.upload_date }}</td>
+                <td>{% with playlist.items_missing_from_live.count as imfl %}{% if imfl %}{{ imfl }}{% endif %}{% endwith %}</td>
+                <td>{% if playlist.quality is not None %}{{ playlist.get_quality_display }}{% endif %}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+
+{% endblock %}

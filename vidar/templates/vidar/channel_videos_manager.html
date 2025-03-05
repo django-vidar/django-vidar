@@ -1,0 +1,289 @@
+{% extends 'vidar/base.html' %}
+{% block site_title %}Vidar / {{ channel }} / Video Manager{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+        <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:channel-manage' object.id %}">Manage</a></li>
+        <li class="breadcrumb-item active">Videos Manager</li>
+    </ul>
+
+    <h1>{{ channel }} - Video Manager</h1>
+
+    <form action="{% url 'vidar:channel-videos-manager' channel.pk %}" method="post">{% csrf_token %}
+
+        <div class="row">
+            <div class="col">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="block" name="block">
+                    <label class="form-check-label" for="block">Block From Indexing</label>
+                </div>
+                <input type="submit" name="submit" value="Delete file but keep video in system" class="btn btn-sm btn-danger mb-1"><br />
+                <input type="submit" name="submit" value="Delete video from system entirely" class="btn btn-sm btn-danger mb-1"><br />
+                <input type="submit" name="submit" value="Fix file paths" class="btn btn-primary btn-sm mb-1">
+
+                <p>
+                    Storage space to be freed: <span id="selected-filesize">0 MB</span>
+                </p>
+
+                <input type="submit" name="submit" value="Load SponsorBlock Skips" title="Videos are scanned with a 5 second interval between videos, to not spam sponsorblocks server" data-toggle="tooltip" class="btn btn-primary btn-sm mb-1">
+                <span id="sponsorblock-runtime"></span>
+
+            </div>
+            <div class="col-justify-right">
+                <a href="?show=all" class="btn btn-primary">Show All</a>
+                <a href="?show=archived" class="btn btn-info">Archived Only</a>
+                <a href="?show=missing" class="btn btn-primary">Missing Only</a>
+                <a href="{% if request.GET.o == '-file_size' %}?o=file_size{% elif request.GET.o == 'file_size' %}?{% else %}?o=-file_size{% endif %}" class="btn btn-info">File Size</a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col p-4">
+                {% if all_shorts_count %}
+                    <input type="checkbox" onClick="toggle(this, '.is-short')" id="select_all_shorts" class="form-check-input" />
+                    <label for="select_all_shorts">Select All {{ all_shorts_count }} short{{ all_shorts_count|pluralize }}</label>
+                    <br />
+                {% endif %}
+                {% if all_livestreams_count %}
+                    <input type="checkbox" onClick="toggle(this, '.is-livestream')" id="select_all_livestreams" class="form-check-input" />
+                    <label for="select_all_livestreams">Select All {{ all_livestreams_count }} livestream{{ all_livestreams_count|pluralize }}</label>
+                    <br />
+                {% endif %}
+                <input type="checkbox" onClick="toggle(this, '.is-video')" id="select_all_videos" class="form-check-input" />
+                <label for="select_all_videos">Select All {{ all_videos_count }} video{{ all_videos_count|pluralize }}</label>
+            </div>
+            <div class="col p-4">
+                {% if archived_shorts_count %}
+                    <input type="checkbox" onClick="toggle(this, '.is-short.has-file')" id="select_archived_shorts" class="form-check-input" />
+                    <label for="select_archived_shorts">Select {{ archived_shorts_count }} archived short{{ archived_shorts_count|pluralize }}</label>
+                    <br />
+                {% endif %}
+                {% if archived_livestreams_count %}
+                    <input type="checkbox" onClick="toggle(this, '.is-livestream.has-file')" id="select_archived_livestreams" class="form-check-input" />
+                    <label for="select_archived_livestreams">Select {{ archived_livestreams_count }} archived livestream{{ archived_livestreams_count|pluralize }}</label>
+                    <br />
+                {% endif %}
+                <input type="checkbox" onClick="toggle(this, '.is-video.has-file')" id="select_archived_videos" class="form-check-input" />
+                <label for="select_archived_videos">Select {{ archived_videos_count }} archived video{{ archived_videos_count|pluralize }}</label>
+            </div>
+            <div class="col p-4">
+                {% if missing_shorts_count %}
+                    <input type="checkbox" onClick="toggle(this, '.is-short:not(.has-file)')" id="select_missing_shorts" class="form-check-input" />
+                    <label for="select_missing_shorts">Select {{ missing_shorts_count }} missing short{{ missing_shorts_count|pluralize }}</label>
+                    <br />
+                {% endif %}
+                {% if missing_livestreams_count %}
+                    <input type="checkbox" onClick="toggle(this, '.is-livestream:not(.has-file)')" id="select_missing_livestreams" class="form-check-input" />
+                    <label for="select_missing_livestreams">Select {{ missing_livestreams_count }} missing livestream{{ missing_livestreams_count|pluralize }}</label>
+                    <br />
+                {% endif %}
+                <input type="checkbox" onClick="toggle(this, '.is-video:not(.has-file)')" id="select_missing_videos" class="form-check-input" />
+                <label for="select_missing_videos">Select {{ missing_videos_count }} missing video{{ missing_videos_count|pluralize }}</label>
+            </div>
+        </div>
+
+        <table class="table" id="result_list">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th>File?</th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for video in videos_list.all %}
+                    <tr title="{{ video.file.name }}">
+                        {% if all_livestreams_count or all_shorts_count %}<td>{% if video.is_video %}Video{% elif video.is_short %}Short{% elif video.is_livestream %}Live{% else %}Unknown{% endif %}</td>{% endif %}
+                        <td>
+                            <div class="form-check">
+                                <input class="form-check-input {% if video.is_video %}is-video{% elif video.is_short %}is-short{% elif video.is_livestream %}is-livestream{% endif %} {% if video.file %}has-file{% endif %} {% if video.audio %}has-audio{% endif %} {% if video.starred %}is-starred{% endif %}"
+                                       type="checkbox"
+                                       value="{{ video.pk }}"
+                                       data-filesize="{{ video.file_size }}"
+                                       name="video-{{ video.pk }}"
+                                       id="video-{{ video.pk }}">
+                                <label class="form-check-label" for="video-{{ video.pk }}">
+                                    {{ video.title }}
+                                </label>
+                            </div>
+                        </td>
+                        <td>{{ video.duration_as_timedelta }}</td>
+                        <td>{{ video.upload_date }}</td>
+                        <td>{% if video.file %}
+                            <a href="{{ video.get_absolute_url }}">True</a>
+                        {% endif %}</td>
+                        <td>{% if video.file_size %}{{ video.file_size|filesizeformat }}{% endif %}</td>
+                        <td>
+                            {% if video.starred %}
+                                <i class="fa-solid fa-star" title="{{ video.starred }}" data-toggle="tooltip"></i>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+{% endblock %}
+
+{% block header %}
+    <style>
+    .tooltip-inner {
+       max-width: 100%;
+        /* If max-width does not work, try using width instead */
+        width: 100%;
+    }
+    </style>
+{% endblock %}
+
+{% block footer %}
+<script type="text/javascript">
+    function toggle(source, class_name) {
+        checkboxes = document.querySelectorAll('.form-check-input' + class_name);
+        for(var i=0, n=checkboxes.length;i<n;i++) {
+            checkboxes[i].checked = source.checked;
+            calculateFilesizeTotal(checkboxes[i])
+            calculateSponsorBlockRuntimeTotal(checkboxes[i]);
+        }
+    }
+
+    let total_selected_filesize = 0;
+    let total_sponsorblock_runtime = 0
+
+    function calculateFilesizeTotal(event) {
+        let video_filesize = event.getAttribute('data-filesize');
+        if (video_filesize !== "None") {
+            video_filesize = parseInt(video_filesize)
+            if (event.checked === true) {
+                total_selected_filesize += video_filesize;
+            } else {
+                total_selected_filesize -= video_filesize;
+            }
+        }
+        updateTotalFilesizeSpan();
+    }
+
+    function updateTotalFilesizeSpan() {
+        let span = document.getElementById("selected-filesize");
+
+        let mb = total_selected_filesize / 1024 / 1024;
+        if (mb <= 1024) {
+            let mbrounded = mb.toFixed(2);
+            span.innerText = mbrounded + " MB";
+        } else {
+            let gbrounded = mb / 1024;
+            span.innerText = gbrounded.toFixed(2) + ' GB';
+        }
+    }
+
+    function calculateSponsorBlockRuntimeTotal(event) {
+        let video_filesize = event.getAttribute('data-filesize');
+        if (video_filesize !== "None") {
+            if (event.checked === true) {
+                total_sponsorblock_runtime += 5;
+            } else {
+                total_sponsorblock_runtime -= 5;
+            }
+        }
+        updateSponsorBlockRuntimeSpan();
+    }
+
+    function updateSponsorBlockRuntimeSpan() {
+        let span = document.getElementById("sponsorblock-runtime");
+
+        if (total_sponsorblock_runtime === 0) {
+            span.innerText = "";
+        } else if (total_sponsorblock_runtime <= 60) {
+            span.innerText = total_sponsorblock_runtime.toString() + " seconds";
+        } else {
+            let sb_minutes = total_sponsorblock_runtime / 60;
+            let sb_seconds = total_sponsorblock_runtime % 60
+            let sb_output = Math.floor(sb_minutes) + ' minutes'
+            if (sb_seconds > 0) {
+                sb_output += ' ' + sb_seconds.toString() + ' seconds';
+            }
+            span.innerText = sb_output;
+        }
+    }
+    function show(selector) {
+        document.querySelectorAll(selector).forEach(function(el) {
+            el.classList.remove('hidden');
+        });
+    }
+
+    function hide(selector) {
+        document.querySelectorAll(selector).forEach(function(el) {
+            el.classList.add('hidden');
+        });
+    }
+
+    function checker(actionCheckboxes, options, checked) {
+        actionCheckboxes.forEach(function(el) {
+            el.checked = checked;
+            el.closest('tr').classList.toggle(options.selectedClass, checked);
+            calculateFilesizeTotal(el)
+            calculateSponsorBlockRuntimeTotal(el);
+        });
+    }
+
+    const defaults = {
+        selectedClass: "selected"
+    };
+
+    window.Actions = function(actionCheckboxes, options) {
+        options = Object.assign({}, defaults, options);
+        let list_editable_changed = false;
+        let lastChecked = null;
+        let shiftPressed = false;
+
+        document.addEventListener('keydown', (event) => {
+            shiftPressed = event.shiftKey;
+        });
+
+        document.addEventListener('keyup', (event) => {
+            shiftPressed = event.shiftKey;
+        });
+
+        function affectedCheckboxes(target, withModifier) {
+            const multiSelect = (lastChecked && withModifier && lastChecked !== target);
+            if (!multiSelect) {
+                return [target];
+            }
+            const checkboxes = Array.from(actionCheckboxes);
+            const targetIndex = checkboxes.findIndex(el => el === target);
+            const lastCheckedIndex = checkboxes.findIndex(el => el === lastChecked);
+            const startIndex = Math.min(targetIndex, lastCheckedIndex);
+            const endIndex = Math.max(targetIndex, lastCheckedIndex);
+            const filtered = checkboxes.filter((el, index) => (startIndex <= index) && (index <= endIndex));
+            return filtered;
+        };
+
+        Array.from(document.getElementById('result_list').tBodies).forEach(function(el) {
+            console.log('result list array called')
+            el.addEventListener('change', function(event) {
+                const target = event.target;
+                if (target.classList.contains('form-check-input')) {
+                    const checkboxes = affectedCheckboxes(target, shiftPressed);
+                    checker(checkboxes, options, target.checked);
+                    lastChecked = target;
+                } else {
+                    list_editable_changed = true;
+                }
+            });
+        });
+    };
+
+    const actionsEls = document.querySelectorAll('tr input.form-check-input');
+    if (actionsEls.length > 0) {
+        Actions(actionsEls);
+    }
+
+
+</script>
+{% endblock %}

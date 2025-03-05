@@ -1,0 +1,45 @@
+{% extends 'vidar/base.html' %}
+{% load bootstrap4 %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if video.channel %}
+            <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+            <li class="breadcrumb-item"><a href="{{ video.channel.get_absolute_url }}">{{ video.channel }}</a></li>
+        {% endif %}
+        <li class="breadcrumb-item"><a href="{{ video.get_absolute_url }}">{{ video }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:video-playlists' video.pk %}">Playlists</a></li>
+        <li class="breadcrumb-item active">Add To</li>
+    </ul>
+
+    <h1>{{ video }}</h1>
+
+    <p>
+        {% if 'show-all' in request.GET %}
+            You can now see all playlists in the system. Click here to <a href="?">only show custom-made playlists.</a>
+        {% else %}
+            <a href="?show-all">Show All Playlists</a>. You should only be adding videos
+            to custom-made playlists (shown below). Click the Show All link if you want
+            to add this video to any playlist.
+        {% endif %}
+    </p>
+
+    <table class="table table-hover table-striped">
+        <tbody>
+            {% for playlist in playlists %}
+                <form method="post" class="form">{% csrf_token %}
+                    <tr>
+                        <td>{{ playlist.channel|default:"" }}</td>
+                        <td>{{ playlist.title }}</td>
+                        <td>
+                            <input type="hidden" name="playlist" value="{{ playlist.id }}">
+                            <input type="submit" name="submit" value="Add To" class="btn btn-primary">
+                        </td>
+                    </tr>
+                </form>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

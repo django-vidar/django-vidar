@@ -1,0 +1,76 @@
+{% extends 'vidar/base.html' %}
+
+{% block site_title %}Blocked Videos{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item active">Blocked Videos</li>
+    </ul>
+
+    <h1>Blocked Videos</h1>
+
+    <div class="alert alert-dark">The videos listed below are blocked from being indexed by the regular
+        channel crontab indexing and by playlist indexing.</div>
+
+    <div class="row">
+        <div class="col text-center">
+
+            <input type="text" name="q"
+                hx-get="{% url 'vidar:blocked-index' %}"
+                hx-trigger="keyup delay:500ms changed"
+                hx-target="#blocked-videos"
+                hx-select="#blocked-videos"
+                hx-push-url="true"
+                placeholder="Search..."
+                   value="{{ request.GET.q }}"
+            >
+
+        </div>
+    </div>
+
+    <br />
+
+    {% include 'vidar/pagination.html' %}
+
+    <div id="blocked-videos">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+
+                <thead>
+                    <tr>
+                        <th>Deleted</th>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Unblock</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for video in object_list %}
+                        <tr>
+                            <td>{{ video.inserted }}</td>
+                            <td><a href="{{ video.url }}" target="_blank" rel="noreferrer">{{ video.provider_object_id }}</a></td>
+                            <td>
+                                {% if video.is_still_local %}
+                                    <a href="{{ video.local_url }}">{{ video.title }}</a>
+                                {% else %}
+                                    {{ video.title }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form action="{% url 'vidar:blocked-delete' pk=video.pk %}" method="post">{% csrf_token %}
+                                    <input type="submit" name="unblock" value="Unblock" class="btn btn-primary">
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+
+    {% include 'vidar/pagination.html' %}
+
+{% endblock %}

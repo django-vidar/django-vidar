@@ -1,0 +1,45 @@
+{% extends 'vidar/base.html' %}
+
+{% block site_title %}Vidar / Download Queue{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item active">Download Queue</li>
+    </ul>
+
+    <h1>{{ videos|length }} Download Queue</h1>
+
+    {% include 'vidar/pagination.html' %}
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Channel</th>
+                    <th>Video</th>
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for video in videos %}
+                <tr>
+                    <td>{% include 'vidar/snippets/video-link-to-channel.html' %}</td>
+                    <td><a href="{{ video.get_absolute_url }}">{{ video }}</a></td>
+                    <td>
+                        {% if video.download_source.get_absolute_url %}
+                            <a href="{{ video.download_source.get_absolute_url }}">{{ video.download_source }}</a>
+                        {% else %}
+                            {{ video.download_source }}
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'vidar/pagination.html' %}
+
+{% endblock %}

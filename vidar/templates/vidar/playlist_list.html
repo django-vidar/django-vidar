@@ -1,0 +1,154 @@
+{% extends 'vidar/base.html' %}
+{% load humanize crontab_links playlist_tools %}
+{% block site_title %}Vidar / Playlists{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+
+        {% if request.GET.channel %}
+            <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+            <li class="breadcrumb-item"><a href="{{ channel.get_absolute_url }}">{{ channel }}</a></li>
+        {% endif %}
+
+        <li class="breadcrumb-item active">Playlists</li>
+    </ul>
+
+    <div class="row">
+        <div class="col">
+            <h1><a href="{% url 'vidar:playlist-index' %}">{{ paginator.count }} Playlists</a></h1>
+        </div>
+
+        <div class="col text-center">
+
+            <input type="text" name="q"
+                hx-get="{% url 'vidar:playlist-index' %}{% if request.GET.channel %}?channel={{ request.GET.channel }}{% endif %}"
+                hx-select="#playlists-data"
+                hx-trigger="keyup delay:500ms changed"
+                hx-target="#playlists-data"
+                hx-push-url="true"
+                placeholder="Search..."
+                   value="{{ request.GET.q }}"
+            >
+
+        </div>
+
+        <div class="col-justify-right">
+            {% if perms.vidar.add_playlist %}
+                <a href="{% url 'vidar:playlist-create' %}" class="btn btn-primary">New</a>
+                <a href="{% url 'vidar:playlist-create-custom' %}{% if request.GET.channel %}?channel={{ request.GET.channel }}{% endif %}" class="btn btn-primary">New Custom</a>
+                <br />
+            {% endif %}
+            <a href="?custom" class="btn btn-info my-2">Show Custom</a>
+            <a href="?hidden" class="btn btn-info my-2 hidden">Show Hidden</a>
+            <a href="{% querystring show_filesize=True %}" class="btn btn-info my-2">Show Filesizes</a>
+        </div>
+    </div>
+
+    <div id="playlists-data">
+        {% include 'vidar/pagination.html' %}
+
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead>
+                <tr>
+                    {% if not request.GET.channel %}
+                        <th><a href="?o={% if request.GET.o == 'channel' %}-{% endif %}channel">Channel</a></th>
+                    {% endif %}
+                    <th><a href="?o={% if request.GET.o == 'title' %}-{% endif %}title">Name</a></th>
+                    <th>Item Count</th>
+                    <th><a href="?o={% if request.GET.o != '-last_scanned' %}-{% endif %}last_scanned">Last Scanned</a></th>
+                    <th>Latest Video</th>
+                    <th><a href="?o={% if request.GET.o != '-crontab' %}-{% endif %}crontab">crontab</a></th>
+                    {% if 'show_filesize' in request.GET %}
+                        <th>File Size</th>
+                    {% endif %}
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for playlist in object_list %}
+                    <tr data-playlist-id="{{ playlist.pk }}">
+                        {% if not request.GET.channel %}
+                        <td>
+                            {% if playlist.channel %}
+                                {% if perms.vidar.view_channel %}
+                                    <a href="{{ playlist.channel.get_absolute_url }}">{{ playlist.channel }}</a>
+                                {% else %}
+                                    {{ playlist.channel }}
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td>
+                            {% if playlist.hidden %}<i class="fa-regular fa-eye-slash mr-2"></i>{% endif %}
+                            {% if perms.vidar.view_playlist %}
+                                <a href="{{ playlist.get_absolute_url }}">{{ playlist.title }}</a>
+                            {% else %}
+                                {{ playlist.title }}
+                            {% endif %}
+                            {% user_played_entire_playlist playlist request.user as upep %}
+                            {% if upep %} <i title="Fully Watched" class="fa fas fa-check ml-1"></i>{% endif %}
+                        </td>
+                        <td title="Watch Duration: {{ playlist.calculated_duration_as_timedelta }}" data-toggle="tooltip">
+                            {% with playlist.archived_videos.count as avc %}
+                                {% with playlist.videos.count as pis %}
+                                    {% if avc != pis %}
+                                        {{ avc }} /
+                                    {% endif %}
+                                    {{ pis }}
+                                {% endwith %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            <span title="{{ playlist.last_scanned }}" data-toggle="tooltip">
+                                {% if playlist.last_scanned|date:"Y-m-d" == now|date:"Y-m-d" %}
+                                    {{ playlist.last_scanned|time }}
+                                {% else %}
+                                    {{ playlist.last_scanned|timesince }}
+                                {% endif %}
+                            </span>
+                        </td>
+                        {% with playlist.latest_video_by_upload_date as plvup %}
+                            {% if plvup %}
+                                <td title="{{ plvup.upload_date }}" data-toggle="tooltip">{{ plvup.upload_date|timesince }}</td>
+                            {% else %}
+                                <td></td>
+                            {% endif %}
+                        {% endwith %}
+                        <td>
+                            {% if playlist.crontab %}
+                                <a href="{{ playlist.crontab|crontab_link_to_crontab_guru }}" target="_blank" title="{{ playlist.next_runtime }}" data-toggle="tooltip" rel="noreferrer nofollow">{{ playlist.crontab }}</a>
+                            {% endif %}
+                        </td>
+                        {% if 'show_filesize' in request.GET %}
+                            <td>
+                                {{ playlist.calculated_file_size|filesizeformat }}
+                            </td>
+                        {% endif %}
+                        <td>
+                            {% if not playlist.provider_object_id %}
+                                <i class="fa-solid fa-user-gear" title="Playlist is local only, no attachment to online." data-toggle="tooltip"></i>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% include 'vidar/pagination.html' %}
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <p>
+                Playlists being scanned: {{ playlists_with_crontab.count }}<br />
+                Playlists being scanned daily: {{ playlists_with_daily_crontab.count }}<br />
+                Playlists being scanned monthly: {{ playlists_with_monthly_crontab.count }}
+            </p>
+        </div>
+    </div>
+
+{% endblock %}

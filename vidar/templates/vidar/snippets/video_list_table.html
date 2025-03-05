@@ -1,0 +1,68 @@
+    {% load video_tools %}
+    {% include 'vidar/pagination.html' %}
+
+    <table class="table table-hover table-striped">
+        <thead>
+        <tr>
+            <th>Date</th>
+            <th>Channel</th>
+            <th>Title</th>
+            <th class="d-none d-sm-table-cell"></th>
+            <th class="d-none d-sm-table-cell"><span title="TV: {{ total_videos_count }}<br />DD: {{ downloaded_videos_duration_sum }}<br/>TD: {{ total_videos_duration_sum }}" data-html="true" data-toggle="tooltip">{{ downloaded_videos_count }}</span></th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for video in object_list %}
+            <tr data-video-id="{{ video.pk }}">
+                <td {% if video.privacy_status != video.VideoPrivacyStatuses.PUBLIC %}style="font-style: italic"{% endif %}>
+                    <span title="I:{{ video.inserted }}<br />U:{{ video.updated }}<br />DA:{{ video.date_added_to_system }}{% if video.date_downloaded %}<br />DDL:{{ video.date_downloaded }}{% endif %}<br />{% if video.quality %}Q: {{ video.get_quality_display }} {% endif %}{% if video.file_size %}FS:{{ video.file_size|filesizeformat }}{% endif %}<br/>S:{{ video.get_privacy_status_display }}<br/>LC:{{ video.last_privacy_status_check }}" data-html="true" data-toggle="tooltip">
+                        {% if video.upload_date.year != now.year %}
+                            {{ video.upload_date }}
+                        {% else %}
+                            {{ video.upload_date|date:"N j" }}
+                        {% endif %}
+                    </span>
+                </td>
+                <td>{% include 'vidar/snippets/video-link-to-channel.html' with video=video %}</td>
+                <td>
+                    <div style="overflow: auto; max-width: 800px" {% if video.title|length >= 70 %}title="{{ video }}" data-toggle="tooltip" data-placement="right"{% endif %}>
+                    {% if video.file %}
+                        <a href="{{ video.get_absolute_url }}{% if not request.GET.q %}?next={% spaceless %}
+                                {% if 'downloaded' in request.get_full_path %}downloaded
+                                {% elif 'starred' in request.get_full_path %}starred
+                                {% else %}uploaded{% endif %}{% endspaceless %}{% endif %}">
+                            {{ video|truncatechars:70 }}
+                        </a>
+                        {% user_watched_video video as upv %}
+                        {% if upv %}&nbsp; <i title="Watched {{ upv.updated }}" class="fa fas fa-check"></i>{% endif %}
+                    {% else %}
+                        {{ video|truncatechars:70 }}
+                            (<a href="{{ video.url }}" target="_blank" rel="noreferrer">Live</a>)
+                            (<a href="{{ video.get_absolute_url }}">Local</a>)
+                    {% endif %}
+                    {% if video.audio %}
+                        (<a href="{{ video.get_absolute_url }}?view=audio{% if not request.GET.q %}&next={% spaceless %}
+                                {% if 'downloaded' in request.get_full_path %}downloaded
+                                {% elif 'starred' in request.get_full_path %}starred
+                                {% else %}uploaded{% endif %}{% endspaceless %}{% endif %}">Audio</a>)
+                    {% endif %}
+                    </div>
+                </td>
+                <td class="d-none d-sm-table-cell">
+                    {% if video.file and perms.vidar.access_watch_later_playlist %}
+                        <a href="javascript:;"
+                           hx-get="{% url 'vidar:video-add-watch-later' video.id %}"
+                           title="{% if video.pk in watch_later_videos %}Remove From{% else %}Add to{% endif %} Watch Later"
+                           data-toggle="tooltip"
+                        >
+                            <i class="fa {% if video.pk in watch_later_videos %}fa-xl fa-minus{% else %}fa-2xl fa-plus{% endif %}"></i>
+                        </a>
+                    {% endif %}
+                </td>
+                <td class="d-none d-sm-table-cell">{{ video.duration_as_timedelta }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% include 'vidar/pagination.html' %}

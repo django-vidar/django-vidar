@@ -1,0 +1,41 @@
+{% extends 'vidar/base.html' %}
+
+{% block site_title %}Vidar / Change History{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item active">Video Change History</li>
+    </ul>
+
+    <div class="row">
+        <div class="col">
+            <a href="{% url 'vidar:history-videos' %}"><h1>Video Change History</h1></a>
+        </div>
+        <div class="col-justify-right">
+        </div>
+    </div>
+
+    {% include 'vidar/pagination.html' %}
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Channel</th>
+                    <th>Video</th>
+                    <th>Datetime</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for history in object_list %}
+                {% include 'vidar/snippets/videohistory_row.html' with history=history %}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'vidar/pagination.html' %}
+
+{% endblock %}

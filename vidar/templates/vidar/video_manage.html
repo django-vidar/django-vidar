@@ -1,0 +1,302 @@
+{% extends 'vidar/base.html' %}
+
+{% load bootstrap4 vidar_utils %}
+
+{% block site_title %}Vidar / Video / {{ video }} / Manage{% endblock %}
+
+{% block content %}
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if video.channel %}
+            <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+            <li class="breadcrumb-item"><a href="{{ video.channel.get_absolute_url }}">{{ video.channel }}</a></li>
+        {% endif %}
+        <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+        <li class="breadcrumb-item active">Manage</li>
+    </ul>
+
+    <h2>{{ video }}</h2>
+
+    <hr>
+
+    <div class="row">
+
+        <div class="col-12">
+
+            <h4>Quality Selection</h4>
+
+            <div class="pl-2">
+                {% for new_quality in video.qualities_available %}
+                    <form action="{% url 'vidar:video-download' video.id new_quality %}?next={{ request.get_full_path|urlencode }}" method="post" class="d-inline-block mr-2 mb-2">{% csrf_token %}
+                        <input type="submit"
+                               name="{{ new_quality }}" value="{{ new_quality }}p"
+                               class="btn btn-sm {% if video.quality == new_quality %}btn-success{% else %}btn-primary{% endif %}"
+                               {% if video.quality == new_quality %}title="Already At This Quality" data-toggle="tooltip" {% endif %}
+                        />
+                    </form>
+                {% endfor %}
+            </div>
+            <div class="pl-2 mb-2">
+                <a href="{% url 'vidar:video-update-qualities' video.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-dark">
+                    Update Available Qualities
+                </a>
+            </div>
+
+        </div>
+
+        <div class="col-12">
+            {% if video.file %}
+                {% with video.file.name|slice:"-3:" as ext %}
+                    {% if ext == 'mkv' %}
+                        <form method="post">{% csrf_token %}
+                            <input type="submit" name="convert-to-mp4" value="Convert To MP$" class="btn btn-primary">
+                        </form>
+                    {% endif %}
+                {% endwith %}
+            {% endif %}
+            {% if video.date_downloaded and not video.file %}
+                <form method="post">{% csrf_token %}
+                    <input type="submit" name="retry-processing" value="Retry Processing" class="btn btn-primary">
+                </form>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <hr>
+    <h4>File Paths {% if does_file_need_fixing %}Not Matching{% else %}Matched Successfully{% endif %}</h4>
+
+    <div class="mb-4">
+        <pre>Current : {{ video.file.name }}<br />Expected: {{ expected_video_filepath }}<br />Current Already Exists: {{ current_video_filepath_already_exists }}<br />Expected Already Exists: {{ expected_video_filepath_already_exists }}</pre>
+
+        {% if does_file_need_fixing %}
+            <div class="row">
+                <div class="col">
+                    <form method="post">{% csrf_token %}
+                        <input type="submit" name="fix-filepaths" value="Fix Filepaths" class="btn btn-primary">
+                    </form>
+                </div>
+                <div class="col">
+                    {% if expected_video_filepath_already_exists %}
+                        <form method="post">{% csrf_token %}
+                            <input type="submit" name="expected-filepaths-are-correct" value="Expected Filepaths Already Exist, Copy To Current" class="btn btn-primary">
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <hr />
+
+    <div class="row">
+        <div class="col-md-6 col-sm-12">
+            <h4>Timestamps</h4>
+            <div class="col">
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <td>Date Added To System</td>
+                            <td>{{ video.date_added_to_system }}</td>
+                        </tr>
+                        <tr>
+                            <td>Date Downloaded</td>
+                            <td>{{ video.date_downloaded }}</td>
+                        </tr>
+                        <tr>
+                            <td>Inserted</td>
+                            <td>{{ video.inserted }}</td>
+                        </tr>
+                        <tr>
+                            <td>Last Updated</td>
+                            <td>{{ video.updated }}</td>
+                        </tr>
+                        <tr>
+                            <td>Watched</td>
+                            <td>
+                                {% if video.watched %}
+                                    {{ video.watched }}
+                                {% elif perms.vidar.change_video %}
+                                    <a href="javascript:;" hx-get="{% url 'vidar:video-watched' pk=video.id %}" hx-swap="innerHTML">Mark As Watched</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Starred</td>
+                            <td>{{ video.starred|default_if_none:"" }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-sm-12 col-md-6 col-lg-6 mb-4">
+            <h4>Options</h4>
+            <p>Prevent the following fields from being changed. Enabling a lock allows changing the field to your own value. Refresh after changing.</p>
+            <div class="col">
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <td>Title Locked</td>
+                            <td>
+                                <a href="javascript:;" hx-post="{% url 'vidar:video-swap-booleans' pk=video.id %}?field=title_locked" hx-swap="innerHTML">
+                                    <i class="fa fa-lg {{ video.title_locked|yesno:"fa-check,fa-xmark" }}"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Description Locked</td>
+                            <td>
+                                <a href="javascript:;" hx-post="{% url 'vidar:video-swap-booleans' pk=video.id %}?field=description_locked" hx-swap="innerHTML">
+                                    <i class="fa fa-lg {{ video.description_locked|yesno:"fa-check,fa-xmark" }}"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Prevent Deletion</td>
+                            <td>
+                                <a href="javascript:;" hx-post="{% url 'vidar:video-swap-booleans' pk=video.id %}?field=prevent_deletion" hx-swap="innerHTML">
+                                    <i class="fa fa-lg {{ video.prevent_deletion|yesno:"fa-check,fa-xmark" }}"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Permit Download</td>
+                            <td>
+                                <a href="javascript:;" hx-post="{% url 'vidar:video-swap-booleans' pk=video.id %}?field=permit_download" hx-swap="innerHTML">
+                                    <i class="fa fa-lg {{ video.permit_download|yesno:"fa-check,fa-xmark" }}"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Download Comments</td>
+                            <td>
+                                <a href="javascript:;" hx-post="{% url 'vidar:video-swap-booleans' pk=video.id %}?field=download_comments_on_index" hx-swap="innerHTML">
+                                    <i class="fa fa-lg {{ video.download_comments_on_index|yesno:"fa-check,fa-xmark" }}"></i>
+                                </a>
+                            </td>
+                        </tr>                    <tr>
+                            <td>Mark For Deletion</td>
+                            <td>
+                                <a href="javascript:;" hx-post="{% url 'vidar:video-swap-booleans' pk=video.id %}?field=mark_for_deletion" hx-swap="innerHTML">
+                                    <i class="fa fa-lg {{ video.mark_for_deletion|yesno:"fa-check,fa-xmark" }}"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Delete After Watching</td>
+                            <td>
+                                <a href="javascript:;" hx-post="{% url 'vidar:video-swap-booleans' pk=video.id %}?field=delete_after_watching" hx-swap="innerHTML">
+                                    <i class="fa fa-lg {{ video.delete_after_watching|yesno:"fa-check,fa-xmark" }}"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <form method="post">{% csrf_token %}
+                    {% bootstrap_form video_form layout='vertical' %}
+                    {% buttons %}
+                        <input type="submit" name="save-fields" value="Save Fields" class="btn btn-primary">
+                    {% endbuttons %}
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    {% if perms.vidar.view_extrafile %}
+    <h4 id="extrafiles">Extra Files</h4>
+
+    <div class="row">
+
+        <div class="col">
+            <table class="table table-hover">
+                {% for ef in video.extra_files.all %}
+                    <tr>
+                        <td>
+                            <a href="{{ ef.file.url }}" target="_blank">{{ ef.file.name|filename }}</a>
+                        </td>
+                        <td>
+                            <form method="post">{% csrf_token %}
+                                <input type="hidden" name="extrafile-id" value="{{ ef.pk }}">
+                                <input type="submit" name="extrafile-delete" value="Delete File" class="btn btn-sm btn-danger">
+                            </form>
+                        </td>
+                    </tr>
+                    {% if ef.note %}
+                        <tr>
+                            <td colspan="2">
+                                {{ ef.note }}
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            </table>
+        </div>
+
+        {% if perms.vidar.create_extrafile %}
+            <div class="col">
+                <form method="post" enctype="multipart/form-data">{% csrf_token %}
+                    {% bootstrap_form extrafile_form layout='vertical' %}
+                    {% buttons %}
+                        <input type="submit" name="extrafile" value="Save Extra File" class="btn btn-primary">
+                    {% endbuttons %}
+                </form>
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col">
+            <h4>Administrative</h4>
+            {% if is_object_locked %}
+                <p>
+                    Celery Object Lock Status: {{ is_object_locked|default_if_none:False }}<br />
+                    Only release an object lock if something went wrong and you want to manually retry it sooner rather than later.
+                    <form method="post">{% csrf_token %}
+                        <input type="submit" name="release-object-lock" value="Release Object Lock" class="btn btn-danger">
+                    </form>
+                </p>
+            {% endif %}
+            {% if is_blocked and perms.vidar.add_videoblocked %}
+                <p>
+                    <form method="post">{% csrf_token %}
+                        <input type="submit" name="unblock" value="Unblock from indexing" class="btn btn-success" title="Allow video to be indexed on next channel scan" data-toggle="tooltip">
+                    </form>
+                </p>
+            {% elif not is_blocked and perms.vidar.delete_videoblocked %}
+                <p>
+                    <form method="post">{% csrf_token %}
+                        <input type="submit" name="block" value="Block from indexing" class="btn btn-danger" title="Block video from being indexed" data-toggle="tooltip">
+                    </form>
+                </p>
+            {% endif %}
+            {% if perms.vidar.change_video %}
+            <p>
+                <form method="post">{% csrf_token %}
+                    <input type="submit" name="refresh_thumbnail" value="Refresh Thumbnail" class="btn btn-info">
+                </form>
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if perms.vidar.delete_video %}
+
+        <div class="row mb-4">
+            <div class="col">
+                <h4>Delete</h4>
+
+                <div class="row pl-4">
+                    <a href="{% url 'vidar:video-delete' video.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-danger mr-2">Delete Video</a>
+                    {% if video.audio %}
+                        <a href="{% url 'vidar:video-delete' video.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-danger">Delete Audio</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    {% endif %}
+
+{% endblock %}

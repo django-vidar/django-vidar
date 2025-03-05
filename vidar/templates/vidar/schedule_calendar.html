@@ -1,0 +1,44 @@
+{% extends 'vidar/base.html' %}
+
+{% block content %}
+
+    <h1>Schedule - Calendar View</h1>
+
+
+    <div id="calendar"></div>
+
+
+{% endblock %}
+
+
+{% block footer %}
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
+    <script>
+
+      document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+          // initialView: 'dayGridMonth',
+          initialView: 'dayGridWeek',
+          headerToolbar: {
+            left: 'prev,next',
+            center: 'title',
+            right: 'dayGridWeek,dayGridDay' // user can switch between the two
+          },
+          events: [
+              {% for dt, objects in datetimes_to_objects.items %}
+                  {% for item in objects %}
+                    {
+                      title: '{{ item }}',
+                      start: new Date('{{ dt|date:"Y-m-d G:i:s" }}'),
+                    url: "{{ item.get_absolute_url }}",
+                    },
+                  {% endfor %}
+              {% endfor %}
+          ]
+        });
+        calendar.render();
+      });
+
+    </script>
+{% endblock %}

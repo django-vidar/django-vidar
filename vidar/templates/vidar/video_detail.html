@@ -1,0 +1,1152 @@
+{% extends 'vidar/base.html' %}
+{% load mptt_tags video_tools %}
+
+{% block site_title %}{{ video }}{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if video.channel and perms.vidar.view_channel %}
+            <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+            <li class="breadcrumb-item">
+                {% include 'vidar/snippets/video-link-to-channel.html' with video=video %}
+            </li>
+        {% endif %}
+        <li class="breadcrumb-item active">{{ object }}</li>
+        <li class="breadcrumb-item"><a href="{{ object.url }}" target="_blank" rel="noreferrer">Watch On Youtube</a></li>
+    </ul>
+
+    <div id="next_prev_bar" class="hidden">
+        <div class="row mb-2">
+            <div class="col-6">
+                <span class="hidden">
+                    Prev: <span id="play-prev"></span>
+                </span>
+            </div>
+            <div class="col-6 text-right">
+                <span class="hidden">
+                    Next: <span id="play-next"></span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-2">
+        <div class="col text-center">
+            <a href="javascript:;" onclick="toggle_localstorage_boolean_key('vidar-autoplay', trigger_autoplay_buttons_status)" id="vidar-autoplay" class="btn btn-sm">Autoplay</a>
+            <a href="javascript:;" onclick="toggle_localstorage_boolean_key('vidar-autoplay-previous', trigger_autoplay_buttons_status, 'vidar-autoplay-next')" id="vidar-autoplay-previous" class="btn btn-sm">Autoplay Prev</a>
+            <a href="javascript:;" onclick="toggle_localstorage_boolean_key('vidar-autoplay-next', trigger_autoplay_buttons_status, 'vidar-autoplay-previous')" id="vidar-autoplay-next" class="btn btn-sm">Autoplay Next</a>
+            <a href="javascript:;" onclick="toggle_localstorage_boolean_key('vidar-skips', trigger_autoplay_buttons_status)" id="vidar-skips" class="btn btn-sm"><span class="skips-count"></span> Skips</a>
+            <a href="javascript:;" onclick="toggle_localstorage_boolean_key('vidar-watch-history', trigger_autoplay_buttons_status)" id="vidar-watch-history" class="btn btn-sm">Watch History</a>
+            <a href="javascript:;" onclick="toggle_loop_key()" id="vidar-loop" class="btn btn-sm">Loop</a>
+
+            {% if perms.vidar.add_highlight %}
+                <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newHighlightModal" id="show-highlight-modal-button">
+                    <i class="fa-solid fa-plus" title="Add Highlight" data-toggle="tooltip"></i>
+                </button>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <div class="alert alert-warning text-center hidden" id="redirection-alert" role="alert">
+        <h2>Autoplay is enabled. No file to play.<br />Redirecting to next video in <span id="redirection-counter">5</span> seconds.</h2>
+    </div>
+
+    <div class="alert alert-warning text-center hidden" id="sleep-finished" role="alert">
+        <h2>Sleep timer has been reached. Stopped autoplay.</h2>
+    </div>
+
+    <div class="text-center">
+        {% if video.file or video.audio %}
+            {% if perms.vidar.play_videos %}
+                {% if request.GET.view == 'audio' %}
+                    {% if video.audio %}
+                        <audio id="player" controls style="width: 100%;">
+                            <source src="{{ video.audio.url }}" type="audio/mpeg">
+                        </audio>
+                    {% else %}
+                        <hr />
+                        <h1 class="text-center">Audio file missing from record.</h1>
+                        <hr />
+                    {% endif %}
+                {% elif video.file %}
+                    <video id="player" autofocus controls data-video-id="{{ video.pk }}" style="max-width: 100%" poster="{% if video.thumbnail %}{{ video.thumbnail.url }}{% endif %}">
+                        <source src="{{ video.file.url }}">
+                    </video>
+                {% else %}
+                    Entry missing video and audio files.
+                {% endif %}
+            {% else %}
+                <hr />
+                <h1 class="text-center">Video not available to the public.</h1>
+                <hr />
+                <iframe width="853" height="505" src="{{ video.embed_url }}" referrerpolicy="no-referrer"
+                        title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            {% endif %}
+        {% else %}
+            <h1>Video Not Archived In System.</h1>
+            {% if perms.vidar.view_videodownloaderror and object.download_errors.exists %}
+                <h2><a href="{% url 'vidar:video-download-error' object.pk %}">Downloading Errors</a></h2>
+            {% endif %}
+            <iframe width="853" height="505" src="{{ video.embed_url }}" referrerpolicy="no-referrer"
+                    title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        {% endif %}
+    </div>
+
+    {% if video.file %}
+    <div class="hidden" id="video-controls">
+        <div class="row">
+            <div class="col-sm-12 col-md-12 col-lg-6 my-2 text-center">
+                <button onclick="setVideoTime(0);" class="btn btn-primary"><i class="fa fa-solid fa-arrow-rotate-left"></i></button>
+                <button onclick="increaseTime(15);" class="btn btn-primary"><i class="fa fa-solid fa-plus"></i> 15s</button>
+                <button onclick="increaseTime(30);" class="btn btn-primary"><i class="fa fa-solid fa-plus"></i> 30s</button>
+                <button onclick="increaseTime(60);" class="btn btn-primary"><i class="fa fa-solid fa-plus"></i> 1m</button>
+                <button onclick="increaseTime(120);" class="btn btn-primary"><i class="fa fa-solid fa-plus"></i> 2m</button>
+                <button onclick="increaseTime(300);" class="btn btn-primary"><i class="fa fa-solid fa-plus"></i> 5m</button>
+            </div>
+            <div class="col-sm-12 col-md-12 col-lg-6 my-2 text-center">
+                <button onclick="decreaseTime(15);" class="btn btn-info"><i class="fa fa-solid fa-minus"></i> 15s</button>
+                <button onclick="decreaseTime(30);" class="btn btn-primary"><i class="fa fa-solid fa-minus"></i> 30s</button>
+                <button onclick="decreaseTime(60);" class="btn btn-primary"><i class="fa fa-solid fa-minus"></i> 1m</button>
+                <button onclick="decreaseTime(120);" class="btn btn-primary"><i class="fa fa-solid fa-minus"></i> 2m</button>
+                <button onclick="decreaseTime(300);" class="btn btn-primary"><i class="fa fa-solid fa-minus"></i> 5m</button>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12 my-2 text-center">
+                <input type="number" min="0" id="sleep-timer-input" placeholder="Sleep Timer">
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <p>
+        <span class="float-right">
+            {% if video.file %}
+                <a href="javascript:;" class="mr-4" title="Video Jump Controls" data-toggle="tooltip" onclick="show_video_controls();"><i class="fa fa-cog"></i></a>
+            {% endif %}
+            {% if perms.vidar.access_watch_later_playlist %}
+                {% is_on_watch_later video request.user as vwl %}
+                <a href="javascript:;"
+                   hx-post="{% url 'vidar:video-add-watch-later' video.id %}{% if playlist %}?playlist={{ playlist.pk }}{% endif %}"
+                   class="mr-4"
+                   title="{% if vwl %}Remove From{% else %}Add to{% endif %} Watch Later"
+                   data-toggle="tooltip"
+                >
+                    <i class="fa {{ vwl|yesno:"fa-xl fa-minus,fa-2xl fa-plus" }}"></i>
+                </a>
+            {% endif %}
+            {% include 'vidar/snippets/video-star.html' with video=video force_show=True %}
+            {% if perms.vidar.change_video %}
+                <a href="{% url 'vidar:video-manage' video.id %}" class="btn btn-primary ml-4">Manage</a><br />
+            {% endif %}
+        </span>
+
+        <span id="highlights-container">
+            {% if perms.vidar.add_highlight %}
+                <a href="{% url 'vidar:video-highlight-list' video.id %}">Highlights:</a>
+            {% else %}
+                Highlights:
+            {% endif %}
+            <span id="highlights-list"></span>
+        </span>
+
+        <span id="highlights-chapters-seperator">
+            <br />
+        </span>
+
+        <span id="chapters-container">
+            {% if perms.vidar.add_highlight %}
+                <a href="{% url 'vidar:video-chapter-list' video.id %}">Chapters:</a>
+            {% else %}
+                Chapters:
+            {% endif %}
+             <span id="chapters-list"></span>
+        </span>
+
+        <span id="chapters-skips-seperator">
+            <br />
+        </span>
+
+        <span id="skips-container">
+            {% if perms.vidar.add_durationskip %}
+                <a href="{% url 'vidar:video-duration-skip-list' video.id %}">Skips:</a>
+            {% else %}
+                Skips:
+            {% endif %}
+             <span id="skips-list"></span>
+        </span>
+    </p>
+
+    {% if playlist %}
+        <div class="row">
+            <div class="col text-center small-uppercase">
+                <h5>
+                    {{ video|get_playlist_position:playlist }} / {{ playlist.videos.count }} -
+                    {% link_to_playlist_page playlist video as playlist_page_num %}
+                    <a href="{{ playlist.get_absolute_url }}{% if playlist_page_num > 1 %}?page={{ playlist_page_num }}{% endif %}">
+                        {{ playlist.title }}
+                    </a>
+                </h5>
+            </div>
+        </div>
+    {% endif %}
+
+    <h2>{{ video.title }}</h2>
+
+    <div class="row">
+        <div class="col">
+            {% description_with_linked_timestamps video as video_description %}
+            {{ video_description|linebreaksbr }}
+        </div>
+        <div class="col-lg-3 col-sm-12">
+
+            <div class="text-center">
+                <p>
+                    {% if video.channel %}
+                        <a href="{{ video.channel.get_absolute_url }}">
+                            <img src="{{ video.channel.thumbnail_url }}" alt="{{ video.channel }}" style="max-width: 100%; max-height: 120px; margin: 20px;" class="yt-thumbnail">
+                        </a>
+                    {% elif perms.vidar.add_channel %}
+                        <a href="{% url 'vidar:video-sub-to-channel' video.pk %}">Sub To Channel</a>
+                    {% endif %}
+                </p>
+
+                <p>
+                    Uploaded {{ video.upload_date }}<br />
+                    <span title="Privacy Status Last Checked<br />{{ video.last_privacy_status_check|default_if_none:"Never" }}" data-toggle="tooltip" data-html="true">
+                        YTStatus: {{ video.get_privacy_status_display|default_if_none:"Unknown" }}
+                    </span>
+                </p>
+
+                {% if video.audio %}
+                    <a href="{{ video.audio.url }}" target="_blank">Download MP3</a><br />
+                    {% if request.GET.view != "audio" %}
+                        <a href="{{ video.get_absolute_url }}{% querystring view="audio" %}">Audio View</a>
+                    {% else %}
+                        <a href="{{ video.get_absolute_url }}{% querystring view=None %}">Video View</a>
+                    {% endif %}
+                    <br /><br />
+                {% elif perms.vidar.change_video and video.file %}
+                    <a href="{% url 'vidar:video-convert-to-audio' video.pk %}" class="btn btn-primary btn-sm">Convert To Audio</a><br /><br />
+                {% endif %}
+
+                Views: {{ video.view_count }}<br />
+                Likes: {{ video.like_count }}<br />
+                {% if video.at_max_quality %} <span title="Video quality is at maximum" data-toggle="tooltip">Maxed</span>{% endif %}
+                Quality: {{ video.get_quality_display }}<br />
+                Duration: {{ video.duration_as_timedelta }}s<br />
+                Size: {{ video.file_size|filesizeformat }}<br />
+
+                {% if perms.vidar.view_userplaybackhistory %}
+                    {% user_watch_history_for_video video request.user as uwhv %}
+                    <a href="{% url 'vidar:watch-history' %}?video={{ object.id }}">Watch History ({{ uwhv.count }})</a><br /><br />
+                {% endif %}
+
+                {% if perms.vidar.add_highlight %}
+                    <a href="{% url 'vidar:video-highlight-list' video.id %}" id="highlights-link">Highlights <span class="highlights-count"></span></a>
+                    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#newHighlightModal"><i class="fa-solid fa-plus"></i></button>
+                    <br >
+                    <a href="{% url 'vidar:video-chapter-list' video.id %}" id="chapters-link">Chapters <span class="chapters-count"></span></a><br />
+                {% endif %}
+
+                {% if perms.vidar.add_chapter %}
+                    <a href="{% url 'vidar:video-duration-skip-list' video.id %}" id="skips-link">Skips <span class="skips-count"></span></a><br />
+                {% endif %}
+
+                <br />
+
+                {% if perms.vidar.view_playlist %}
+                    {% include 'vidar/snippets/video_playlists_list.html' %}
+                {% endif %}
+                <br />
+                {% if perms.vidar.view_video %}
+                    {% include 'vidar/snippets/video_related_list.html' %}
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+
+    {% if perms.vidar.add_videonote %}
+        <div class="row mt-2">
+            <div class="col">
+                <h1 id="comments">Self Comments</h1>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col" id="notes">
+                {% for note in object.notes.all %}
+                    <div class="card border-info mb-3">
+                        <div class="card-body">
+                            <h4 class="card-title">{{ note.inserted }}</h4>
+                            <p class="card-text">{{ note.note|linebreaksbr }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <div id="note-create-error" class="alert alert-dismissible alert-warning" style="display: none;">
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    <h4 class="alert-heading">Error!</h4>
+                    <p class="mb-0">Note failed to save, please retry.</p>
+                </div>
+                <form action="{% url 'vidar:video-comment-add' object.pk %}" id="note-create" method="post">{% csrf_token %}
+                    <textarea class="form-control" name="comment" id="comment" rows="3"></textarea><br />
+                    <input type="submit" name="submit" value="Add Note" class="btn btn-primary">
+                </form>
+            </div>
+        </div>
+    {% endif %}
+
+    <hr />
+
+    {% if perms.vidar.view_comment %}
+        <div class="row mt-2">
+            <div class="col">
+                <h1 id="yt-comments">{{ object.comments.count }} YT Comments</h1>
+            </div>
+            <div class="col-justify-right">
+                <form action="{% url 'vidar:video-download-comments' object.pk %}" method="post">{% csrf_token %}
+                    {% if not object.comments.exists %}
+                        <input type="submit" name="download-comments" value="Get Youtube Comments" class="btn btn-primary">
+                    {% else %}
+                        <input type="submit" name="download-comments" value="Refresh Latest Comments" class="btn btn-primary">
+                        <input type="submit" name="download-comments" value="Get All Comments" class="btn btn-info" title="Do not use too often!" data-toggle="tooltip">
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <ul class="root">
+                    {% recursetree object.comments.all %}
+                        <li>
+                            <p>
+                                {% if node.author_is_uploader and node.author_thumbnail %}<img style="width: 40px; height: 40px; border-radius: 50%" src="{{ node.author_thumbnail }}" alt="{{ node.author }}" loading="lazy">{% endif %}
+                                {% if node.author_is_uploader %}<strong style="text-decoration: underline">{{ node.author }}</strong>{% else %}{{ node.author }}{% endif %}
+                                - {{ node.timestamp }} {% if node.is_favorited %}<i class="fa-solid fa-heart-circle-check fa-2xl"></i>{% endif %}
+                                - {{ node.like_count }} likes
+                                <p>{{ node.text }}</p>
+                            </p>
+                            {% if not node.is_leaf_node %}
+                                <ul class="children">
+                                    {{ children }}
+                                </ul>
+                            {% endif %}
+                        </li>
+                    {% endrecursetree %}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if object.change_history.all.exists %}
+        <hr />
+        <h1 id="change-history">Change History</h1>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Channel</th>
+                    <th>Video</th>
+                    <th>Datetime</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for history in object.change_history.all|slice:":10" %}
+                {% include 'vidar/snippets/videohistory_row.html' with history=history %}
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+{% endblock %}
+
+{% block footer %}
+
+    {% if perms.vidar.add_highlight %}
+    <!-- Highlights Creation Modal -->
+    <div class="modal fade" id="newHighlightModal" tabindex="-1" role="dialog" aria-labelledby="newHighlightModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <form method="post"
+                      hx-post="{% url 'vidar:video-highlight-list' object.pk %}"
+                      hx-swap="none"
+                      hx-ext="debug"
+                      hx-on::after-request="this.reset()">{% csrf_token %}
+
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="newHighlightModalLabel">Create Highlight</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+
+                        <div class="form-group">
+                            <label for="highlight_start_point">Start Point</label>
+                            <input type="text" placeholder="Start Point" class="form-control" name="point" id="highlight_start_point">
+                            <small class="form-text text-muted">Seconds or HH:MM:SS within video
+                            <a href="javascript:;" onclick="copyPlayerCurrentTimeToStartPoint();" tabindex="-1">copy</a></small>
+                        </div>
+                        <div class="form-group">
+                            <label for="highlight_end_point">End Point</label>
+                            <input type="text" placeholder="End Point (Optional)" name="end_point" id="highlight_end_point" class="form-control">
+                            <small class="form-text text-muted">Seconds or HH:MM:SS within video
+                            <a href="javascript:;" onclick="copyPlayerCurrentTimeToEndPoint();" tabindex="-1">copy</a></small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="highlight_note">Note</label>
+                            <input type="text" placeholder="Note" name="note" id="highlight_note" class="form-control">
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <input type="submit" name="create" value="Create" class="btn btn-primary" hx-ext="debug" />
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <script type="text/javascript">
+
+    // Default skips to true on first load.
+    if (localStorage.getItem("vidar-skips") === null) {
+        localStorage.setItem("vidar-skips", "true");
+    }
+    if (localStorage.getItem("vidar-watch-history") === null) {
+        localStorage.setItem("vidar-watch-history", "true");
+    }
+
+    let player = document.getElementById('player');
+
+    let vid_total_duration = {{ object.duration|default:0 }};
+    let skip_outro_seconds = {{ object.channel.skip_outro_duration|default:0 }};
+    // can also be set below by highlight end points
+    let end_at_this_duration = vid_total_duration - skip_outro_seconds;
+    let latest_time_update = {{ user_playback_currenttime_seconds|default:"null" }};
+    let seconds_to_mark_as_watched = Math.ceil(end_at_this_duration * .{{ object.channel.watched_percentage|default:95 }});
+    let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    let log_counter = 0;
+    let looping = false;
+    let user_authenticated = {{ user.is_authenticated|yesno:"true,false" }};
+    let autoplay = localStorage.getItem('vidar-autoplay') === "true";
+    let redirect_next_url = "";
+    let redirect_next_name = "";
+    let redirect_prev_url = "";
+    let redirect_prev_name = "";
+    let url_params = new URLSearchParams();
+    let current_url_params = new URLSearchParams(window.location.search);
+    let is_audio_view = false;
+    let sleep_timer = current_url_params.get('sleep');
+    let reporting_interval = 10; // report every 10 seconds
+    if (vid_total_duration > 30 * 60) {
+        reporting_interval = 30; // video is over 30 minutes long, report every 30 seconds.
+    }
+
+    // If the end is reached and the video was paused, track that it was paused.
+    // If the user starts it manually again then we know it was already paused and
+    //      the user manually started so do not interfer.
+    let vid_was_ended = false;
+
+    // Prevent marked_as_watched being sent every seconds past the mark.
+    let marked_as_watched_sent = false;
+
+    if (current_url_params.has('view') === true) {
+        url_params.append("view", current_url_params.get('view'));
+        is_audio_view = current_url_params.get('view') === 'audio';
+    }
+
+    let highlights = {
+        {% for highlight in highlights.all %}{% spaceless %}
+            {{ forloop.counter }}.{{ highlight.pk }}: { "id": {{ highlight.pk }}, "start": {{ highlight.point }}, "end": {{ highlight.end_point|default_if_none:"null" }}, "text": "{{ highlight.point|convert_seconds_to_hh_mm_ss }}", "note": "{{ highlight.note|escape }}" }{% if not forloop.last %},{% endif %}
+            {% endspaceless %}
+        {% endfor %}
+    }
+    const highlights_count = Object.entries(highlights).length;
+
+    let chapters = {
+        {% for chapter in chapters.all %}{% spaceless %}
+            {{ forloop.counter }}.{{ chapter.pk }}: { "id": {{ chapter.pk }}, "start": {{ chapter.point }}, "end": {{ chapter.end_point|default_if_none:"null" }}, "text": "{{ chapter.point|convert_seconds_to_hh_mm_ss }}", "note": "{{ chapter.note|escape }}" }{% if not forloop.last %},{% endif %}
+            {% endspaceless %}
+        {% endfor %}
+    }
+    const chapters_count = Object.entries(chapters).length;
+
+    let skips = {
+        {% for skip in video.duration_skips.all %}{% spaceless %}
+            {{ forloop.counter }}.{{ skip.pk }}: { "id": {{ skip.pk }}, "start": {{ skip.start }}, "end": {{ skip.end|default_if_none:"null" }}, "start_text": "{{ skip.start|convert_seconds_to_hh_mm_ss }}", "end_text": "{{ skip.end|convert_seconds_to_hh_mm_ss }}", "skipped": false, "categories": "{{ skip.sb_category|escape }}" }{% if not forloop.last %},{% endif %}
+            {% endspaceless %}
+        {% endfor %}
+    }
+    const skips_count = Object.entries(skips).length;
+
+    document.querySelectorAll('.highlights-count').forEach(function(elem) {
+        elem.textContent = highlights_count;
+    })
+    document.querySelectorAll('.chapters-count').forEach(function(elem) {
+        elem.textContent = chapters_count;
+    })
+    document.querySelectorAll('.skips-count').forEach(function(elem) {
+        elem.textContent = skips_count;
+    })
+
+    {% if perms.vidar.add_highlight %}
+    $('#show-highlight-modal-button').on('click', function (e) {
+        let start_point_elem = document.querySelector('#highlight_start_point');
+        let end_point_elem = document.querySelector('#highlight_end_point');
+
+        if (player !== null) {
+            if (start_point_elem !== null && start_point_elem.value === "") {
+                console.log('Setting start_point');
+                copyPlayerCurrentTimeToStartPoint();
+            } else if (end_point_elem !== null && end_point_elem.value === "") {
+                console.log('Setting end_point');
+                copyPlayerCurrentTimeToEndPoint();
+            }
+        }
+    });
+
+    function convert_seconds_to_hhmmss(seconds) {
+        if (typeof seconds == "number") {
+            // https://stackoverflow.com/questions/1322732/convert-seconds-to-hh-mm-ss-with-javascript
+            return new Date(seconds * 1000).toISOString().slice(11, 19);
+        }
+        return "";
+    }
+
+    function copyPlayerCurrentTimeToStartPoint() {
+        let start_point_elem = document.querySelector('#highlight_start_point');
+        if (player !== null && start_point_elem !== null) {
+            let player_current_time_value = parseInt(player.currentTime) - 1;
+            if (player_current_time_value < 0) {
+                player_current_time_value = 0
+            }
+            start_point_elem.value = convert_seconds_to_hhmmss(player_current_time_value);
+            start_point_elem.dataset.seconds = player_current_time_value.toString();
+        }
+    }
+
+    function copyPlayerCurrentTimeToEndPoint() {
+        let start_point_elem = document.querySelector('#highlight_start_point');
+        let end_point_elem = document.querySelector('#highlight_end_point');
+        if (player !== null && end_point_elem !== null) {
+            let player_current_time_value = parseInt(player.currentTime) + 1;
+            if (player_current_time_value < 0) {
+                player_current_time_value = 0
+            }
+
+            if (start_point_elem !== null && typeof start_point_elem.dataset.seconds !== "undefined") {
+                let start_point_value = parseInt(start_point_elem.dataset.seconds);
+
+                if (!isNaN(start_point_value)) {
+                    if (player_current_time_value < start_point_value) {
+                        player_current_time_value = "";
+                    }
+                }
+            }
+
+            end_point_elem.value = convert_seconds_to_hhmmss(player_current_time_value);
+            end_point_elem.dataset.seconds = player_current_time_value.toString();
+        }
+    }
+    {% endif %}
+
+    function show_hide_container_on_count(counter, container) {
+        if (counter === true || (typeof counter === "number" && counter > 0)) {
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+        }
+    }
+    show_hide_container_on_count(skips_count, document.getElementById('vidar-skips'));
+    show_hide_container_on_count(skips_count, document.getElementById('skips-container'));
+    show_hide_container_on_count(chapters_count, document.getElementById('chapters-container'));
+    show_hide_container_on_count(highlights_count, document.getElementById('highlights-container'));
+    show_hide_container_on_count(chapters_count > 0 && highlights_count > 0, document.getElementById('highlights-chapters-seperator'));
+    show_hide_container_on_count(chapters_count > 0 && skips_count > 0, document.getElementById('chapters-skips-seperator'));
+
+    function mark_as_watched() {
+        console.log('mark_as_watched.marking as watched now');
+
+        if (current_url_params.has('highlight') === true) {
+            console.log('mark_as_watched disabled, viewing highlight');
+            return false;
+        }
+
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open( "GET", "{% url 'vidar:video-watched' pk=video.pk %}", true ); // false for synchronous request
+        xmlHttp.send( null );
+        console.log('mark_as_watched.sending watch time');
+        send_watch_time(parseInt(player.currentTime), 'mark_as_watched');
+    }
+
+    function trigger_autoplay_buttons_status() {
+        set_enable_disable_buttons_details('vidar-watch-history');
+        set_enable_disable_buttons_details('vidar-autoplay-next');
+        set_enable_disable_buttons_details('vidar-autoplay-previous');
+        set_enable_disable_buttons_details('vidar-autoplay');
+        set_enable_disable_buttons_details('vidar-skips');
+    }
+    trigger_autoplay_buttons_status();
+
+    window.addEventListener("storage", (event) => {
+        trigger_autoplay_buttons_status();
+    });
+
+    function set_loop_button_styling() {
+        let elem = document.getElementById('vidar-loop');
+
+        if (elem !== null) {
+            elem.classList.remove('btn-outline-success', 'btn-success');
+            if (looping === true) {
+                elem.classList.add('btn-success');
+            } else {
+                elem.classList.add('btn-outline-success');
+            }
+        }
+    }
+    set_loop_button_styling()
+
+    function toggle_loop_key() {
+        looping = !looping;
+        set_loop_button_styling();
+    }
+
+    let chapters_span = document.getElementById('chapters-list');
+    for (const [k, chapter] of Object.entries(chapters)) {
+        document.getElementById('chapters-container').classList.remove('hidden');
+        let hl = document.createElement('a');
+        var linkText = document.createTextNode(chapter.text + ', ');
+        hl.appendChild(linkText);
+        hl.href = 'javascript:;';
+        hl.title = chapter.note;
+        hl.dataset.toggle = 'tooltip';
+        hl.setAttribute('onclick', 'setVideoTime(' + chapter.start + ')');
+        chapters_span.appendChild(hl);
+    }
+
+    let highlights_span = document.getElementById('highlights-list');
+    for (const [k, highlight] of Object.entries(highlights)) {
+        let hl = document.createElement('a');
+        var linkText = document.createTextNode(highlight.text + ', ');
+        hl.appendChild(linkText);
+        hl.href = 'javascript:;';
+        hl.title = highlight.note;
+        hl.dataset.toggle = 'tooltip';
+        hl.dataset.html = "true";
+        hl.setAttribute('onclick', 'setVideoTime(' + highlight.start + ')');
+        highlights_span.appendChild(hl);
+    }
+
+    let skips_span = document.getElementById('skips-list');
+    for (const [k, skip] of Object.entries(skips)) {
+        let hl = document.createElement('a');
+        var linkText = document.createTextNode(skip.start_text + '-' + skip.end_text + ', ');
+        hl.appendChild(linkText);
+        hl.href = 'javascript:;';
+        hl.title = skip.categories;
+        hl.dataset.toggle = 'tooltip';
+        hl.setAttribute('onclick', 'setVideoTime(' + skip.start + ')');
+        skips_span.appendChild(hl);
+    }
+
+    {% if not request.user.is_authenticated %}
+    {% elif request.GET.next == 'uploaded' %}
+        {% previous_by_upload_date video request.GET.view as previous_by_upload_date_value %}
+        {% next_by_upload_date video request.GET.view as next_by_upload_date_value %}
+        url_params.append("next", "uploaded");
+
+        // next_by_upload_date_value
+        redirect_next_url = "{{ next_by_upload_date_value.get_absolute_url|default:"" }}";
+        redirect_next_name = "{{ next_by_upload_date_value }}";
+
+        // previous_by_upload_date_value
+        redirect_prev_url = "{{ previous_by_upload_date_value.get_absolute_url|default:"" }}";
+        redirect_prev_name = "{{ previous_by_upload_date_value }}";
+
+    {% elif request.GET.next == 'downloaded' %}
+        {% previous_by_date_downloaded video request.GET.view as previous_by_date_downloaded_value %}
+        {% next_by_date_downloaded video request.GET.view as next_by_date_downloaded_value %}
+        url_params.append("next", "downloaded");
+
+        // next_by_date_downloaded
+        redirect_next_url = "{{ next_by_date_downloaded_value.get_absolute_url|default:"" }}";
+        redirect_next_name = "{{ next_by_date_downloaded_value }}";
+
+        // previous_by_date_downloaded
+        redirect_prev_url = "{{ previous_by_date_downloaded_value.get_absolute_url|default:"" }}";
+        redirect_prev_name = "{{ previous_by_date_downloaded_value }}";
+
+    {% elif request.GET.next == 'starred' %}
+        {% previous_by_starred video request.GET.view as previous_by_starred_value %}
+        {% next_by_starred video request.GET.view as next_by_starred_value %}
+        url_params.append("next", "starred");
+
+        // next_by_starred
+        redirect_next_url = "{{ next_by_starred_value.get_absolute_url|default:"" }}";
+        redirect_next_name = "{{ next_by_starred_value }}";
+
+        // previous_by_starred
+        redirect_prev_url = "{{ previous_by_starred_value.get_absolute_url|default:"" }}";
+        redirect_prev_name = "{{ previous_by_starred_value }}";
+
+    {% elif playlist %}
+        {% previous_by_playlist playlist video request.GET.view as previous_by_playlist_value %}
+        {% next_by_playlist playlist video request.GET.view as next_by_playlist_value %}
+        url_params.append("next", "playlist");
+        url_params.append("playlist", {{ playlist.id }});
+
+        // next_by_playlist
+        redirect_next_url = "{{ next_by_playlist_value.get_absolute_url|default:"" }}";
+        redirect_next_name = "{{ next_by_playlist_value }}";
+
+        // previous_by_playlist
+        redirect_prev_url = "{{ previous_by_playlist_value.get_absolute_url|default:"" }}";
+        redirect_prev_name = "{{ previous_by_playlist_value }}";
+
+    {% else %}
+        {% previous_by_channel video request.GET.view as previous_by_channel_value %}
+        {% next_by_channel video request.GET.view as next_by_channel_value %}
+
+        // next by channel and upload_date
+        redirect_next_url = "{{ next_by_channel_value.get_absolute_url|default:"" }}";
+        redirect_next_name = "{{ next_by_channel_value }}";
+
+        // previous by channel and upload_date
+        redirect_prev_url = "{{ previous_by_channel_value.get_absolute_url|default:"" }}";
+        redirect_prev_name = "{{ previous_by_channel_value }}";
+
+    {% endif %}
+
+    function build_redirect_url(url) {
+        return url + "?" + url_params.toString()
+    }
+
+    function build_next_prev_bar_a(element_id, rurl, rname) {
+        if (rurl !== "" && rname !== "") {
+            document.querySelector('#next_prev_bar').classList.remove('hidden');
+            let next_div = document.querySelector(element_id);
+            let next_a = document.createElement('a');
+            next_a.setAttribute('href', build_redirect_url(rurl));
+            next_a.text = rname;
+            next_div.appendChild(next_a);
+            next_div.parentElement.classList.remove('hidden');
+        }
+    }
+    build_next_prev_bar_a("#play-next", redirect_next_url, htmlDecode(redirect_next_name))
+    build_next_prev_bar_a("#play-prev", redirect_prev_url, htmlDecode(redirect_prev_name))
+
+    if ("mediaSession" in navigator) {
+        const actionHandlers = [
+            ['seekbackward', (details) => {
+                const skipTime = details.seekOffset || 10;
+                decreaseTime(skipTime);
+            }],
+            ['seekforward', (details) => {
+                const skipTime = details.seekOffset || 10;
+                increaseTime(skipTime);
+            }],
+            ['seekto', (details) => {
+                setVideoTime(details.seekTime)
+            }]
+        ];
+        if (redirect_next_url !== "") {
+            actionHandlers.push(['nexttrack', () => {
+                let new_redirect_url = build_redirect_url(redirect_next_url);
+                console.log('Sending to', new_redirect_url);
+                window.location = new_redirect_url;
+                return true;
+            }]);
+        }
+        if (redirect_prev_url !== "") {
+            actionHandlers.push(['previoustrack', () => {
+                let new_redirect_url = build_redirect_url(redirect_prev_url);
+                console.log('Sending to', new_redirect_url);
+                window.location = new_redirect_url;
+                return true;
+            }]);
+        }
+        console.debug(actionHandlers);
+        for (const [action, handler] of actionHandlers) {
+            try {
+                navigator.mediaSession.setActionHandler(action, handler);
+                console.debug(`The media session action "${action}" is supported.`);
+            } catch (error) {
+                console.log(`The media session action "${action}" is not supported yet.`);
+            }
+        }
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: '{{ video.title|escapejs }}',
+            artist: '{{ video.channel|escapejs|default_if_none:"" }}',
+            album: '{{ video.channel|escapejs|default_if_none:"" }}',
+            artwork: [
+                {% if video.thumbnail %}{ src: '{{ video.thumbnail.url }}' }{% endif %}
+            ],
+            // Leaving this here for future reference, i can see me using this for highlights, skips...etc
+            /*chapterInfo: [
+                {
+                    title: 'Chapter 1',
+                    startTime: 0,
+                    artwork: [
+                        { src: '' },
+                    ]
+                },
+                {
+                    title: 'Chapter 2',
+                    startTime: 42,
+                    artwork: [
+                    { src: '' },
+                ]
+                }
+            ]*/
+        });
+    }
+
+    if (current_url_params.has('highlight') === true) {
+        let whe = document.getElementById('vidar-watch-history');
+        whe.classList.add('disabled');
+        whe.title = 'test';
+        whe.dataset.toggle = 'tooltip';
+    }
+
+    function redirect_to_next_video() {
+        console.log('redirect to next video now')
+
+        if (looping === true) {
+            console.log('redirection disabled, looping');
+            return false;
+        }
+
+        if (current_url_params.has('highlight') === true) {
+            console.log('redirection disabled, viewing highlight');
+            return false;
+        }
+
+        if (sleep_timer !== null && current_url_params.has('sleep') === true) {
+            url_params.append('sleep', sleep_timer);
+            if (parseInt(sleep_timer) <= 0) {
+                console.log("sleep timer hit, stopping redirection.")
+                return false;
+            }
+        }
+
+        if (localStorage.getItem('vidar-autoplay-next') === "true") {
+            if (redirect_next_url !== "") {
+                url_params.append("method", "auto");
+                let new_redirect_url = build_redirect_url(redirect_next_url) + "#next_prev_bar";
+                console.log('Sending to', new_redirect_url);
+                window.location = new_redirect_url;
+                return true;
+            }
+        } else if (localStorage.getItem('vidar-autoplay-previous') === "true") {
+            if (redirect_prev_url !== "") {
+                url_params.append("method", "auto");
+                let new_redirect_url = build_redirect_url(redirect_prev_url) + "#next_prev_bar";
+                console.log('Sending to', new_redirect_url);
+                window.location = new_redirect_url;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function setVideoTime(seconds) {
+        if (player !== null) {
+            player.currentTime = seconds;
+        }
+    }
+
+    let previous_cur_time = null;
+
+    function send_watch_time(cur_time, source) {
+
+        if (user_authenticated === false) {
+            return;
+        }
+
+        if (current_url_params.has('highlight') === true) {
+            console.log('watch timer disabled, viewing highlight');
+            return false;
+        }
+
+        if (localStorage.getItem("vidar-watch-history") !== "true") {
+            console.debug('send_watch_time called, watch history disabled');
+            return;
+        }
+        if (previous_cur_time !== null && previous_cur_time === cur_time) {
+            console.debug('send_watch_time called, cur_time === previous_cur_time', cur_time, previous_cur_time);
+            return;
+        }
+        previous_cur_time = cur_time;
+        console.log('send_watch_time called', source, cur_time);
+        $.ajax({
+            url: "{% url 'vidar:video-save-user-view-time' video.id %}",
+            type: 'post',
+            data: {
+                "current_time": cur_time,
+                {% if playlist %}"playlist": {{ playlist.pk }}{% endif %}
+            },
+        });
+    }
+
+    function exit_fullscreen_on_ended(was_redirected) {
+        if (was_redirected === false && document.fullscreenElement !== null) {
+            document.exitFullscreen();
+            return true;
+        }
+    }
+
+    function check_skips_and_early_endings(elem, cur_time) {
+        latest_time_update = cur_time;
+        console.debug('check_skips_and_early_endings', cur_time, elem);
+
+        if (localStorage.getItem("vidar-skips") === "true") {
+
+            // Need to do a small range calculation, if user watches the video at anything above 1.0
+            //      speed then cur_time can easily skip time due to faster playback.
+            for (const [k, skip] of Object.entries(skips)) {
+                if ((cur_time >= (skip.start - 1) && cur_time <= (skip.start + 1)) && skip.skipped === false) {
+                    console.log('skip triggered id=' + skip.id + ' start=' + skip.start +' end=' + skip.end + ' category=' + skip.categories);
+                    elem.currentTime = skip.end;
+                    skip.skipped = true;
+                }
+            }
+        }
+
+        if (marked_as_watched_sent === false && seconds_to_mark_as_watched > 0 && cur_time > 0 && cur_time >= seconds_to_mark_as_watched) {
+            console.log('marking as watched due to seconds_to_mark_as_watched having been reached', cur_time, seconds_to_mark_as_watched);
+            mark_as_watched();
+            marked_as_watched_sent = true;
+        }
+
+        if (vid_was_ended === false && end_at_this_duration > 0 && cur_time > 0 && cur_time > end_at_this_duration) {
+            if (looping === false) {
+                console.log('video ended due to cur_time greater than end_at_this_duration', cur_time, end_at_this_duration);
+                mark_as_watched();
+                marked_as_watched_sent = true;
+                elem.pause();
+                let was_redirected = redirect_to_next_video();
+                vid_was_ended = true;
+                exit_fullscreen_on_ended(was_redirected);
+                // If user was visiting this page by viewing a single highlight, upon ending we should
+                //  reset the overall end point so that if they continue to watch or watch from the
+                //  start it doesn't keep ending at the highlight end point.
+                end_at_this_duration = vid_total_duration - skip_outro_seconds
+            } else {
+                setVideoTime(0);
+            }
+        }
+    }
+
+    function increaseTime(seconds) {
+        if (player !== null) {
+            player.currentTime = Math.min(player.currentTime + seconds, player.duration);
+        }
+    }
+
+    function decreaseTime(seconds) {
+        if (player != null) {
+            player.currentTime = Math.max(player.currentTime - seconds, 0);
+        }
+    }
+    function increaseSpeed(rate) {
+        if (player !== null) {
+            player.playbackRate += rate;
+        }
+    }
+
+    function decreaseSpeed(rate) {
+        if (player != null) {
+            player.playbackRate -= rate;
+        }
+    }
+
+    function show_video_controls() {
+        document.getElementById('video-controls').classList.toggle('hidden');
+    }
+
+    document.getElementById('sleep-timer-input').addEventListener("keydown", function(event) {
+        sleep_timer = parseInt(this.value);
+
+        if (sleep_timer !== null && sleep_timer >= 0) {
+            let url = new URL(window.location.href);
+            url.searchParams.set('sleep', sleep_timer.toString());
+            window.history.replaceState('video-detail-sleep-timer', null, url); // or pushState
+        }
+    });
+
+    $(function () {
+
+        if (player !== null ){
+            player.onkeydown = function (e) {
+                console.info(e);
+                let key = e['key']
+                let code = e['code']
+                if (key === "k") {
+                    if (player.paused === true) {
+                        player.play();
+                    } else {
+                        player.pause();
+                    }
+                } else if (code === "Digit0" || code === "Numpad0") {
+                    setVideoTime(0);
+                } else if (key === "m") {
+                    player.muted = !player.muted;
+                } else if (key === "l" || code === "Numpad6") {
+                    increaseTime(10);
+                } else if (key === "j" || code === "Numpad4") {
+                    decreaseTime(10);
+                } else if (key === ">" || code === "Numpad9") {
+                    increaseSpeed(0.25);
+                } else if (key === "<" || code === "Numpad3") {
+                    decreaseSpeed(0.25);
+                } else if (key === "f") {
+                    if (document.fullscreenElement !== null) {
+                        document.exitFullscreen();
+                    } else {
+                        player.requestFullscreen();
+                    }
+                }
+            }
+
+            player.addEventListener('play', () => {
+                player._log_history_interval = setInterval(() => {
+                    log_counter += 1
+                    if (sleep_timer !== null) {
+                        sleep_timer -= 1
+                        if (sleep_timer < 0) {
+                            document.getElementById('sleep-timer-input').value = "";
+                            document.getElementById('sleep-finished').classList.remove('hidden');
+                        } else {
+                            document.getElementById('sleep-timer-input').value = sleep_timer;
+                        }
+                    }
+                    let cur_time = parseInt(player.currentTime);
+                    console.debug('player.play._log_history_interval called', log_counter, cur_time, 'interval', reporting_interval);
+                    if (log_counter % reporting_interval === 0) {
+                        send_watch_time(cur_time, '_log_history_interval');
+                    }
+                    check_skips_and_early_endings(player, cur_time);
+                }, 1000);
+            }, true);
+
+            player.addEventListener('pause', () => clearInterval(player._log_history_interval), true);
+
+            player.addEventListener("ended", function (data) {
+                if (looping === true) {
+                    setVideoTime(0);
+                    player.play();
+                } else {
+                    console.log('video ended signal, redirecting if necessary');
+                    mark_as_watched();
+                    let was_redirected = redirect_to_next_video();
+                    clearInterval(player._log_history_interval);
+                    exit_fullscreen_on_ended(was_redirected);
+                }
+            });
+
+            // disabled 2024-12-27, was walking trying to listen to an audiobook at 1.5x and
+            //  realizing it wasn't applying the playlist playback_speed setting.
+            if (is_audio_view === false) {
+                player.playbackRate = {% get_playback_speed request.user video playlist %};
+            } else {
+                player.playbackRate = {% get_playback_speed request.user video playlist True %};
+            }
+
+            // Mobile players don't seem to have volume controls on the player itself
+            //  this ends up meaning the player could be at 50% and the users headphones
+            //  might be at 100% and still not loud enough.
+            if (isMobile === false) {
+                player.volume = {% get_playback_volume video playlist %};
+            }
+
+            if (current_url_params.has('highlight') === true) {
+                let selected_highlight_id = parseInt(current_url_params.get('highlight'));
+
+                for (const [k, selected_highlight_data] of Object.entries(highlights)) {
+                    if (selected_highlight_data['id'] === selected_highlight_id) {
+
+                        player.currentTime = selected_highlight_data.start;
+
+                        if (selected_highlight_data.end !== null) {
+                            end_at_this_duration = selected_highlight_data.end;
+                        } else {
+                            let possible_endpoint = selected_highlight_data.start + 60;
+                            if (possible_endpoint < end_at_this_duration) {
+                                end_at_this_duration = possible_endpoint;
+                            }
+                        }
+                    }
+                }
+            } else {
+                {% if user_playback_currenttime_seconds %}
+                    player.currentTime = {{ user_playback_currenttime_seconds }};
+                {% elif object.channel and object.channel.skip_intro_duration %}
+                    player.currentTime = {{ object.channel.skip_intro_duration }};
+                {% endif %}
+            }
+
+            if (autoplay === true) {
+                console.log('autoplay==true, starting.');
+                player.play();
+            }
+        } else if (autoplay === true && current_url_params.get('method') === "auto") {
+
+            document.getElementById('redirection-alert').classList.remove('hidden');
+
+            let rdc = 6
+            function set_redirection_counter() {
+                rdc -= 1
+                document.getElementById('redirection-counter').textContent = rdc.toString();
+            }
+
+            setInterval(set_redirection_counter, 1000)
+
+            setTimeout(redirect_to_next_video, 5000);
+        }
+
+        $('#note-create').on('submit', function (event){
+            event.preventDefault();
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'post',
+                data: $(this).serialize(),
+                processData: false,
+                success: function(response) {
+                    let note_error = document.getElementById('note-create-error');
+
+                    note_error.style.display = 'none';
+
+                    if (typeof response.text !== "undefined") {
+                        $('#notes').append(
+                            '<div class="card border-info mb-3">\n' +
+                            '                    <div class="card-body">\n' +
+                            '                        <h4 class="card-title">Newly Added Comment</h4>\n' +
+                            '                        <p class="card-text">' + response.text + '</p>\n' +
+                            '                    </div>\n' +
+                            '                </div>'
+                        );
+
+                        $('textarea[name=comment]').val('');
+                    } else {
+                        note_error.style.display = 'block';
+                    }
+                }
+            })
+        });
+
+    });
+    </script>
+{% endblock %}

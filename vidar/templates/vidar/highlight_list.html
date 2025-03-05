@@ -1,0 +1,65 @@
+{% extends 'vidar/base.html' %}
+
+{% load video_tools %}
+{% block site_title %}Vidar / Highlights{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item active">Highlights</li>
+    </ul>
+
+
+    <div class="row m-4">
+        <div class="col">
+            <h3>Highlights</h3>
+        </div>
+        <div class="col text-center">
+
+            <input type="text" name="q"
+                hx-get="{% url 'vidar:highlights' %}"
+                hx-trigger="keyup delay:500ms changed"
+                hx-target="#highlights"
+                hx-select="#highlights"
+                placeholder="Search..."
+                   value="{{ request.GET.q }}"
+            >
+
+        </div>
+    </div>
+
+    <div id="highlights">
+
+        {% include 'vidar/pagination.html' %}
+
+        <div class="table-responsive" id="highlights-data">
+            <table class="table table-hover table-striped">
+                <thead>
+                    <tr>
+                        <th>Channel</th>
+                        <th>Video</th>
+                        <th>Point</th>
+                        <th>Note</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for highlight in object_list %}
+                    <tr>
+                        <td>{% include 'vidar/snippets/video-link-to-channel.html' with video=highlight.video %}</td>
+                        <td><a href="{{ highlight.video.get_absolute_url }}">{{ highlight.video }}</a></td>
+                        <td><a href="{{ highlight.video.get_absolute_url }}?highlight={{ highlight.id }}">{{ highlight.point|convert_seconds_to_hh_mm_ss }}</a></td>
+                        <td>{{ highlight.note }}</td>
+                        <td><a href="{{ highlight.video.url }}?t={{ highlight.point }}s" target="_blank" rel="noreferrer nofollow">Live</a></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% include 'vidar/pagination.html' %}
+
+    </div>
+
+{% endblock %}

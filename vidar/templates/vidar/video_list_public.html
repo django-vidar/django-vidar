@@ -1,0 +1,40 @@
+{% extends 'vidar/base.html' %}
+
+{% block content %}
+
+    <div class="row justify-content-center">
+        <div class="col text-center text-md-left">
+            <h1><a href="{% url 'vidar:index' %}">Vidar</a></h1>
+        </div>
+        <div class="col-justify-right">
+            {% if perms.vidar.view_video %}
+                <a href="{% url 'vidar:index' %}?view=audio" class="btn btn-primary">Audio</a>
+            {% endif %}
+            {% if perms.vidar.view_channel %}
+                <a href="{% url 'vidar:channel-index' %}" class="btn btn-primary">Channels</a>
+            {% endif %}
+            {% if perms.vidar.view_playlist %}
+                <a href="{% url 'vidar:playlist-index' %}" class="btn btn-primary">Playlists</a>
+            {% endif %}
+            {% if perms.vidar.add_video %}
+                <a href="{% url 'vidar:video-create' %}" class="btn btn-primary">Add Video</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="video-list-data">
+        {% include 'vidar/snippets/video_list_table.html' %}
+    </div>
+
+{% endblock %}
+
+{% block footer %}
+    <script type="text/javascript">
+
+    $(function () {
+        document.querySelectorAll('.audioPlayer').forEach(function(player) {
+            player.volume = {{ request.user.vidar_playback_volume|default:1.0 }};
+        });
+    })
+    </script>
+{% endblock %}

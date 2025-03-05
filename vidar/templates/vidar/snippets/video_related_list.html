@@ -1,0 +1,6 @@
+<a href="{% url 'vidar:video-related' video.id %}"><h5>Related:</h5></a>
+<ul class="list-group">
+    {% for related_video in object.related.all %}
+        <a href="{{ related_video.get_absolute_url }}" class="list-group-item list-group-item-action">{{ related_video }}</a>
+    {% endfor %}
+</ul>

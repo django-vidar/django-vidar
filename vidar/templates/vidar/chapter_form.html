@@ -1,0 +1,33 @@
+{% extends 'vidar/base.html' %}
+{% load bootstrap4 %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item"><a href="{{ object.video.get_absolute_url }}">{{ object.video }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:video-chapter-list' object.video_id %}">Chapters</a></li>
+        <li class="breadcrumb-item active">Edit Chapter</li>
+    </ul>
+
+    <form method="post" class="form">{% csrf_token %}
+        {% bootstrap_form form %}
+        {% buttons %}
+            <input type="submit" name="submit" value="Save" class="btn btn-primary">
+        {% endbuttons %}
+    </form>
+
+    {% if object.video.file %}
+        <video id="videoPlayer" poster="{% if object.video.thumbnail %}{{ object.video.thumbnail.url }}{% endif %}" controls style="max-width: 100%" preload="none">
+            <source src="{{ object.video.file.url }}">
+        </video>
+    {% endif %}
+{% endblock %}
+
+{% block footer %}
+    <script type="text/javascript">
+    let vid = document.getElementById('videoPlayer');
+     vid.currentTime = {{ object.point }};
+
+    </script>
+{% endblock %}

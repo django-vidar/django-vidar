@@ -1,0 +1,440 @@
+{% extends 'vidar/base.html' %}
+
+{% load video_tools crontab_links vidar_utils %}
+
+{% block site_title %}Vidar / {{ channel }} / Manage{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+        <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+        <li class="breadcrumb-item active">Manage</li>
+    </ul>
+
+    <div class="row">
+        <div class="col"><h1>Manage: {{ channel }}</h1></div>
+        <div class="col-justify-right">
+            <a href="{% url 'vidar:channel-update' object.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-primary">Edit</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <a href="{% url 'vidar:channel-rescan' object.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-info mx-2">Quick Index {{ object.scanner_limit }} Videos</a>
+            {% if object.index_videos or object.index_shorts or object.index_livestreams %}
+                <a href="{% url 'vidar:channel-indexing-only' object.pk %}" class="btn btn-dark">Index Channel Content</a>
+            {% endif %}
+
+            <form method="post" class="d-inline-block mx-2">{% csrf_token %}
+                <input type="submit" name="update_channel_details" value="Update Channel Details"
+                       class="btn btn-info"
+                       title="Title, Description, Sort Name, and updates all banners."
+                       data-toggle="tooltip">
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col">
+
+            {% if perms.vidar.delete_channel and perms.vidar.delete_video %}
+                <br /><br />
+                <a href="{% url 'vidar:channel-delete-videos' object.pk %}" class="btn btn-sm btn-danger hidden">Delete Videos</a>
+                <a href="{% url 'vidar:channel-videos-manager' object.pk %}" class="btn btn-sm btn-primary">Video Manager</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row mt-4">
+
+        <div class="col">
+            <h4>Options</h4>
+            <table class="table">
+                <tbody>
+                    <tr>
+                        <td>Full Archive</td>
+                        <td>
+                            {% if channel.fully_indexed and channel.videos_archived.count == channel.videos.count %}
+                                Completed.
+                            {% else %}
+                                <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=full_archive"
+                                   hx-swap="innerHTML"
+                                   title="Enabling this setting will cause the system to download all possible videos for this channel regardless of other settings."
+                                   data-toggle="tooltip"
+                                >
+                                    <i class="fa fa-lg {{ channel.full_archive|yesno:"fa-check,fa-xmark" }}"></i>
+                                </a>
+
+                                {% if channel.full_archive_after %}
+                                    <br /><span class="ml-4">Auto-Enable: {{ channel.full_archive_after }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Slow Full Archive</td>
+                        <td>
+                            {% if channel.fully_indexed and channel.videos_archived.count == channel.videos.count %}
+                                Completed.
+                            {% else %}
+                                <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=slow_full_archive"
+                                   hx-swap="innerHTML"
+                                   title="Enabling this setting will cause the system to download all possible videos for this channel regardless of other settings at a slower rate. To be used instead of Full Archive option."
+                                   data-toggle="tooltip"
+                                >
+                                    <i class="fa fa-lg {{ channel.slow_full_archive|yesno:"fa-check,fa-xmark" }}"></i>
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if object.full_index_after %}
+                        <tr>
+                            <td>Full Index After</td>
+                            <td>{{ object.full_index_after }}</td>
+                        </tr>
+                    {% endif %}
+                    <tr>
+                        <td>Schedule</td>
+                        <td>
+                            {% if object.scanner_crontab %}
+                                <a href="{{ object.scanner_crontab|crontab_link_to_crontab_guru }}" target="_blank" rel="noreferrer nofollow">{{ object.scanner_crontab }}</a><br />
+                                {% with object.next_runtime as next_runtime %}
+                                    <span title="{{ next_runtime }}" data-toggle="tooltip">{{ next_runtime|timeuntil }}</span>
+                                {% endwith %}
+                            {% else %}
+                                Disabled
+                            {% endif %}
+                            {% if object.scan_after_datetime %}
+                                <br>
+                                Manual: {{ object.scan_after_datetime }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Convert To Audio</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=convert_videos_to_mp3" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.convert_videos_to_mp3|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Download Notifications</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=send_download_notification" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.send_download_notification|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span title="Enables or Disables the system from checking the channels videos privacy status." data-toggle="tooltip">Check Video Statuses</span></td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=check_videos_privacy_status" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.check_videos_privacy_status|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span title="Sometimes you know the next few videos from a channel are worth downloading, this will force and decrement for each download that happens. This is enforced BEFORE Skip Next Downloads or Title skips." data-toggle="tooltip">Force Next Downloads:</span>
+                        </td>
+                        <td>
+                            <span id="channel-force-next-downloads">{{ channel.force_next_downloads }}</span>
+                            <a href="javascript:;" class="mx-2" hx-post="{% url 'vidar:channel-alter-ints' channel.id %}?field=force_next_downloads&direction=decrement" hx-swap="innerHTML" hx-target="#channel-force-next-downloads"><i class="fa-solid fa-minus fa-xl"></i></a>
+                            <a href="javascript:;" class="mx-2" hx-post="{% url 'vidar:channel-alter-ints' channel.id %}?field=force_next_downloads&direction=increment" hx-swap="innerHTML" hx-target="#channel-force-next-downloads"><i class="fa-solid fa-plus fa-2xl"></i></a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span title="Sometimes you know the next few videos from a channel are not worth downloading, this will skip and decrement for each download that should've happened" data-toggle="tooltip">Skip Next Downloads:</span>
+                        </td>
+                        <td>
+                            <span id="channel-skip-next-downloads">{{ channel.skip_next_downloads }}</span>
+                            <a href="javascript:;" class="mx-2" hx-post="{% url 'vidar:channel-alter-ints' channel.id %}?field=skip_next_downloads&direction=decrement" hx-swap="innerHTML" hx-target="#channel-skip-next-downloads"><i class="fa-solid fa-minus fa-xl"></i></a>
+                            <a href="javascript:;" class="mx-2" hx-post="{% url 'vidar:channel-alter-ints' channel.id %}?field=skip_next_downloads&direction=increment" hx-swap="innerHTML" hx-target="#channel-skip-next-downloads"><i class="fa-solid fa-plus fa-2xl"></i></a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Title Based - Skip Downloads</td>
+                        <td><pre>{{ object.title_skips }}</pre></td>
+                    </tr>
+                    <tr>
+                        <td>Title Based - Force Downloads</td>
+                        <td><pre>{{ object.title_forces }}</pre></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col">
+            <h4>Quality Stats</h4>
+            <table class="table mb-4">
+                {% if has_at_max_quality_videos %}
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th></th>
+                        <th></th>
+                        <th><span title="At Max Quality" data-toggle="tooltip">AMQ</span></th>
+                    </tr>
+                </thead>
+                {% endif %}
+                <tbody>
+                    {% for quality, counter in object.existing_video_qualities.items %}
+                        <tr>
+                            <td><a href="{{ object.get_absolute_url }}?quality={{ quality }}">{% if quality %}{{ quality }}{% else %}BV+BA{% endif %}</a></td>
+                            <td>{{ counter.0 }}</td>
+                            <td>{{ counter.1|filesizeformat }}</td>
+                            {% if has_at_max_quality_videos %}<td>{{ counter.2 }}</td>{% endif %}
+                        </tr>
+                    {% endfor %}
+                    <tr>
+                        <td>Total</td>
+                        <td>{{ channel.videos_archived.count }}</td>
+                        <td>{{ channel.calculated_file_size|filesizeformat }}</td>
+                        {% if has_at_max_quality_videos %}<td>{{ channel.videos_at_max_quality.count }}</td>{% endif %}
+                    </tr>
+                </tbody>
+            </table>
+
+            <table class="table">
+                <tbody>
+                    <tr>
+                        <td>Total Archived Durations</td>
+                        <td>{{ channel.total_archived_video_durations|int_to_timedelta_seconds }}</td>
+                    </tr>
+                    <tr>
+                        <td>Total Durations</td>
+                        <td>{{ channel.total_video_durations|int_to_timedelta_seconds }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col">
+            <h4>Videos</h4>
+            <table class="table">
+                <tbody>
+                    <tr>
+                        <td>Index</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=index_videos" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.index_videos|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Download</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=download_videos" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.download_videos|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td title="Should video comments be downloaded?" data-toggle="tooltip">Comments w/Grab</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=download_comments_with_video" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.download_comments_with_video|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td title="Should video comments be downloaded during indexing of videos?" data-toggle="tooltip">Comments w/Index</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=download_comments_during_scan" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.download_comments_during_scan|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Scan Limit</td>
+                        <td>{{ channel.scanner_limit }}</td>
+                    </tr>
+                    <tr>
+                        <td>Last Scanned</td>
+                        <td>{{ channel.last_scanned }}</td>
+                    </tr>
+                    {% if channel.swap_index_videos_after %}
+                        <tr>
+                            <td>Swap Index After</td>
+                            <td>{{ channel.swap_index_videos_after }}</td>
+                        </tr>
+                    {% endif %}
+                    {% if channel.duration_minimum_videos %}
+                        <tr>
+                            <td>Minimum Duration</td>
+                            <td>{{ channel.duration_minimum_videos }}s</td>
+                        </tr>
+                    {% endif %}
+                    {% if channel.duration_maximum_videos %}
+                        <tr>
+                            <td>Maximum Duration</td>
+                            <td>{{ channel.duration_maximum_videos }}s</td>
+                        </tr>
+                    {% endif %}
+                    {% if channel.delete_videos_after_days %}
+                        <tr>
+                            <td>Delete After Days</td>
+                            <td>{{ channel.delete_videos_after_days }}</td>
+                        </tr>
+                    {% endif %}
+                    <tr>
+                        <td>Delete After Watching</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=delete_videos_after_watching" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.delete_videos_after_watching|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col">
+            <h4>Shorts</h4>
+            <table class="table">
+                <tbody>
+                    <tr>
+                        <td>Index</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=index_shorts" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.index_shorts|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Download</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=download_shorts" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.download_shorts|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Scan Limit</td>
+                        <td>{{ channel.scanner_limit_shorts }}</td>
+                    </tr>
+                    <tr>
+                        <td>Last Scanned</td>
+                        <td>{% if channel.last_scanned_shorts %}{{ channel.last_scanned_shorts }}{% endif %}</td>
+                    </tr>
+                    {% if channel.swap_index_shorts_after %}
+                        <tr>
+                            <td>Swap Index After</td>
+                            <td>{{ channel.swap_index_shorts_after }}</td>
+                        </tr>
+                    {% endif %}
+                    {% if channel.delete_shorts_after_days %}
+                        <tr>
+                            <td>Delete After Days</td>
+                            <td>{{ channel.delete_shorts_after_days }}</td>
+                        </tr>
+                    {% endif %}
+                    <tr>
+                        <td>Delete After Watching</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=delete_shorts_after_watching" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.delete_shorts_after_watching|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col">
+            <h4>Livestreams</h4>
+            <table class="table">
+                <tbody>
+                    <tr>
+                        <td>Index</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=index_livestreams" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.index_livestreams|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Download</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=download_livestreams" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.download_livestreams|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Scan Limit</td>
+                        <td>{{ channel.scanner_limit_livestreams }}</td>
+                    </tr>
+                    <tr>
+                        <td>Last Scanned</td>
+                        <td>{% if channel.last_scanned_livestreams %}{{ channel.last_scanned_livestreams }}{% endif %}</td>
+                    </tr>
+                    {% if channel.swap_index_livestreams_after %}
+                        <tr>
+                            <td>Swap Index After</td>
+                            <td>{{ channel.swap_index_livestreams_after }}</td>
+                        </tr>
+                    {% endif %}
+                    {% if channel.duration_minimum_livestreams %}
+                        <tr>
+                            <td>Minimum Duration</td>
+                            <td>{{ channel.duration_minimum_livestreams }}s</td>
+                        </tr>
+                    {% endif %}
+                    {% if channel.duration_maximum_livestreams %}
+                        <tr>
+                            <td>Maximum Duration</td>
+                            <td>{{ channel.duration_maximum_livestreams }}s</td>
+                        </tr>
+                    {% endif %}
+                    {% if channel.delete_livestreams_after_days %}
+                        <tr>
+                            <td>Delete After Days</td>
+                            <td>{{ channel.delete_livestreams_after_days }}</td>
+                        </tr>
+                    {% endif %}
+                    <tr>
+                        <td>Delete After Watching</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=delete_livestreams_after_watching" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ channel.delete_livestreams_after_watching|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="row">
+
+        <div class="col-6">
+            <h4>Privacy Statuses</h4>
+            <table class="table mb-4">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>#</th>
+                        <th>Filesize</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for status, counter in object.all_video_privacy_statuses.items %}
+                        <tr>
+                            <td><a href="{{ object.get_absolute_url }}?q=privacy_status%3A{{ status }}">{{ status }}</a></td>
+                            <td>{{ counter.0 }}</td>
+                            <td>{% if counter.1 %}{{ counter.1|filesizeformat }}{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+{% endblock %}

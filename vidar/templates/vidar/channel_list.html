@@ -1,0 +1,225 @@
+{% extends 'vidar/base.html' %}
+{% load humanize %}
+
+{% block site_title %}Vidar / Channels{% endblock %}
+
+{% block content %}
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item active">Channels</li>
+    </ul>
+
+    <div class="row justify-content-center">
+        <div class="col text-center text-md-left">
+            <h1>
+                {% with object_list.count as olc %}
+                {{ olc }} Subscribed <a href="{% url 'vidar:channel-index' %}">Channel{{ olc|pluralize }}</a>
+                {% endwith %}
+            </h1>
+        </div>
+        <div class="col-justify-right">
+            {% if perms.vidar.add_channel %}
+                <a href="{% url 'vidar:channel-create' %}" class="btn btn-primary">New Channel</a>
+            {% endif %}
+            {% if perms.vidar.change_channel %}
+                <a href="{% url 'vidar:crontab-catchup' %}" class="btn btn-primary">Catchup</a>
+                <a href="{% url 'vidar:channel-bulk-update' %}" class="btn btn-primary">Bulk</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col text-center">
+
+            <input type="text" name="q"
+                hx-get="{% url 'vidar:channel-index' %}"
+                hx-trigger="keyup delay:500ms changed"
+                hx-target="#channel-list-table"
+                hx-select="#channel-list-table"
+                hx-push-url="true"
+                placeholder="Search..."
+                   value="{{ request.GET.q }}"
+            >
+
+        </div>
+        <div class="col-justify-right">
+            <a href="?show=filesize">Show Filesize</a><br />
+            <a href="?show=videos_count">Show Video Counter</a><br />
+            <a href="?o=full_archive_after&show=full_archive_after">Show Full Archive After</a><br />
+            <a href="?o=latest_video&show=latest_video">Latest Video</a>
+        </div>
+    </div>
+
+    <hr />
+
+    <div class="table-responsive" id="channel-list-table">
+
+        {% include 'vidar/pagination.html' %}
+
+        <table id="channels" class="table table-hover table-striped sticky-table-headers">
+            <thead>
+            <tr>
+                <th><a href="{% if request.GET.o == 'name' %}?o=-name{% else %}?o=name{% endif %}">Channel</a></th>
+                {% if perms.vidar.change_channel %}
+                    <th title="Index Videos" data-toggle="tooltip"><a href="{% if request.GET.o == '-index_videos' %}?o=index_videos{% else %}?o=-index_videos{% endif %}">{{ index_videos_true_count }}<br />IV<br /></a></th>
+                    <th title="Download Videos" data-toggle="tooltip"><a href="{% if request.GET.o == '-download_videos' %}?o=download_videos{% else %}?o=-download_videos{% endif %}">{{ download_videos_true_count }}<br />DV</a></th>
+                    {% if has_download_comments_with_video %}
+                        <th title="Download Videos Comments On Grab" data-toggle="tooltip"><a href="{% if request.GET.o == '-download_comments_with_video' %}?o=download_comments_with_video{% else %}?o=-download_comments_with_video{% endif %}">DCG</a></th>
+                    {% endif %}
+                    {% if has_download_comments_during_scan %}
+                        <th title="Download Videos Comments On Index" data-toggle="tooltip"><a href="{% if request.GET.o == '-download_comments_during_scan' %}?o=download_comments_during_scan{% else %}?o=-download_comments_during_scan{% endif %}">DCI</a></th>
+                    {% endif %}
+                    {% if show_download_notification_column %}<th title="Send Download Notifications" data-toggle="tooltip">SDN</th>{% endif %}
+                    {% if has_shorts_index %}
+                        <th title="Index Shorts" data-toggle="tooltip"><a href="{% if request.GET.o == '-index_shorts' %}?o=index_shorts{% else %}?o=-index_shorts{% endif %}">{{ index_shorts_true_count }}<br />IS</a></th>
+                        <th title="Download Shorts" data-toggle="tooltip"><a href="{% if request.GET.o == '-download_shorts' %}?o=download_shorts{% else %}?o=-download_shorts{% endif %}">{{ download_shorts_true_count }}<br />DS</a></th>
+                    {% endif %}
+                    {% if has_livestreams_index %}
+                        <th title="Index Livestreams" data-toggle="tooltip"><a href="{% if request.GET.o == '-index_livestreams' %}?o=index_livestreams{% else %}?o=-index_livestreams{% endif %}">{{ index_livestreams_true_count }}<br />IL</a></th>
+                        <th title="Download Livestreams" data-toggle="tooltip"><a href="{% if request.GET.o == '-download_livestreams' %}?o=download_livestreams{% else %}?o=-download_livestreams{% endif %}">{{ download_livestreams_true_count }}<br />DL</a></th>
+                    {% endif %}
+                    {% if has_full_archive %}
+                        <th title="Full Archive" data-toggle="tooltip"><a href="{% if request.GET.o == '-full_archive' %}?o=full_archive{% else %}?o=-full_archive{% endif %}">{{ full_archive_count }}<br />FA</a></th>
+                    {% endif %}
+                    {% if request.GET.show == 'filesize' %}
+                        <th title="File Size" data-toggle="tooltip"><a href="{% if request.GET.o == '-file_size' %}?o=file_size{% else %}?o=-file_size{% endif %}&show=filesize">FS</a></th>
+                    {% endif %}
+                    <th>
+                        <a href="{% if request.GET.o == '-last_scanned' %}?o=last_scanned{% else %}?o=-last_scanned{% endif %}">Schedule</a> /
+                        <a href="{% if request.GET.o != 'schedule' %}?o=schedule{% else %}?{% endif %}">Next</a>
+                    </th>
+                    {% if request.GET.show == 'full_archive_after' %}
+                        <th title="Full Archive After" data-toggle="tooltip">FAA</th>
+                    {% endif %}
+                    {% if request.GET.show == 'videos_count' %}
+                        <th title="Videos Counter<br />Archived/Total" data-toggle="tooltip" data-html="true">VC</th>
+                    {% endif %}
+                    <th>Quality</th>
+                    {% if request.GET.show == "latest_video" %}
+                        <th title="Latest Video Upload Date" data-toggle="tooltip" data-html="true">
+                            <a href="{% if request.GET.o == '-latest_video' %}?o=latest_video{% else %}?o=-latest_video{% endif %}&show=latest_video">
+                                Latest
+                            </a>
+                        </th>
+                    {% endif %}
+                {% endif %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for channel in object_list %}
+                <tr id="{{ channel.pk }}" data-id="{{ channel.pk }}" data-provider-id="{{ channel.provider_object_id }}">
+                    <td>
+                        {% if channel.status != "Active" %}
+                            <a href="{{ channel.get_absolute_url }}">{{ channel }}</a> [{{ channel.status }}]
+                        {% else %}
+                            <a href="{{ channel.get_absolute_url }}">{{ channel }}{% if not channel.name %}New Channel{% endif %}</a>
+                        {% endif %}
+                    </td>
+                    {% if perms.vidar.change_channel %}
+                        <td><a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=index_videos" hx-swap="innerHTML"><i class="fa fa-lg {{ channel.index_videos|yesno:"fa-check,fa-xmark" }}"></i></a></td>
+                        <td><a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=download_videos" hx-swap="innerHTML"><i class="fa fa-lg {{ channel.download_videos|yesno:"fa-check,fa-xmark" }}"></i></a></td>
+                        {% if has_download_comments_with_video %}
+                        <td><a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=download_comments_with_video" hx-swap="innerHTML"><i class="fa fa-lg {{ channel.download_comments_with_video|yesno:"fa-check,fa-xmark" }}"></i></a></td>
+                        {% endif %}
+                        {% if has_download_comments_during_scan %}
+                        <td><a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=download_comments_during_scan" hx-swap="innerHTML"><i class="fa fa-lg {{ channel.download_comments_during_scan|yesno:"fa-check,fa-xmark" }}"></i></a></td>
+                        {% endif %}
+                        {% if show_download_notification_column %}
+                            <td><a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=send_download_notification" hx-swap="innerHTML"><i class="fa fa-lg {{ channel.send_download_notification|yesno:"fa-check,fa-xmark" }}"></i></a></td>
+                        {% endif %}
+                        {% if has_shorts_index %}
+                        <td><a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=index_shorts" hx-swap="innerHTML"><i class="fa fa-lg {{ channel.index_shorts|yesno:"fa-check,fa-xmark" }}"></i></a></td>
+                        <td><a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=download_shorts" hx-swap="innerHTML"><i class="fa fa-lg {{ channel.download_shorts|yesno:"fa-check,fa-xmark" }}"></i></a></td>
+                        {% endif %}
+                        {% if has_livestreams_index %}
+                        <td><a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=index_livestreams" hx-swap="innerHTML"><i class="fa fa-lg {{ channel.index_livestreams|yesno:"fa-check,fa-xmark" }}"></i></a></td>
+                        <td><a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=download_livestreams" hx-swap="innerHTML"><i class="fa fa-lg {{ channel.download_livestreams|yesno:"fa-check,fa-xmark" }}"></i></a></td>
+                        {% endif %}
+                        {% if has_full_archive %}
+                        <td><a href="javascript:;" hx-post="{% url 'vidar:channel-swap-booleans' channel.pk %}?field=full_archive" hx-swap="innerHTML"><i class="fa fa-lg {{ channel.full_archive|yesno:"fa-check,fa-xmark" }}"></i></a></td>
+                        {% endif %}
+                        {% if request.GET.show == 'filesize' %}
+                        <td>
+                            {% with channel.calculated_file_size as cfs %}
+                                {% if cfs %}
+                                    {{ cfs|filesizeformat }}
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        {% endif %}
+                        <td><a href="{% url 'vidar:channel-update' channel.pk %}?next={{ request.get_full_path|urlencode }}#id_scanner_crontab" title="{{ channel.last_scanned }}">{{ channel.scanner_crontab }}</a></td>
+                        {% if request.GET.show == 'full_archive_after' %}
+                            <td>
+                            {% if channel.full_archive_after %}
+                                {{ channel.full_archive_after }}
+                            {% endif %}
+                            </td>
+                        {% endif %}
+                        {% if request.GET.show == 'videos_count' %}
+                            <td>
+                            {% with channel.videos_archived.count as cvac %}
+                            {% with channel.videos.count as cvc %}
+                                {% if cvc or cvac %}
+                                    {{ cvac }}/{{ cvc }}
+                                {% endif %}
+                            {% endwith %}
+                            {% endwith %}
+                            </td>
+                        {% endif %}
+                        <td>{% if channel.quality is not None %}{{ channel.get_quality_display }}{% endif %}</td>
+                        {% if request.GET.show == "latest_video" %}
+                            <td>{{ channel.latest_video_upload_date|default:"" }}</td>
+                        {% endif %}
+                    {% endif %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        {% include 'vidar/pagination.html' %}
+
+    </div>
+
+    <hr />
+
+    <div class="row">
+        <div class="col-6">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Quality</th>
+                        <th>Counter</th>
+                        <th>Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for quality, counter in quality_counters.items %}
+                    <tr>
+                        <td>{{ quality }}</td>
+                        <td>{{ counter.0 }}</td>
+                        <td>{{ counter.1|filesizeformat }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block footer %}
+<script>
+function toggle(source) {
+  checkboxes = document.getElementsByClassName('channel-checkbox');
+  for(var i=0, n=checkboxes.length;i<n;i++) {
+    checkboxes[i].checked = source.checked;
+  }
+}
+
+        $(function () {
+
+            $('#channels').stickyTableHeaders();
+
+        })
+    </script>
+{% endblock %}

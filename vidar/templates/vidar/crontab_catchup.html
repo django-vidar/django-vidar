@@ -1,0 +1,23 @@
+{% extends 'vidar/base.html' %}
+{% load bootstrap4 %}
+
+{% block site_title %}Vidar / Crontab Catchup{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item active">Catch Up</li>
+    </ul>
+
+    <p>Use this form to select a datetime range which the channel and playlist crontab scanner would have missed.</p>
+    <p>This will ensure any channels or playlists scheduled to have happened once a month in the timerange, will get scanned.</p>
+
+    <form method="post" class="form">{% csrf_token %}
+        {% bootstrap_form form %}
+        {% buttons %}
+            <input type="submit" name="submit" value="Run" class="btn btn-primary">
+        {% endbuttons %}
+    </form>
+
+{% endblock %}

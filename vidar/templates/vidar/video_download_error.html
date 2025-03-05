@@ -1,0 +1,54 @@
+{% extends 'vidar/base.html' %}
+
+{% block site_title %}Vidar / Video / {{ video }} / Download Errors{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if video.channel %}
+            <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+            <li class="breadcrumb-item"><a href="{{ video.channel.get_absolute_url }}">{{ video.channel }}</a></li>
+        {% endif %}
+        <li class="breadcrumb-item active"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+    </ul>
+
+    <div class="row">
+        <div class="col">
+            <h1>{{ video.title }}</h1>
+        </div>
+        <div class="col-justify-right">
+            {% if object.download_errors.exists %}
+            <form method="post" action="?next={{ request.get_full_path|urlencode }}">{% csrf_token %}
+                <input type="submit" name="delete_errors" value="Delete Error Entries" class="btn btn-danger">
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover table-striped">
+            <thead>
+                <tr>
+                    <th>DateTime</th>
+                    <th title="Quality" data-toggle="tooltip">Q</th>
+                    <th title="Selected Quality" data-toggle="tooltip">SQ</th>
+                    <th>Args</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for error in object.download_errors.all %}
+                <tr>
+                    <td>{{ error.inserted }}</td>
+                    <td>{{ error.quality }}</td>
+                    <td>{{ error.selected_quality }}</td>
+                    <td>{{ error.kwargs }}</td>
+                    <td><pre>{{ error.traceback }}</pre></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+{% endblock %}

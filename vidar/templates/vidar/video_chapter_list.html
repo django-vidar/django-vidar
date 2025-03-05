@@ -1,0 +1,103 @@
+{% extends 'vidar/base.html' %}
+
+{% load video_tools %}
+
+{% block site_messages %}{% endblock %}
+{% block site_title %}Vidar / Video / {{ video }} / Chapters{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if video.channel %}
+            <li class="breadcrumb-item"><a href="{% url 'vidar:channel-index' %}">Channels</a></li>
+            <li class="breadcrumb-item"><a href="{{ video.channel.get_absolute_url }}">{{ video.channel }}</a></li>
+        {% endif %}
+        <li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object }}</a></li>
+        <li class="breadcrumb-item active">Chapters</li>
+    </ul>
+
+    <h3>{{ video }} - Chapters</h3>
+
+    <div class="table-responsive" id="chapters-data">
+
+        {% include 'core/messages.html' %}
+
+        <table class="table table-hover table-striped">
+            <thead>
+                <tr>
+                    <th>Point</th>
+                    <th>Note</th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for chapter in chapters.all %}
+                <tr>
+                    <td>
+                        <a href="javascript:;" onclick="setVideoTime({{ chapter.point }})" title="{{ chapter.note }}" data-toggle="tooltip">
+                            {{ chapter.point|convert_seconds_to_hh_mm_ss }}
+                        </a>
+                    </td>
+                    <td>{{ chapter.note }}</td>
+                    <td>
+                        <form method="post" hx-post="{% url 'vidar:video-chapter-list' video.pk %}"
+                          hx-select="#chapters-data"
+                          hx-target="#chapters-data"
+                              hx-ext="debug"
+                        >{% csrf_token %}
+                            <input type="hidden" name="chapter" value="{{ chapter.id }}">
+                            <a href="{% url 'vidar:chapters-update' chapter.id %}" class="btn btn-primary btn-sm">Edit</a>
+                            <input type="submit" name="delete" value="Delete" class="btn btn-danger btn-sm">
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <form method="post"
+                  hx-post="{% url 'vidar:video-chapter-list' video.pk %}"
+                  hx-select="#chapters-data"
+                  hx-target="#chapters-data"
+                  hx-ext="debug"
+                  hx-on::after-request="this.reset()"
+            >{% csrf_token %}
+            <tfoot>
+                <tr>
+                    <th>
+                        <input type="text" placeholder="Start Point" name="point" id="start_point">
+                        <small class="form-text text-muted">Seconds or HH:MM:SS within video
+                            <a href="javascript:;" onclick="copyVideoTime('#start_point');" tabindex="-1">copy</a></small>
+                    </th>
+                    <th><input type="text" placeholder="Note" name="note"></th>
+                    <th><input type="submit" name="create" value="Create" class="btn btn-primary" hx-ext="debug"></th>
+                </tr>
+            </tfoot>
+            </form>
+        </table>
+    </div>
+
+    {% if video.file %}
+        <video id="videoPlayer" poster="{% if video.thumbnail %}{{ video.thumbnail.url }}{% endif %}" controls style="max-width: 100%" preload="none">
+            <source src="{{ video.file.url }}">
+        </video>
+    {% endif %}
+
+{% endblock %}
+
+{% block footer %}
+    <script type="text/javascript">
+    let video = document.getElementById('videoPlayer');
+    function setVideoTime(seconds) {
+        video.currentTime = seconds;
+    }
+    function copyVideoTime(event) {
+        document.querySelector(event).value = video.currentTime;
+    }
+    </script>
+{% endblock %}

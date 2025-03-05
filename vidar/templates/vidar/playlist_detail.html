@@ -1,0 +1,244 @@
+{% extends 'vidar/base.html' %}
+{% load mathfilters crontab_links video_tools playlist_tools %}
+
+{% block site_title %}Vidar / Playlist / {{ object.title }}{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:playlist-index' %}">Playlists</a></li>
+        {% if object.channel %}
+            <li class="breadcrumb-item"><a href="{{ object.channel.get_absolute_url }}">{{ object.channel }}</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:playlist-index' %}?channel={{ object.channel_id }}">Playlists</a></li>
+        {% endif %}
+        <li class="breadcrumb-item active">{{ object }}</li>
+        {% if playlist.provider_object_id %}
+            <li class="breadcrumb-item"><a href="{{ object.url }}" rel="noreferrer" target="_blank">Live On YouTube</a></li>
+        {% endif %}
+
+        {% get_next_unwatched_video_on_playlist playlist request.user as nuwv %}
+        {% if nuwv %}
+            <li class="breadcrumb-item">
+                <a href="{{ nuwv.video.get_absolute_url }}?next=playlist&playlist={{ playlist.pk }}" title="Play Next Unwatched Video" data-toggle="tooltip">
+                    <i class="fa-regular fa-play"></i>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </li>
+        {% endif %}
+
+        {% get_next_unwatched_audio_on_playlist playlist request.user as nuwa %}
+        {% if nuwa %}
+            <li class="breadcrumb-item">
+                <a href="{{ nuwv.video.get_absolute_url }}?next=playlist&playlist={{ playlist.pk }}&view=audio" title="Play Next Unwatched Audio" data-toggle="tooltip">
+                    <i class="fa-regular fa-music"></i>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </li>
+        {% endif %}
+    </ul>
+
+    <div class="row">
+        <div class="col"><h1 class="small-uppercase"><a href="{{ playlist.get_absolute_url }}">{{ playlist.title }}</a></h1></div>
+        <div class="col-sm-3 text-right">
+            {% if perms.vidar.change_playlist %}<a href="{% url 'vidar:playlist-edit' pk=playlist.pk %}" class="btn btn-info">edit</a>{% endif %}
+            {% if perms.vidar.change_playlist and playlist.provider_object_id %}<a href="{% url 'vidar:playlist-scan' pk=playlist.pk %}" class="btn btn-primary">scan</a>{% endif %}
+            {% if perms.vidar.add_playlistitem and not playlist.provider_object_id %}<a href="{% url 'vidar:playlist-add-by-search' playlist.id %}" class="btn btn-info">Add Videos</a>{% endif %}
+            <br />
+            Last Scanned: {{ playlist.last_scanned|default_if_none:"Never" }}
+        </div>
+    </div>
+
+    {% if playlist.quality is not None %}
+        <p>Minimum Quality: {{ playlist.get_quality_display }}</p>
+    {% endif %}
+
+    <div class="row">
+        <div class="col">
+            <table class="table">
+                <thead></thead>
+                <tbody>
+                    {% if playlist.crontab %}
+                    <tr>
+                        <td>Crontab ({{ playlist.crontab }})</td>
+                        <td><a href="{{ playlist.crontab|crontab_link_to_crontab_guru }}" target="_blank">{{ playlist.next_runtime }}</a></td>
+                    </tr>
+                    {% endif %}
+                    {% if playlist.provider_object_id %}
+                    <tr>
+                        <td>Disable Based On Value In Video Title</td>
+                        <td>"{{ playlist.disable_when_string_found_in_video_title }}"</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td>Quality</td>
+                        <td>{{ playlist.get_quality_display|default_if_none:"Default" }}</td>
+                    </tr>
+                    {% with playlist.archived_videos.count as avc %}
+                        {% with playlist.videos.count as pis %}
+                            <tr>
+                                <td>
+                                    {% if avc != pis %}
+                                        <a href="?missing">Missing</a> / <a href="?archived">Archived</a> /
+                                    {% endif %}
+                                    Total
+                                </td>
+                                <td>
+                                    {% if avc != pis %}
+                                        {{ pis|sub:avc }} / {{ avc }} /
+                                    {% endif %}
+                                    {{ pis }}
+                                </td>
+                            </tr>
+                        {% endwith %}
+                    {% endwith %}
+                    {% if playlist.video_indexing_add_by_title %}
+                        <tr>
+                            <td>Add by Title</td>
+                            <td><pre>{{ playlist.video_indexing_add_by_title }}</pre></td>
+                        </tr>
+                        {% if playlist.video_indexing_add_by_title_limit_to_channels %}
+                            <tr>
+                                <td title="Channels that the title matching is limited to:" data-toggle="tooltip">Add by Title Limits</td>
+                                <td>{{ playlist.video_indexing_add_by_title_limit_to_channels.all|join:", " }}</td>
+                            </tr>
+                        {% endif %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        <div class="col">
+            <table class="table">
+                <thead></thead>
+                <tbody>
+                    {% if playlist.provider_object_id %}
+                    <tr>
+                        <td>Sync Deletions</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:playlist-swap-booleans' playlist.id %}?field=sync_deletions" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ playlist.sync_deletions|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td>Convert To Audio</td>
+                        <td>
+                            <a href="javascript:;" hx-post="{% url 'vidar:playlist-swap-booleans' playlist.id %}?field=convert_to_audio" hx-swap="innerHTML">
+                                <i class="fa fa-lg {{ playlist.convert_to_audio|yesno:"fa-check,fa-xmark" }}"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Videos Display Ordering</td>
+                        <td>{{ playlist.get_videos_display_ordering_display }}</td>
+                    </tr>
+                    <tr>
+                        <td>Videos Playback Ordering</td>
+                        <td>{{ playlist.get_videos_playback_ordering_display }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% include 'vidar/pagination.html' %}
+
+    <table class="table table-hover table-striped">
+        <thead>
+        <tr>
+            <th><a href="{% if request.GET.o == '-inserted' %}?o=inserted{% elif request.GET.o == 'inserted' %}?{% else %}?o=-inserted{% endif %}">Date</a></th>
+            {% if not videos_have_single_channel %}<th>Channel</th>{% endif %}
+            <th>Title</th>
+            <th>{{ playlist.calculated_duration_as_timedelta }}</th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th>{{ playlist.calculated_file_size|filesizeformat }}</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for playlist_item in playlist_videos %}
+            {% with playlist_item.video as video %}
+                <tr data-video-id="{{ video.pk }}">
+                    <td>
+                        <span title="I:{{ video.inserted }}<br />U:{{ video.updated }}<br />DA:{{ video.date_added_to_system }}{% if video.date_downloaded %}<br />DDL:{{ video.date_downloaded }}{% endif %}<br />{% if video.quality %}Q: {{ video.get_quality_display }} {% endif %}{% if video.file_size %}FS:{{ video.file_size|filesizeformat }}{% endif %}<br />S:{{ video.privacy_status }}" data-html="true" data-toggle="tooltip">
+                            {% if video.upload_date.year != now.year %}
+                                {{ video.upload_date }}
+                            {% else %}
+                                {{ video.upload_date|date:"N j" }}
+                            {% endif %}
+                        </span>
+                    </td>
+                    {% if not videos_have_single_channel %}<td>{% include 'vidar/snippets/video-link-to-channel.html' with video=video %}</td>{% endif %}
+                    <td>
+                        {% if video.file and perms.vidar.view_video %}
+                            <a href="{{ video.get_absolute_url }}?next=playlist&playlist={{ playlist.pk }}">{{ video.title }}</a>
+                        {% else %}
+                            {{ video }}
+                            (<a href="{{ video.url }}" target="_blank" rel="noreferrer">Live</a>)
+                            (<a href="{{ video.get_absolute_url }}?next=playlist&playlist={{ playlist.pk }}">Local</a>)
+                        {% endif %}
+                        {% if video.audio %}
+                            (<a href="{{ video.get_absolute_url }}?next=playlist&playlist={{ playlist.pk }}&view=audio">Audio</a>)
+                        {% endif %}
+                        {% user_watched_video video as upv %}
+                        {% if upv %}&nbsp; <i title="Watched {{ upv.updated }}" class="fa fas fa-check"></i>{% endif %}
+                    </td>
+                    <td>{{ video.duration_as_timedelta }}</td>
+                    <td>
+                        {% if playlist_item.missing_from_playlist_on_provider %}
+                            <span title="No longer found on the live playlist" data-toggle="tooltip" class="fa-solid fa-xmark"></span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if perms.vidar.delete_playlistitem %}
+                            {% if playlist_item.manually_added or playlist_item.missing_from_playlist_on_provider %}
+                                <a href="{% url 'vidar:video-playlist-remove' video.pk playlist.pk %}" class="btn btn-danger btn-sm">Remove</a>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if perms.vidar.change_playlistitem and playlist_item.manually_added %}
+                            <a href="{% url 'vidar:video-playlist-order' video.pk playlist.pk %}?direction=down" class="m-2">
+                                <i class="fa-solid fa-down-long"></i>
+                            </a>
+                            <a href="{% url 'vidar:video-playlist-order' video.pk playlist.pk %}?direction=up">
+                                <i class="fa-solid fa-up-long"></i>
+                            </a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if perms.vidar.change_playlistitem %}
+                            {% if playlist_item.download %}
+                                <a href="{% url 'vidar:video-playlist-disable' video.pk playlist.pk %}" class="btn btn-danger btn-sm" title="Disable video being downloaded automatically." data-toggle="tooltip">Disable</a>
+                            {% else %}
+                                <a href="{% url 'vidar:video-playlist-disable' video.pk playlist.pk %}" class="btn btn-info btn-sm" title="Enable video being downloaded automatically." data-toggle="tooltip">Enable</a>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endwith %}
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% include 'vidar/pagination.html' %}
+
+    <p class="text-right m-4">
+        <form action="{{ object.get_absolute_url }}" method="post" class="text-right">{% csrf_token %}
+            <label for="download_all_comments">Download All Comments On Each Video (override default limit of 100)</label>
+            <input type="checkbox" name="download_all_comments" id="download_all_comments"><br />
+            <input type="submit" name="download-video-comments"
+                   value="Download video comments."
+                   class="btn btn-sm btn-primary">
+        </form>
+    </p>
+
+    <p class="text-right m-4">
+        {% if not playlist.provider_object_id and playlist.channel_provider_object_id %}
+            <a href="https://www.youtube.com/channel/{{ playlist.channel_provider_object_id }}" rel="noreferrer" target="_blank">Original Channel</a>
+        {% endif %}
+    </p>
+
+{% endblock %}

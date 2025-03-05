@@ -1,0 +1,39 @@
+{% extends 'vidar/base.html' %}
+{% block site_title %}Vidar / Video Notes{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item active">Video Notes</li>
+    </ul>
+
+    {% include 'vidar/pagination.html' %}
+
+    <div class="responsive">
+        <table class="table table-hover table-striped">
+            <thead>
+                <tr>
+                    <th>Video</th>
+                    <th>Inserted</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for note in object_list %}
+                    <tr>
+                        <td><a href="{{ note.video.get_absolute_url }}">{{ note.video }}</a></td>
+                        <td>{{ note.inserted }}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2">
+                            {{ note.note|linebreaksbr }}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'vidar/pagination.html' %}
+
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends 'vidar/base.html' %}
+{% block site_title %}Vidar / Scan History{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if channel.pk %}
+            <li class="breadcrumb-item"><a href="{{ channel.get_absolute_url }}">{{ channel }}</a></li>
+        <li class="breadcrumb-item active">Schedule History</li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule' %}?channel={{ channel.pk }}">Schedule</a></li>
+        {% else %}
+        <li class="breadcrumb-item active">Schedule History</li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule' %}">Schedule</a></li>
+        {% endif %}
+    </ul>
+
+    <div class="row">
+        <div class="col">
+            <a href="{% url 'vidar:schedule-history' %}"><h1>Schedule History</h1></a>
+        </div>
+        <div class="col-justify-right">
+            <a href="{% spaceless %}
+                {% if 'downloaded' in request.GET %}
+                    ?{% if channel %}channel={{ channel.pk }}{% endif %}
+                {% else %}
+                    ?downloaded{% if channel %}&channel={{ channel.pk }}{% endif %}
+                {% endif %}{% endspaceless %}" class="btn btn-primary">Downloaded</a>
+        </div>
+    </div>
+
+    <p>
+        <a href="{% querystring date='all' %}">All History</a><br />
+        <a href="{% querystring date=previous_date|date:"Y-m-d" %}">{{ previous_date }}</a><br />
+        <a href="{% querystring date=selected_date|date:"Y-m-d" %}">{{ selected_date }}</a><br />
+        <a href="{% querystring date=next_date|date:"Y-m-d" %}">{{ next_date }}</a>
+    </p>
+
+    {% include 'vidar/pagination.html' %}
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Datetime</th>
+                    <th>Videos DL</th>
+                    <th>Shorts DL</th>
+                    <th>Livestreams DL</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for history in object_list %}
+                <tr>
+                    <td>
+                        {% if history.channel %}
+                            Channel: <a href="{{ history.channel.get_absolute_url }}">{{ history.channel }}</a>
+                        {% elif history.playlist %}
+                            Playlist: <a href="{{ history.playlist.get_absolute_url }}">{{ history.playlist }}</a>
+                        {% endif %}
+                    </td>
+                    <td>{{ history.inserted }}</td>
+                    <td>{% if history.videos_downloaded %}{{ history.videos_downloaded }}{% endif %}</td>
+                    <td>{% if history.shorts_downloaded %}{{ history.shorts_downloaded }}{% endif %}</td>
+                    <td>{% if history.livestreams_downloaded %}{{ history.livestreams_downloaded }}{% endif %}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'vidar/pagination.html' %}
+
+{% endblock %}
