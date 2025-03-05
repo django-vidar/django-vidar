@@ -56,12 +56,16 @@ python_files = [
 line-length = 120
 target-version = ['py312']
 skip-string-normalization = true
+exclude = "/tests/"
 
 [tool.isort]
 py_version = 311
 extend_skip_glob = [
     '*/migrations/*',
 	'*tests/*',
+	'venv/*',
+	'.tox/',
+	'example*'
 ]
 line_length = 120
 indent = 4
@@ -75,32 +79,25 @@ extra_standard_library = ["types", "requests"]
 known_first_party = []
 sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 
-
 [tool.flake8]
 max-line-length = 120
 count = true
-# Black
 extend_ignore = [
 	# "E722",  # do not use bare except
 	"E252",  #  missing whitespace around parameter equals
 	"E127",  # continuation line over-indented for visual indent
 ]  # "E501"
 exclude = [
-	".tox",
-	"venv",
 	"*migrations*",
-	"temp.py",
 ]
 per_file_ignores = [
 	"vidar/urls.py:E501"
 ]
 
 [tool.coverage.run]
-omit = [
-	"*.tox*",
-	"*venv*",
-	"*migrations*",
-	"*__init__*",
+include = [
+	"vidar/*"
 ]
+
 [tool.coverage.html]
 directory = "coverage_html_report"

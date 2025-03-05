@@ -11,21 +11,30 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-print(BASE_DIR)
+
+env = environ.Env(
+    # set casting, default value
+    DEBUG=(bool, True)
+)
+environ.Env.read_env(BASE_DIR / ".env")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-jsfq^@u*zo&*&l##4dl8t_%tiqa=69dyjoj^z+1*9acj67%3ae'
+SECRET_KEY = env.str(
+    "DJANGO_SECRET_KEY", "super-secret-value-pst-dont-use-in-prod"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool("DJANGO_DEBUG", True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.str(
+    "DJANGO_ALLOWED_HOSTS", ""
+).split(" ")
 
 LOGIN_URL = '/admin/login/?next=/'
 
@@ -85,12 +94,19 @@ WSGI_APPLICATION = 'example.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    "default": env.db(default=f"sqlite:///{BASE_DIR}/db.sqlite3"),
 }
-
+if env.str("GITHUB_WORKFLOW", default=None):  # pragma: no cover
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "github_actions",
+            "USER": "postgres",
+            "PASSWORD": "postgres",
+            "HOST": "127.0.0.1",
+            "PORT": "5432",
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -138,3 +154,19 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = "exampleapp.User"
+
+from django.contrib.auth.hashers import PBKDF2PasswordHasher
+
+class MyPBKDF2PasswordHasher(PBKDF2PasswordHasher):
+    """
+    A subclass of PBKDF2PasswordHasher that uses 1 iteration.
+
+    This is for test purposes only. Never use anywhere else.
+    """
+
+    iterations = 1
+
+
+PASSWORD_HASHERS = [
+    "example.settings.MyPBKDF2PasswordHasher",
+]

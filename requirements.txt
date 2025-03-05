@@ -2,6 +2,7 @@ django>=5.1
 django-bootstrap4
 django-celery-beat
 django-celery-results
+django-environ
 django-mathfilters
 django-positions
 django-mptt
