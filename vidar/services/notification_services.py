@@ -31,7 +31,7 @@ def send_message(message, title=None):
 
     data = {
         'message': message,
-        'priority': app_settings.GOTIFY_PRIORTY,
+        'priority': app_settings.GOTIFY_PRIORITY,
     }
 
     if title:
