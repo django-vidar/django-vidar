@@ -1,0 +1,2 @@
+include README.rst
+recursive-include vidar *.html *.txt *.xml *.po *.mo *.js *.css
