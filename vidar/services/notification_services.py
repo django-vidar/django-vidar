@@ -114,8 +114,11 @@ def video_downloaded(video, task_source, download_started, download_finished, pr
     if convert_to_mp4_timer:
         msg_output.append(f"Convert Video: {convert_to_mp4_timer}")
 
+    processing_completed = processing_finished - processing_started
+    if processing_completed >= datetime.timedelta(seconds=1):
+        msg_output.append(f"Processing: {processing_completed}")
+
     msg_output.extend([
-        f"Processing Timer: {processing_finished - processing_started}",
         f"Task Call Source: {task_source}",
     ])
     return send_message(
