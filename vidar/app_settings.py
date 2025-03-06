@@ -170,6 +170,10 @@ class AppSettings(object):
         return self._setting("GOTIFY_PRIORITY", 5)
 
     @property
+    def GOTIFY_TITLE_PREFIX(self):
+        return self._setting("GOTIFY_TITLE_PREFIX", '')
+
+    @property
     def GOTIFY_TOKEN(self):
         return self._setting("GOTIFY_TOKEN", None)
 

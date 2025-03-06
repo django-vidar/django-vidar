@@ -35,6 +35,8 @@ def send_message(message, title=None):
     }
 
     if title:
+        if pt := app_settings.GOTIFY_TITLE_PREFIX:
+            title = f"{pt}{title}"
         data['title'] = title
 
     url_base = app_settings.GOTIFY_URL
@@ -98,7 +100,7 @@ def video_downloaded(video, task_source, download_started, download_finished, pr
 
     try:
         video_duration = video.duration_as_timedelta()
-    except:  # noqa: E722
+    except TypeError:
         video_duration = None
 
     msg_output = [
@@ -118,7 +120,7 @@ def video_downloaded(video, task_source, download_started, download_finished, pr
     ])
     return send_message(
         message="\n".join(msg_output),
-        title=f"YTDL: {video.channel} @ {quality}:{video.get_quality_display()}",
+        title=f"{video.channel} @ {quality}:{video.get_quality_display()}",
     )
 
 
@@ -127,7 +129,7 @@ def video_removed_from_playlist(video, playlist, removed=False):
         return
     return send_message(
         message=f'Video {video!r} removed from playlist {playlist!r}\nLocally Removed: {removed}',
-        title='YTDL: Video Removed From Playlist',
+        title='Video Removed From Playlist',
     )
 
 
@@ -136,7 +138,7 @@ def video_added_to_playlist(video, playlist):
         return
     return send_message(
         message=f'Video {video!r} added to playlist {playlist!r}',
-        title='YTDL: Video Added To Playlist',
+        title='Video Added To Playlist',
     )
 
 
@@ -145,7 +147,7 @@ def video_readded_to_playlist(video, playlist):
         return
     return send_message(
         message=f'Video {video!r} re-added to playlist {playlist!r}',
-        title='YTDL: Video Re-Added To Playlist',
+        title='Video Re-Added To Playlist',
     )
 
 
@@ -156,7 +158,7 @@ def full_indexing_complete(channel, target, new_videos_count, total_videos_count
         message=f"Full Indexing {target} Completed\n\n"
                 f"New Videos: {new_videos_count}\n"
                 f"Total Videos: {total_videos_count}",
-        title=f"YTDL: {channel}"
+        title=f"{channel}"
     )
 
 
@@ -165,7 +167,7 @@ def full_archiving_started(channel):
         return
     return send_message(
         message=f"Full Archive Enabled for {channel}",
-        title=f"YTDL: {channel}",
+        title=f"{channel}",
     )
 
 
@@ -174,7 +176,7 @@ def full_archiving_completed(channel):
         return
     return send_message(
         message=f"Full Archive Completed for {channel}",
-        title=f"YTDL: {channel}",
+        title=f"{channel}",
     )
 
 
@@ -183,7 +185,7 @@ def playlist_disabled_due_to_string(playlist):
         return
     return send_message(
         message=f'Playlist Disabled: {playlist}, due to string found in video title',
-        title='YTDL: Playlist Disabled',
+        title='Playlist Disabled',
     )
 
 
@@ -192,7 +194,7 @@ def playlist_disabled_due_to_errors(playlist):
         return
     return send_message(
         message=f'Playlist Disabled: {playlist}, due to not being found {playlist.not_found_failures} times',
-        title='YTDL: Playlist Disabled',
+        title='Playlist Disabled',
     )
 
 
@@ -201,7 +203,7 @@ def playlist_added_from_mirror(channel, playlist):
         return
     return send_message(
         message=f'Channel playlist mirroring added: {playlist}',
-        title=f'YTDL: {channel} mirroring added playlist',
+        title=f'{channel} mirroring added playlist',
     )
 
 
@@ -209,7 +211,7 @@ def no_videos_archived_today():
     if not app_settings.NOTIFICATIONS_NO_VIDEOS_ARCHIVED_TODAY:
         return
     return send_message(
-        title='YTDL: No Archived Videos Today',
+        title='No Archived Videos Today',
         message='Alerting, no videos were archived today. Is everything ok?',
     )
 
@@ -218,7 +220,7 @@ def convert_to_mp4_complete(video, task_started):
     if not app_settings.NOTIFICATIONS_CONVERT_TO_MP4_COMPLETED:
         return
     return send_message(
-        title='YTDL: Video Directly Converted to MP4',
+        title='Video Directly Converted to MP4',
         message=f'Finished converting video from source format into mp4\n\n{video}\n\n'
                 f'Task Call Timer: {timezone.now() - task_started}\n',
     )
@@ -228,6 +230,6 @@ def channel_status_changed(channel):
     if not app_settings.NOTIFICATIONS_CHANNEL_STATUS_CHANGED:
         return
     return send_message(
-        title='YTDL: Channel Status Change',
+        title='Channel Status Change',
         message=f'{channel=} status changed to {channel.status}',
     )
