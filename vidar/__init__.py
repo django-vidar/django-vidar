@@ -1,6 +1,6 @@
 default_app_config = "vidar.apps.VidarConfig"
 
-VERSION = (2025, 3, 4, "alpha", 0)
+VERSION = (2025, 3, 7, "alpha", 0)
 
 __title__ = "django-vidar"
 __version_info__ = VERSION

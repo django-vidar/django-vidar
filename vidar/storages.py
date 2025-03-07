@@ -10,11 +10,7 @@ log = logging.getLogger(__name__)
 
 class LocalFileSystemStorage(FileSystemStorage):
 
-    def delete(self, name):
-        raise NotImplementedError('here 2')
-
     def move(self, old_path, new_path):
-        raise NotImplementedError('here 1')
         old_full_filepath = pathlib.Path(self.path(old_path))
         new_full_filepath = pathlib.Path(self.path(new_path))
 
