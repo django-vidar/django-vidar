@@ -68,7 +68,7 @@ Celery
 If you do not already have celery setup, you will also need to follow the
 `Celery with Django <https://docs.celeryq.dev/en/latest/django/first-steps-with-django.html>`_  instructions.
 
-django-vidar assigns its tasks to 2 different queues, one named ``queue-vidar`` and ``queue-vidar-processor`
+django-vidar assigns its tasks to 2 different queues, one named ``queue-vidar`` and ``queue-vidar-processor``
 
 - ``queue-vidar`` is the primary queue. Checking channels, playlists, downloading videos..etc happens here.
 - ``queue-vidar-processor`` is the secondary queue where video and audio conversion happens.
@@ -77,7 +77,7 @@ I would recommend running ``queue-vidar-processor`` on its own worker and with c
 video conversion uses all cores and hammering the CPU can make things take longer.
 This is also why the separation of queues exists.
 I do not want video conversion interfering with checking of channels for new videos.
-See docker below for example commands.
+See `docker`_ below for example commands.
 
 For simplicity sake I will include the bare minimum changes necessary to make celery work with a django project.
 You will need to replace **myproj** with whatever your project is called.
@@ -148,7 +148,7 @@ Configurable Settings
 
 ``VIDAR_AUTOMATED_DOWNLOADS_DURATION_LIMIT_SPLIT`` (default: ``90 * 60``)
     If a video duration (in seconds) is longer than this value,
-    the VIDAR_AUTOMATED_DOWNLOADS_PER_TASK_LIMIT will be halved.
+    the ``VIDAR_AUTOMATED_DOWNLOADS_PER_TASK_LIMIT`` will be halved.
 
 ``VIDAR_AUTOMATED_DOWNLOADS_PER_TASK_LIMIT`` (default: ``4``)
     Maximum number of videos permitted to download per run of automated_archiver.
