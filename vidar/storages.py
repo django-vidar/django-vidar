@@ -1,8 +1,9 @@
 import logging
 import pathlib
 
-from django.conf import settings
 from django.core.files.storage import FileSystemStorage
+
+from vidar import app_settings
 
 
 log = logging.getLogger(__name__)
@@ -37,8 +38,8 @@ class DjangoStopMessingWithFinalFileName(OverwriteStorage):
 
 class VidarFileSystemStorage(DjangoStopMessingWithFinalFileName):
     def __init__(self, *args, **kwargs):
-        base_url = getattr(settings, 'VIDAR_MEDIA_URL', None) or settings.MEDIA_URL
-        location = getattr(settings, 'VIDAR_MEDIA_ROOT', None) or settings.MEDIA_ROOT
+        base_url = app_settings.MEDIA_URL
+        location = app_settings.MEDIA_ROOT
         kwargs.setdefault('base_url', base_url)
         kwargs.setdefault('location', location)
         super().__init__(*args, **kwargs)
