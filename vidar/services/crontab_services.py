@@ -115,20 +115,19 @@ class CrontabParser:
         if len(toks) > 1:
             to = self._expand_number(toks[1])
             if to < fr:  # Wrap around max_ if necessary
-                return (list(range(fr, self.min_ + self.max_)) +
-                        list(range(self.min_, to + 1)))
+                return list(range(fr, self.min_ + self.max_)) + list(range(self.min_, to + 1))
             return list(range(fr, to + 1))
         return [fr]
 
     def _range_steps(self, toks):
         if len(toks) != 3 or not toks[2]:
             raise self.ParseException('empty filter')
-        return self._expand_range(toks[:2])[::int(toks[2])]
+        return self._expand_range(toks[:2])[:: int(toks[2])]
 
     def _star_steps(self, toks):
         if not toks or not toks[0]:
             raise self.ParseException('empty filter')
-        return self._expand_star()[::int(toks[0])]
+        return self._expand_star()[:: int(toks[0])]
 
     def _expand_star(self, *args):
         return list(range(self.min_, self.max_ + self.min_))
@@ -146,11 +145,9 @@ class CrontabParser:
 
         max_val = self.min_ + self.max_ - 1
         if i > max_val:
-            raise ValueError(
-                f'Invalid end range: {i} > {max_val}.')
+            raise ValueError(f'Invalid end range: {i} > {max_val}.')
         if i < self.min_:
-            raise ValueError(
-                f'Invalid beginning range: {i} < {self.min_}.')
+            raise ValueError(f'Invalid beginning range: {i} < {self.min_}.')
 
         return i
 
@@ -158,16 +155,16 @@ class CrontabParser:
 @functools.lru_cache(maxsize=100000)
 def parse(crontab):
     """
-        Supply a string containing a crontab '* * * * *' and returns
-        five sets containing valid integers that can be used to compare with datetime.
+    Supply a string containing a crontab '* * * * *' and returns
+    five sets containing valid integers that can be used to compare with datetime.
 
-        >>> minutes, hours, days_of_month, months_of_year, day_of_week = parse('* * * * *')
-        >>> now = datetime.datetime.now()
-        >>> print(now.minute in minutes)
-        >>> print(now.hour in hours)
-        >>> print(now.day in days_of_month)
-        >>> print(now.weekday() in day_of_week)
-        >>> print(now.month in months_of_year)
+    >>> minutes, hours, days_of_month, months_of_year, day_of_week = parse('* * * * *')
+    >>> now = datetime.datetime.now()
+    >>> print(now.minute in minutes)
+    >>> print(now.hour in hours)
+    >>> print(now.day in days_of_month)
+    >>> print(now.weekday() in day_of_week)
+    >>> print(now.month in months_of_year)
 
     """
     minutes_raw, hours_raw, day_of_month_raw, months_of_year_raw, day_of_week_raw = crontab.split(' ', 4)

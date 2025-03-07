@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 def channel_rename_thumbnail_file(channel, commit=True):
-    """ Renames the given Channel.thumbnail to update its path and filename. """
+    """Renames the given Channel.thumbnail to update its path and filename."""
     if not channel.thumbnail:
         log.info(f'{channel.thumbnail=} is empty, cannot rename thumbnail that does not exist.')
         return False
@@ -41,7 +41,7 @@ def channel_rename_thumbnail_file(channel, commit=True):
 
 
 def channel_rename_banner_file(channel, commit=True):
-    """ Renames the given Channel.banner to update its path and filename. """
+    """Renames the given Channel.banner to update its path and filename."""
     if not channel.banner:
         log.info(f'{channel.banner=} is empty, cannot rename banner that does not exist.')
         return False
@@ -70,7 +70,7 @@ def channel_rename_banner_file(channel, commit=True):
 
 
 def channel_rename_tvart_file(channel, commit=True):
-    """ Renames the given Channel.tvart to update its path and filename. """
+    """Renames the given Channel.tvart to update its path and filename."""
     if not channel.tvart:
         log.info(f'{channel.tvart=} is empty, cannot rename tvart that does not exist.')
         return False
@@ -128,9 +128,7 @@ def channel_rename_all_files(channel, commit=True, remove_empty=True, rename_vid
         changed.append('banner')
     if rename_videos:
         if videos_changed_counter := channel_rename_all_videos(
-                videos=channel.videos.exclude(file=''),
-                commit=commit,
-                remove_empty=remove_empty
+            videos=channel.videos.exclude(file=''), commit=commit, remove_empty=remove_empty
         ):
             changed.append(f'{videos_changed_counter} videos')
 
@@ -148,7 +146,7 @@ def channel_rename_all_files(channel, commit=True, remove_empty=True, rename_vid
 
 
 def video_rename_local_file(video, commit=True):
-    """ Renames the given Video.file to update its path and filename. """
+    """Renames the given Video.file to update its path and filename."""
     if not video.file:
         log.info(f'{video.file=} is empty, cannot rename file that does not exist.')
         return False
@@ -173,7 +171,7 @@ def video_rename_local_file(video, commit=True):
 
 
 def video_rename_local_info_json(video, commit=True):
-    """ Renames the given Video.info_json to update its path and filename. """
+    """Renames the given Video.info_json to update its path and filename."""
     if not video.info_json:
         log.info(f'{video.info_json=} is empty, cannot rename info_json that does not exist.')
         return False
@@ -181,9 +179,7 @@ def video_rename_local_info_json(video, commit=True):
     old_storage_path = pathlib.PurePosixPath(video.info_json.name)
 
     _, new_storage_path = video_services.generate_filepaths_for_storage(
-        video=video,
-        ext='info.json',
-        upload_to=video_helpers.upload_to_infojson
+        video=video, ext='info.json', upload_to=video_helpers.upload_to_infojson
     )
     if old_storage_path == new_storage_path:
         log.info(f'{video.pk=} storage paths already match, {video.info_json.name} does not need renaming.')
@@ -199,7 +195,7 @@ def video_rename_local_info_json(video, commit=True):
 
 
 def video_rename_thumbnail_file(video, commit=True):
-    """ Renames the given Video.thumbnail to update its path and filename. """
+    """Renames the given Video.thumbnail to update its path and filename."""
     if not video.thumbnail:
         log.info(f'{video.thumbnail=} is empty, cannot rename thumbnail that does not exist.')
         return False
@@ -209,9 +205,7 @@ def video_rename_thumbnail_file(video, commit=True):
     ext = video.thumbnail.name.rsplit('.', 1)[-1]
 
     _, new_storage_path = video_services.generate_filepaths_for_storage(
-        video=video,
-        ext=ext,
-        upload_to=video_helpers.upload_to_thumbnail
+        video=video, ext=ext, upload_to=video_helpers.upload_to_thumbnail
     )
     if old_storage_path == new_storage_path:
         log.info(f'{video.pk=} storage paths already match, {video.thumbnail.name} does not need renaming.')

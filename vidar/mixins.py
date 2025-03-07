@@ -34,19 +34,20 @@ class RequestBasedCustomQuerysetFilteringMixin:
     RequestBaseFilteringSearchValueSeparator: str = ":"
     RequestBaseFilteringQueryParameter: str = 'q'
 
-    def get_default_queryset_filters(self, query, fields: list=None):
+    def get_default_queryset_filters(self, query, fields: list = None):
         if fields is None:
             fields = self.RequestBaseFilteringDefaultFields
         qs_wheres = Q()
         if not fields:
-            warnings.warn('No fields defined to search for based on request query. '
-                          'See RequestBaseFilteringDefaultFields')
+            warnings.warn(
+                'No fields defined to search for based on request query. ' 'See RequestBaseFilteringDefaultFields'
+            )
             return qs_wheres
         for field in fields:
             qs_wheres |= Q(**{f"{field}{self.RequestBaseFilteringDefaultSearchComparator}": query})
         return qs_wheres
 
-    def apply_queryset_filtering(self, qs, fields: list=None):
+    def apply_queryset_filtering(self, qs, fields: list = None):
         if q := self.request.GET.get(self.RequestBaseFilteringQueryParameter):
             q = q.strip()
 
@@ -68,9 +69,7 @@ class RequestBasedCustomQuerysetFilteringMixin:
                     field = f"{field}{self.RequestBaseFilteringDefaultSearchComparator}"
 
                 try:
-                    qs = qs.filter(
-                        **{field: q}
-                    )
+                    qs = qs.filter(**{field: q})
                 except FieldError:
                     qs_wheres = self.get_default_queryset_filters(query=q, fields=fields)
                     if qs_wheres:
@@ -134,13 +133,9 @@ class HTMXIconBooleanSwapper:
         #     raise Http404
 
         current_object_value = self.htmx_swapper_get_object_value(field_name=field_name)
-        self.htmx_swapper_check_value_is_valid(
-            field_name=field_name,
-            value=current_object_value
-        )
+        self.htmx_swapper_check_value_is_valid(field_name=field_name, value=current_object_value)
         new_value = self.htmx_swapper_calculate_new_field_value(
-            field_name=field_name,
-            current_value=current_object_value
+            field_name=field_name, current_value=current_object_value
         )
         self.htmx_swapper_set_object_value(field_name=field_name, new_value=new_value)
 

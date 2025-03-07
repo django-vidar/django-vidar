@@ -196,108 +196,189 @@ def user_watched_video(context, video: Video):
     if not hasattr(request.user, 'vidar_playback_completion_percentage'):
         return
 
-    return UserPlaybackHistory.objects.filter(
-        user=request.user,
-        video=video,
-    ).annotate(
-        percentage_of_video=F('video__duration') * float(request.user.vidar_playback_completion_percentage)
-    ).filter(
-        seconds__gte=F('percentage_of_video')
-    ).first()
+    return (
+        UserPlaybackHistory.objects.filter(
+            user=request.user,
+            video=video,
+        )
+        .annotate(percentage_of_video=F('video__duration') * float(request.user.vidar_playback_completion_percentage))
+        .filter(seconds__gte=F('percentage_of_video'))
+        .first()
+    )
 
 
 @register.simple_tag
 def next_by_channel(video: Video, view=''):
     if not video.channel_id:
         return
-    return video.channel.videos.order_by('sort_ordering').filter(
-        sort_ordering__lt=video.sort_ordering
-    ).exclude(Q(pk=video.id) | Q(file='')).last()
+    return (
+        video.channel.videos.order_by('sort_ordering')
+        .filter(sort_ordering__lt=video.sort_ordering)
+        .exclude(Q(pk=video.id) | Q(file=''))
+        .last()
+    )
 
 
 @register.simple_tag
 def previous_by_channel(video: Video, view=''):
     if not video.channel_id:
         return
-    return video.channel.videos.order_by('sort_ordering').filter(
-        sort_ordering__gt=video.sort_ordering,
-    ).exclude(Q(pk=video.id) | Q(file='')).first()
+    return (
+        video.channel.videos.order_by('sort_ordering')
+        .filter(
+            sort_ordering__gt=video.sort_ordering,
+        )
+        .exclude(Q(pk=video.id) | Q(file=''))
+        .first()
+    )
 
 
 @register.simple_tag
 def next_by_upload_date(video: Video, view=''):
     if view == "audio":
-        return Video.objects.archived().order_by('-upload_date', '-inserted').filter(
+        return (
+            Video.objects.archived()
+            .order_by('-upload_date', '-inserted')
+            .filter(
+                upload_date__lte=video.upload_date,
+                inserted__lte=video.inserted,
+            )
+            .exclude(Q(pk=video.id) | Q(audio=''))
+            .first()
+        )
+
+    return (
+        Video.objects.archived()
+        .order_by('-upload_date', '-inserted')
+        .filter(
             upload_date__lte=video.upload_date,
             inserted__lte=video.inserted,
-        ).exclude(Q(pk=video.id) | Q(audio='')).first()
-
-    return Video.objects.archived().order_by('-upload_date', '-inserted').filter(
-        upload_date__lte=video.upload_date,
-        inserted__lte=video.inserted,
-    ).exclude(pk=video.id).first()
+        )
+        .exclude(pk=video.id)
+        .first()
+    )
 
 
 @register.simple_tag
 def previous_by_upload_date(video: Video, view=''):
     if view == "audio":
-        return Video.objects.archived().order_by('-upload_date', '-inserted').filter(
+        return (
+            Video.objects.archived()
+            .order_by('-upload_date', '-inserted')
+            .filter(
+                upload_date__gte=video.upload_date,
+                inserted__gte=video.inserted,
+            )
+            .exclude(Q(pk=video.id) | Q(audio=''))
+            .last()
+        )
+
+    return (
+        Video.objects.archived()
+        .order_by('-upload_date', '-inserted')
+        .filter(
             upload_date__gte=video.upload_date,
             inserted__gte=video.inserted,
-        ).exclude(Q(pk=video.id) | Q(audio='')).last()
-
-    return Video.objects.archived().order_by('-upload_date', '-inserted').filter(
-        upload_date__gte=video.upload_date,
-        inserted__gte=video.inserted,
-    ).exclude(pk=video.id).last()
+        )
+        .exclude(pk=video.id)
+        .last()
+    )
 
 
 @register.simple_tag
 def previous_by_date_downloaded(video: Video, view=''):
     if view == "audio":
-        return Video.objects.archived().order_by('-date_downloaded').filter(
-            date_downloaded__gte=video.date_downloaded,
-        ).exclude(Q(pk=video.id) | Q(audio='')).last()
+        return (
+            Video.objects.archived()
+            .order_by('-date_downloaded')
+            .filter(
+                date_downloaded__gte=video.date_downloaded,
+            )
+            .exclude(Q(pk=video.id) | Q(audio=''))
+            .last()
+        )
 
-    return Video.objects.archived().order_by('-date_downloaded').filter(
-        date_downloaded__gte=video.date_downloaded,
-    ).exclude(pk=video.id).last()
+    return (
+        Video.objects.archived()
+        .order_by('-date_downloaded')
+        .filter(
+            date_downloaded__gte=video.date_downloaded,
+        )
+        .exclude(pk=video.id)
+        .last()
+    )
 
 
 @register.simple_tag
 def next_by_date_downloaded(video: Video, view=''):
     if view == "audio":
-        return Video.objects.archived().order_by('-date_downloaded').filter(
-            date_downloaded__lte=video.date_downloaded,
-        ).exclude(Q(pk=video.id) | Q(audio='')).first()
+        return (
+            Video.objects.archived()
+            .order_by('-date_downloaded')
+            .filter(
+                date_downloaded__lte=video.date_downloaded,
+            )
+            .exclude(Q(pk=video.id) | Q(audio=''))
+            .first()
+        )
 
-    return Video.objects.archived().order_by('-date_downloaded').filter(
-        date_downloaded__lte=video.date_downloaded,
-    ).exclude(pk=video.id).first()
+    return (
+        Video.objects.archived()
+        .order_by('-date_downloaded')
+        .filter(
+            date_downloaded__lte=video.date_downloaded,
+        )
+        .exclude(pk=video.id)
+        .first()
+    )
 
 
 @register.simple_tag
 def previous_by_starred(video: Video, view=''):
     if view == "audio":
-        return Video.objects.archived().order_by('-starred').filter(
-            starred__gte=video.starred,
-        ).exclude(Q(pk=video.id) | Q(audio='')).last()
+        return (
+            Video.objects.archived()
+            .order_by('-starred')
+            .filter(
+                starred__gte=video.starred,
+            )
+            .exclude(Q(pk=video.id) | Q(audio=''))
+            .last()
+        )
 
-    return Video.objects.archived().order_by('-starred').filter(
-        starred__gte=video.starred,
-    ).exclude(pk=video.id).last()
+    return (
+        Video.objects.archived()
+        .order_by('-starred')
+        .filter(
+            starred__gte=video.starred,
+        )
+        .exclude(pk=video.id)
+        .last()
+    )
 
 
 @register.simple_tag
 def next_by_starred(video: Video, view=''):
     if view == "audio":
-        return Video.objects.archived().order_by('-starred').filter(
-            starred__lte=video.starred,
-        ).exclude(Q(pk=video.id) | Q(audio='')).first()
+        return (
+            Video.objects.archived()
+            .order_by('-starred')
+            .filter(
+                starred__lte=video.starred,
+            )
+            .exclude(Q(pk=video.id) | Q(audio=''))
+            .first()
+        )
 
-    return Video.objects.archived().order_by('-starred').filter(
-        starred__lte=video.starred,
-    ).exclude(pk=video.id).first()
+    return (
+        Video.objects.archived()
+        .order_by('-starred')
+        .filter(
+            starred__lte=video.starred,
+        )
+        .exclude(pk=video.id)
+        .first()
+    )
 
 
 @register.simple_tag

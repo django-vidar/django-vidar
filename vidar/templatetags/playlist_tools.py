@@ -33,12 +33,16 @@ def user_played_entire_playlist(playlist: Playlist, user, raise_error=False):
         return False
 
     try:
-        return playlist.videos.annotate(
-            percentage_of_video=F('duration') * float(user.vidar_playback_completion_percentage)
-        ).filter(
-            user_playback_history__user=user,
-            user_playback_history__seconds__gte=F('percentage_of_video')
-        ).distinct('id').order_by().count() == playlist.videos.count()
+        return (
+            playlist.videos.annotate(
+                percentage_of_video=F('duration') * float(user.vidar_playback_completion_percentage)
+            )
+            .filter(user_playback_history__user=user, user_playback_history__seconds__gte=F('percentage_of_video'))
+            .distinct('id')
+            .order_by()
+            .count()
+            == playlist.videos.count()
+        )
     except NotSupportedError:
         if raise_error:
             raise
@@ -58,14 +62,15 @@ def get_next_unwatched_video_on_playlist(playlist: Playlist, user: User):
 
     for pi in qs:
         video = pi.video
-        if UserPlaybackHistory.objects.filter(
+        if (
+            UserPlaybackHistory.objects.filter(
                 user=user,
                 video=video,
-        ).annotate(
-            percentage_of_video=F('video__duration') * float(user.vidar_playback_completion_percentage)
-        ).filter(
-            seconds__gte=F('percentage_of_video')
-        ).exists():
+            )
+            .annotate(percentage_of_video=F('video__duration') * float(user.vidar_playback_completion_percentage))
+            .filter(seconds__gte=F('percentage_of_video'))
+            .exists()
+        ):
             continue
         return pi
 
@@ -82,13 +87,14 @@ def get_next_unwatched_audio_on_playlist(playlist: Playlist, user: User):
 
     for pi in qs:
         video = pi.video
-        if UserPlaybackHistory.objects.filter(
+        if (
+            UserPlaybackHistory.objects.filter(
                 user=user,
                 video=video,
-        ).annotate(
-            percentage_of_video=F('video__duration') * float(user.vidar_playback_completion_percentage)
-        ).filter(
-            seconds__gte=F('percentage_of_video')
-        ).exists():
+            )
+            .annotate(percentage_of_video=F('video__duration') * float(user.vidar_playback_completion_percentage))
+            .filter(seconds__gte=F('percentage_of_video'))
+            .exists()
+        ):
             continue
         return pi

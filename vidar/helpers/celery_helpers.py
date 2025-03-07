@@ -54,8 +54,10 @@ def _celery_task_is_in_system(celery_tasks, search_for_these_tasks: list, value,
             elif 'request' in task and 'type' in task['request']:
                 task_name = task['request']['type']
             else:
-                log.info(f'Searching for {kwargs_key=} {value=} with task name {search_for_these_tasks=}, '
-                         f'could not find task name value in {celery_tasks=}')
+                log.info(
+                    f'Searching for {kwargs_key=} {value=} with task name {search_for_these_tasks=}, '
+                    f'could not find task name value in {celery_tasks=}'
+                )
                 continue
 
             if task_name in search_for_these_tasks:
@@ -89,26 +91,26 @@ def _celery_task_is_in_system(celery_tasks, search_for_these_tasks: list, value,
 def celery_is_task_active_or_pending(search_for_these_tasks: list, value, kwargs_key=None):
 
     if _celery_task_is_in_system(
-            celery_tasks=current_app.control.inspect().active(),
-            search_for_these_tasks=search_for_these_tasks,
-            value=value,
-            kwargs_key=kwargs_key
+        celery_tasks=current_app.control.inspect().active(),
+        search_for_these_tasks=search_for_these_tasks,
+        value=value,
+        kwargs_key=kwargs_key,
     ):
         return True
 
     if _celery_task_is_in_system(
-            celery_tasks=current_app.control.inspect().reserved(),
-            search_for_these_tasks=search_for_these_tasks,
-            value=value,
-            kwargs_key=kwargs_key
+        celery_tasks=current_app.control.inspect().reserved(),
+        search_for_these_tasks=search_for_these_tasks,
+        value=value,
+        kwargs_key=kwargs_key,
     ):
         return True
 
     if _celery_task_is_in_system(
-            celery_tasks=current_app.control.inspect().scheduled(),
-            search_for_these_tasks=search_for_these_tasks,
-            value=value,
-            kwargs_key=kwargs_key
+        celery_tasks=current_app.control.inspect().scheduled(),
+        search_for_these_tasks=search_for_these_tasks,
+        value=value,
+        kwargs_key=kwargs_key,
     ):
         return True
 
@@ -118,9 +120,7 @@ def is_video_being_downloaded_now(video):
 
     search_for_these_tasks = ['vidar.tasks.download_provider_video']
     return celery_is_task_active_or_pending(
-        search_for_these_tasks=search_for_these_tasks,
-        value=video.pk,
-        kwargs_key='pk'
+        search_for_these_tasks=search_for_these_tasks, value=video.pk, kwargs_key='pk'
     )
 
 
@@ -135,14 +135,13 @@ def is_video_being_processed_now(video):
     ]
 
     return celery_is_task_active_or_pending(
-        search_for_these_tasks=search_for_these_tasks,
-        value=video.pk,
-        kwargs_key='pk'
+        search_for_these_tasks=search_for_these_tasks, value=video.pk, kwargs_key='pk'
     )
 
 
-def prevent_asynchronous_task_execution(lock_key=None, lock_expiry=DEFAULT_TIMEOUT, retry=False,
-                                        retry_countdown=15, mark_result_failed_on_lock_failure=True):
+def prevent_asynchronous_task_execution(
+    lock_key=None, lock_expiry=DEFAULT_TIMEOUT, retry=False, retry_countdown=15, mark_result_failed_on_lock_failure=True
+):
     """
     Decorator function to apply locking to Celery tasks; using a cache.
     If a task has already acquired a lock and is executing, then other tasks
@@ -228,6 +227,7 @@ def prevent_asynchronous_task_execution(lock_key=None, lock_expiry=DEFAULT_TIMEO
                     return
 
         return wrapper
+
     return decorator
 
 

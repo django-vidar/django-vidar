@@ -25,15 +25,16 @@ def get_ytdlp_args(rate_limit=None, proxies_attempted=None, retries=0, video=Non
     return kwargs
 
 
-def get_video_downloader_args(video, retries=0, cache_folder=None, quality=None,
-                              rate_limit=None, video_format=None, **kwargs):
+def get_video_downloader_args(
+    video, retries=0, cache_folder=None, quality=None, rate_limit=None, video_format=None, **kwargs
+):
 
     kwargs = get_ytdlp_args(
         proxies_attempted=video.system_notes.get('proxies_attempted'),
         rate_limit=rate_limit,
         video=video,
         retries=retries,
-        **kwargs
+        **kwargs,
     )
 
     if video_format is None:
@@ -63,27 +64,28 @@ def get_video_downloader_args(video, retries=0, cache_folder=None, quality=None,
     return kwargs
 
 
-def get_comment_downloader_extractor_args(total_max_comments=None, max_parents=None,
-                                          max_replies=None, max_replies_per_thread=None, sorting=None):
+def get_comment_downloader_extractor_args(
+    total_max_comments=None, max_parents=None, max_replies=None, max_replies_per_thread=None, sorting=None
+):
     """
-        https://github.com/yt-dlp/yt-dlp#extractor-arguments
+    https://github.com/yt-dlp/yt-dlp#extractor-arguments
 
-        comment_sort: top or new (default) - choose comment sorting mode (on YouTube's side)
+    comment_sort: top or new (default) - choose comment sorting mode (on YouTube's side)
 
-        max_comments: Limit the amount of comments to gather. Comma-separated list of integers
-        representing max-comments,max-parents,max-replies,max-replies-per-thread.
-        Default is all,all,all,all
+    max_comments: Limit the amount of comments to gather. Comma-separated list of integers
+    representing max-comments,max-parents,max-replies,max-replies-per-thread.
+    Default is all,all,all,all
 
-        E.g.
-        all,all,1000,10     will get a maximum of 1000 replies total, with up to 10 replies per thread.
-        1000,all,100     will get a maximum of 1000 comments, with a maximum of 100 replies total
+    E.g.
+    all,all,1000,10     will get a maximum of 1000 replies total, with up to 10 replies per thread.
+    1000,all,100     will get a maximum of 1000 comments, with a maximum of 100 replies total
 
-        "extractor_args": {
-            "youtube": {
-                "max_comments": max_comments_list,
-                "comment_sort": [comment_sort],
-            }
-        },"""
+    "extractor_args": {
+        "youtube": {
+            "max_comments": max_comments_list,
+            "comment_sort": [comment_sort],
+        }
+    },"""
 
     if total_max_comments is None:
         total_max_comments = app_settings.COMMENTS_TOTAL_MAX_COMMENTS
@@ -97,9 +99,7 @@ def get_comment_downloader_extractor_args(total_max_comments=None, max_parents=N
         sorting = app_settings.COMMENTS_SORTING
 
     defaults = {
-        'max_comments': [
-            str(total_max_comments), str(max_parents), str(max_replies), str(max_replies_per_thread)
-        ]
+        'max_comments': [str(total_max_comments), str(max_parents), str(max_replies), str(max_replies_per_thread)]
     }
 
     if sorting:

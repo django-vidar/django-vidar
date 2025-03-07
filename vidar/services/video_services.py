@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 
 def _correct_format_data_in_infojson_data(video, infojson_data):
-    """ info.json files downloaded without the file will set different format data.
+    """info.json files downloaded without the file will set different format data.
 
     format_id, format_note, and format are only saved during
         download of the video file itself. So set those settings within info.json
@@ -78,8 +78,9 @@ def save_infojson_file(video, downloaded_file_data, save=True, overwrite_formats
     video.info_json.save(infojson_final_filename, ContentFile(json.dumps(infojson_data)), save=save)
 
 
-def generate_filepaths_for_storage(video, ext, filename=None,
-                                   upload_to=video_helpers.upload_to_file, ensure_new_dir_exists=False):
+def generate_filepaths_for_storage(
+    video, ext, filename=None, upload_to=video_helpers.upload_to_file, ensure_new_dir_exists=False
+):
     final_filename = filename or schema_services.video_file_name(video=video, ext=ext)
     valid_new_filename = vidar_storage.get_valid_name(final_filename)
     new_storage_path = upload_to(video, valid_new_filename)
@@ -152,7 +153,7 @@ def should_force_download_based_on_requirements_check(video):
 
 
 def is_permitted_to_download_check(video):
-    """ Check download requirements based on channel settings """
+    """Check download requirements based on channel settings"""
     channel = video.channel
     log.info(f'Checking if permitted to download based on channel requirements, {channel=}')
 
@@ -178,17 +179,15 @@ def is_permitted_to_download_check(video):
 
     if video.is_video:
         if utils.is_duration_outside_min_max(
-                duration=video.duration,
-                minimum=channel.duration_minimum_videos,
-                maximum=channel.duration_maximum_videos
+            duration=video.duration, minimum=channel.duration_minimum_videos, maximum=channel.duration_maximum_videos
         ):
             return False
 
     if video.is_livestream:
         if utils.is_duration_outside_min_max(
-                duration=video.duration,
-                minimum=channel.duration_minimum_livestreams,
-                maximum=channel.duration_maximum_livestreams
+            duration=video.duration,
+            minimum=channel.duration_minimum_livestreams,
+            maximum=channel.duration_maximum_livestreams,
         ):
             return False
 
@@ -196,7 +195,7 @@ def is_permitted_to_download_check(video):
 
 
 def is_permitted_to_download_requested(video):
-    """ Check and apply download requirements based on channel settings """
+    """Check and apply download requirements based on channel settings"""
     channel = video.channel
     log.info(f'Requested if permitted to download based on channel requirements, {channel=}')
 
@@ -516,8 +515,8 @@ def unblock(provider_object_id):
     return models.VideoBlocked.objects.filter(provider_object_id=provider_object_id).delete()
 
 
-def quality_to_download(video: models.Video, extras: (set, list, tuple)=None):
-    """ Returns the necessary quality required based on Channel and Playlist preferences. """
+def quality_to_download(video: models.Video, extras: (set, list, tuple) = None):
+    """Returns the necessary quality required based on Channel and Playlist preferences."""
 
     # Always download shorts at max quality
     if video.is_short and app_settings.SHORTS_FORCE_MAX_QUALITY:

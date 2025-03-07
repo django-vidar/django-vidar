@@ -1,5 +1,3 @@
-
-
 class DownloadedInfoJsonFileNotFoundError(Exception):
     pass
 

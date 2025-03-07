@@ -127,8 +127,9 @@ class ChannelListViewContextData(FieldFilteringMixin):
         return kwargs
 
 
-class ChannelListView(PermissionRequiredMixin, ChannelListViewContextData,
-                      RequestBasedQuerysetFilteringMixin, ListView):
+class ChannelListView(
+    PermissionRequiredMixin, ChannelListViewContextData, RequestBasedQuerysetFilteringMixin, ListView
+):
     model = Channel
     permission_required = ['vidar.view_channel']
     queryset = Channel.objects.annotate(
@@ -145,9 +146,9 @@ class ChannelListView(PermissionRequiredMixin, ChannelListViewContextData,
                 When(display_name='', then=None),
                 When(display_name__isnull=False, then='display_name'),
                 default=None,
-                output_field=CharField()
+                output_field=CharField(),
             ),
-            'name'
+            'name',
         ),
     )
     ordering = ['name_sort']
@@ -184,13 +185,17 @@ class ChannelListView(PermissionRequiredMixin, ChannelListViewContextData,
             ordering = ordering[1:] if direction else ordering
             if ordering == 'schedule':
                 whens = utils.get_channel_ordering_by_next_crontab_whens()
-                return Channel.objects.all().annotate(
-                    channel_next_based_order=Case(*whens, default=10000)
-                ).order_by('channel_next_based_order', 'name')
+                return (
+                    Channel.objects.all()
+                    .annotate(channel_next_based_order=Case(*whens, default=10000))
+                    .order_by('channel_next_based_order', 'name')
+                )
             elif ordering == 'latest_video':
-                return Channel.objects.all().annotate(
-                    latest_video_upload_date=Max('videos__upload_date')
-                ).order_by(f'{direction}latest_video_upload_date', 'name')
+                return (
+                    Channel.objects.all()
+                    .annotate(latest_video_upload_date=Max('videos__upload_date'))
+                    .order_by(f'{direction}latest_video_upload_date', 'name')
+                )
 
         return qs
 
@@ -210,12 +215,22 @@ class ChannelListView(PermissionRequiredMixin, ChannelListViewContextData,
         return super().get_ordering()
 
 
-class ChannelBooleanSwapper(PermissionRequiredMixin, UseProviderObjectIdMatchingMixin,
-                            HTMXIconBooleanSwapper, UpdateView):
+class ChannelBooleanSwapper(
+    PermissionRequiredMixin, UseProviderObjectIdMatchingMixin, HTMXIconBooleanSwapper, UpdateView
+):
     model = Channel
-    fields = ['index_videos', 'download_videos', 'full_archive', 'index_shorts', 'download_shorts',
-              'index_livestreams', 'download_livestreams',
-              'download_comments_during_scan', 'download_comments_with_video', 'send_download_notification']
+    fields = [
+        'index_videos',
+        'download_videos',
+        'full_archive',
+        'index_shorts',
+        'download_shorts',
+        'index_livestreams',
+        'download_livestreams',
+        'download_comments_during_scan',
+        'download_comments_with_video',
+        'send_download_notification',
+    ]
     permission_required = ['vidar.change_channel']
 
 
@@ -229,9 +244,12 @@ class ChannelDetailView(PermissionRequiredMixin, UseProviderObjectIdMatchingMixi
 
     def get_context_data(self, **kwargs):
         kwargs = super().get_context_data(**kwargs)
-        kwargs['quality_form'] = forms.QualityChoiceForm(initial={
-            'quality': self.object.quality,
-        }, channel_default_quality=self.object.quality)
+        kwargs['quality_form'] = forms.QualityChoiceForm(
+            initial={
+                'quality': self.object.quality,
+            },
+            channel_default_quality=self.object.quality,
+        )
         kwargs['has_at_max_quality_videos'] = self.object.videos.filter(at_max_quality=True).exists()
 
         qs = self.object.videos.all()
@@ -253,18 +271,12 @@ class ChannelDetailView(PermissionRequiredMixin, UseProviderObjectIdMatchingMixi
                     field = f"{field}__icontains"
 
                 try:
-                    qs = qs.filter(
-                        **{field: q}
-                    )
+                    qs = qs.filter(**{field: q})
                 except FieldError:
-                    qs = qs.filter(
-                        Q(title__icontains=q) | Q(description__icontains=q) | Q(provider_object_id=q)
-                    )
+                    qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q) | Q(provider_object_id=q))
 
             else:
-                qs = qs.filter(
-                    Q(title__icontains=q) | Q(description__icontains=q) | Q(provider_object_id=q)
-                )
+                qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q) | Q(provider_object_id=q))
 
         if 'starred' in self.request.GET:
             qs = qs.exclude(starred__isnull=True).order_by('-starred')
@@ -281,13 +293,13 @@ class ChannelDetailView(PermissionRequiredMixin, UseProviderObjectIdMatchingMixi
         if 'unwatched' in self.request.GET:
             user = self.request.user
             if user.is_authenticated and hasattr(user, 'vidar_playback_completion_percentage'):
-                watched_video_ids = list(UserPlaybackHistory.objects.annotate(
-                    percentage_of_video=F('video__duration') * float(user.vidar_playback_completion_percentage)
-                ).filter(
-                    seconds__gte=F('percentage_of_video'),
-                    user=self.request.user,
-                    video__channel=self.object
-                ).values_list('video_id', flat=True))
+                watched_video_ids = list(
+                    UserPlaybackHistory.objects.annotate(
+                        percentage_of_video=F('video__duration') * float(user.vidar_playback_completion_percentage)
+                    )
+                    .filter(seconds__gte=F('percentage_of_video'), user=self.request.user, video__channel=self.object)
+                    .values_list('video_id', flat=True)
+                )
                 qs = qs.exclude(id__in=watched_video_ids)
 
         if quality := self.request.GET.get('quality'):
@@ -354,17 +366,19 @@ def channel_add_view(request):
                 return redirect(channel_exists)
 
     indexing_status = request.GET.get('index', 'true').lower() == 'true'
-    videos_initial, livestreams_initial = None,  None
+    videos_initial, livestreams_initial = None, None
     shorts_initial = {'index_shorts': False, 'download_shorts': False}
     if not indexing_status:
         videos_initial = {'index_videos': False, 'download_videos': False}
         shorts_initial = {'index_shorts': False, 'download_shorts': False}
         livestreams_initial = {'index_livestreams': False, 'download_livestreams': False}
 
-    general_form = forms.ChannelGeneralCreateOptionsForm(initial={
-        'scanner_crontab': utils.generate_balanced_crontab_hourly(),
-        'provider_object_id': provider_object_id_raw,
-    })
+    general_form = forms.ChannelGeneralCreateOptionsForm(
+        initial={
+            'scanner_crontab': utils.generate_balanced_crontab_hourly(),
+            'provider_object_id': provider_object_id_raw,
+        }
+    )
     sub_form = forms.ChannelSubGeneralOptionsForm()
     videos_form = forms.ChannelVideosOptionsForm(initial=videos_initial)
     shorts_form = forms.ChannelShortsOptionsForm(initial=shorts_initial)
@@ -439,16 +453,20 @@ def channel_add_view(request):
 
             return redirect(channel)
 
-    return render(request, 'vidar/channel_form.html', {
-        'general_form': general_form,
-        'sub_form': sub_form,
-        'videos_form': videos_form,
-        'shorts_form': shorts_form,
-        'livestreams_form': livestreams_form,
-        'mirroring_form': mirroring_form,
-        'playback_form': playback_form,
-        'admin_form': admin_form,
-    })
+    return render(
+        request,
+        'vidar/channel_form.html',
+        {
+            'general_form': general_form,
+            'sub_form': sub_form,
+            'videos_form': videos_form,
+            'shorts_form': shorts_form,
+            'livestreams_form': livestreams_form,
+            'mirroring_form': mirroring_form,
+            'playback_form': playback_form,
+            'admin_form': admin_form,
+        },
+    )
 
 
 @user_passes_test(lambda u: u.has_perm('vidar.change_channel'))
@@ -537,18 +555,22 @@ def channel_update_view(request, pk=None, slug=None):
 
             return helpers.redirect_next_or_obj(request, channel)
 
-    return render(request, 'vidar/channel_form.html', {
-        'object': channel,
-        'channel': channel,
-        'general_form': general_form,
-        'sub_form': sub_form,
-        'videos_form': videos_form,
-        'shorts_form': shorts_form,
-        'livestreams_form': livestreams_form,
-        'mirroring_form': mirroring_form,
-        'playback_form': playback_form,
-        'admin_form': admin_form,
-    })
+    return render(
+        request,
+        'vidar/channel_form.html',
+        {
+            'object': channel,
+            'channel': channel,
+            'general_form': general_form,
+            'sub_form': sub_form,
+            'videos_form': videos_form,
+            'shorts_form': shorts_form,
+            'livestreams_form': livestreams_form,
+            'mirroring_form': mirroring_form,
+            'playback_form': playback_form,
+            'admin_form': admin_form,
+        },
+    )
 
 
 class ChannelDeleteView(PermissionRequiredMixin, UseProviderObjectIdMatchingMixin, DeleteView):
@@ -737,9 +759,12 @@ class CrontabCatchupView(PermissionRequiredMixin, FormView):
 
     def form_valid(self, form):
         channels_queued, playlists_queued = form.scan()
-        messages.success(self.request, f'Channel and Playlists crontabs scanners ran for every 5 minutes between the '
-                                       f'datetimes supplied finding {len(channels_queued)} channels '
-                                       f'and {len(playlists_queued)} to index.')
+        messages.success(
+            self.request,
+            f'Channel and Playlists crontabs scanners ran for every 5 minutes between the '
+            f'datetimes supplied finding {len(channels_queued)} channels '
+            f'and {len(playlists_queued)} to index.',
+        )
         return redirect('vidar:channel-index')
 
 
@@ -840,12 +865,14 @@ class VideoListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin,
 
         kwargs['blocked_video_count'] = VideoBlocked.objects.all().count()
 
-        kwargs.update(paginator_helper(
-            context_key='object_list',
-            queryset=self.get_queryset(),
-            limit=self.paginate_by,
-            params=self.request.GET,
-        ))
+        kwargs.update(
+            paginator_helper(
+                context_key='object_list',
+                queryset=self.get_queryset(),
+                limit=self.paginate_by,
+                params=self.request.GET,
+            )
+        )
         return kwargs
 
     def get_template_names(self):
@@ -956,29 +983,48 @@ class AllVideoStatistics(PermissionRequiredMixin, TemplateView):
                 total_videos_archived_today_counter += videos_archived_today_count
                 total_videos_uploaded_today_counter += videos_uploaded_today_count
 
-            periods['Total'] = total_videos_archived_today_counter, \
-                               total_videos_archived_filesize, \
-                               total_videos_uploaded_today_counter
+            periods['Total'] = (
+                total_videos_archived_today_counter,
+                total_videos_archived_filesize,
+                total_videos_uploaded_today_counter,
+            )
             return periods
 
         kwargs['upload_date_period_counters'] = get_period_counters('upload_date')
         kwargs['date_downloaded_period_counters'] = get_period_counters('date_downloaded__date')
 
-        kwargs['average_day_download_size'] = Video.objects.archived().annotate(
-            dl=TruncDate('date_downloaded')
-        ).values('dl').annotate(fs=Sum('file_size')).aggregate(Avg('fs'))['fs__avg'] or 0
+        kwargs['average_day_download_size'] = (
+            Video.objects.archived()
+            .annotate(dl=TruncDate('date_downloaded'))
+            .values('dl')
+            .annotate(fs=Sum('file_size'))
+            .aggregate(Avg('fs'))['fs__avg']
+            or 0
+        )
 
-        kwargs['average_year_date_downloaded_size'] = Video.objects.archived().annotate(
-            dl=TruncYear('date_downloaded')
-        ).order_by('-dl').values('dl').annotate(fs=Sum('file_size'), count=Count('id'))
+        kwargs['average_year_date_downloaded_size'] = (
+            Video.objects.archived()
+            .annotate(dl=TruncYear('date_downloaded'))
+            .order_by('-dl')
+            .values('dl')
+            .annotate(fs=Sum('file_size'), count=Count('id'))
+        )
 
-        kwargs['average_year_upload_date_size'] = Video.objects.archived().annotate(
-            dl=TruncYear('upload_date')
-        ).order_by('-dl').values('dl').annotate(fs=Sum('file_size'), count=Count('id'))
+        kwargs['average_year_upload_date_size'] = (
+            Video.objects.archived()
+            .annotate(dl=TruncYear('upload_date'))
+            .order_by('-dl')
+            .values('dl')
+            .annotate(fs=Sum('file_size'), count=Count('id'))
+        )
 
-        kwargs['average_ddl_week_size'] = Video.objects.archived().annotate(
-            dl=TruncWeek('date_downloaded')
-        ).order_by('-dl').values('dl').annotate(fs=Sum('file_size'), count=Count('id'))
+        kwargs['average_ddl_week_size'] = (
+            Video.objects.archived()
+            .annotate(dl=TruncWeek('date_downloaded'))
+            .order_by('-dl')
+            .values('dl')
+            .annotate(fs=Sum('file_size'), count=Count('id'))
+        )
 
         kwargs['total_videos_count'] = self.get_queryset().count()
         kwargs['downloaded_videos_count'] = self.get_queryset().exclude(file='').count()
@@ -1000,9 +1046,7 @@ class VideoRequestView(PermissionRequiredMixin, CreateView):
 
     def get_initial(self):
         if url := self.request.GET.get('url'):
-            return {
-                'provider_object_id': utils.get_video_id_from_url(url)
-            }
+            return {'provider_object_id': utils.get_video_id_from_url(url)}
         return super().get_initial()
 
     def form_valid(self, form):
@@ -1040,10 +1084,13 @@ class VideoDeleteView(PermissionRequiredMixin, DeleteView):
     def get_context_data(self, **kwargs):
         kwargs = super().get_context_data(**kwargs)
         if channel := self.object.channel:
-            latest_videos = channel.videos.all()[:channel.scanner_limit]
+            latest_videos = channel.videos.all()[: channel.scanner_limit]
             if self.object in latest_videos and channel.index_videos and channel.download_videos:
-                messages.error(self.request, "Warning: This video is still within the scan limit range and it will "
-                                             "re-download on the next scan depending on settings.")
+                messages.error(
+                    self.request,
+                    "Warning: This video is still within the scan limit range and it will "
+                    "re-download on the next scan depending on settings.",
+                )
         return kwargs
 
     def form_valid(self, form):
@@ -1090,7 +1137,7 @@ class VideoDetailView(PermissionRequiredMixin, DetailView):
             qs = UserPlaybackHistory.objects.filter(user=self.request.user, video=self.object, inserted__gt=time)
             if qs.exists():
                 if self.object.duration > 120:
-                    ninty_percent_complete = int(self.object.duration * .9)
+                    ninty_percent_complete = int(self.object.duration * 0.9)
                     current_seconds = qs.first().seconds
                     if current_seconds < ninty_percent_complete:
                         kwargs['user_playback_currenttime_seconds'] = current_seconds
@@ -1215,8 +1262,7 @@ def add_video_comment(request, pk):
     note = None
     if request.method == 'POST' and request.POST.get('comment'):
         note = video.notes.create(
-            note=request.POST['comment'],
-            user=request.user if request.user.is_authenticated else None
+            note=request.POST['comment'], user=request.user if request.user.is_authenticated else None
         )
     if request.is_ajax():
         if note:
@@ -1268,10 +1314,7 @@ def video_save_user_current_view_time(request, pk):
             #   having told the player to load to the currentTime of 500
             if diff_seconds < -120 and diff_time > timezone.timedelta(minutes=10):
                 UserPlaybackHistory.objects.create(
-                    video_id=pk,
-                    user_id=request.user.id,
-                    seconds=seconds,
-                    playlist_id=request.POST.get('playlist')
+                    video_id=pk, user_id=request.user.id, seconds=seconds, playlist_id=request.POST.get('playlist')
                 )
             else:
                 obj.seconds = seconds
@@ -1280,10 +1323,7 @@ def video_save_user_current_view_time(request, pk):
 
         except UserPlaybackHistory.DoesNotExist:
             UserPlaybackHistory.objects.create(
-                video_id=pk,
-                user_id=request.user.id,
-                seconds=seconds,
-                playlist_id=request.POST.get('playlist')
+                video_id=pk, user_id=request.user.id, seconds=seconds, playlist_id=request.POST.get('playlist')
             )
 
     return HttpResponse('ok')
@@ -1336,9 +1376,7 @@ class AddVideoToPlaylistView(PermissionRequiredMixin, CreateView):
 
         if not playlist.videos.filter(pk=video.pk).exists():
             playlist.playlistitem_set.create(
-                video=video,
-                manually_added=True,
-                provider_object_id=video.provider_object_id
+                video=video, manually_added=True, provider_object_id=video.provider_object_id
             )
             messages.success(self.request, 'Video added to playlist')
             return redirect('vidar:video-playlists', pk=video.pk)
@@ -1383,12 +1421,15 @@ class RemoveVideoFromPlaylistView(PermissionRequiredMixin, DetailView):
         video = self.get_object()
         playlist = get_object_or_404(Playlist, pk=kwargs['playlist_pk'])
         if playlist.playlistitem_set.filter(
-                Q(missing_from_playlist_on_provider=True) | Q(manually_added=True), video=video
+            Q(missing_from_playlist_on_provider=True) | Q(manually_added=True), video=video
         ).exists():
             playlist.videos.remove(video)
         else:
-            messages.error(request, 'Video on playlist and not missing from youtube live playlist, '
-                                    'removing from playlist would cause it to redownload automatically')
+            messages.error(
+                request,
+                'Video on playlist and not missing from youtube live playlist, '
+                'removing from playlist would cause it to redownload automatically',
+            )
         return redirect(playlist)
 
 
@@ -1425,12 +1466,14 @@ class VideoRelatedVideosView(PermissionRequiredMixin, RequestBasedCustomQueryset
 
         qs = qs.order_by('-related')
 
-        kwargs.update(paginator_helper(
-            context_key='object_list',
-            queryset=qs,
-            params=self.request.GET,
-            limit=10,
-        ))
+        kwargs.update(
+            paginator_helper(
+                context_key='object_list',
+                queryset=qs,
+                params=self.request.GET,
+                limit=10,
+            )
+        )
         return kwargs
 
 
@@ -1485,8 +1528,7 @@ class VideoDurationSkipsListView(PermissionRequiredMixin, DetailView):
 
         elif 'start' in self.request.POST:
             form = forms.DurationSkipForm(
-                self.request.POST,
-                existing_skips=self.object.duration_skips.all().values_list('start', 'end')
+                self.request.POST, existing_skips=self.object.duration_skips.all().values_list('start', 'end')
             )
             if form.is_valid():
                 form.instance.video = self.object
@@ -1607,7 +1649,8 @@ class VideoManageView(PermissionRequiredMixin, DetailView):
         if self.object.file:
             ext = self.object.file.name.rsplit('.', 1)[-1]
             new_full_filepath, new_storage_path = video_services.generate_filepaths_for_storage(
-                video=self.object, ext=ext,
+                video=self.object,
+                ext=ext,
             )
             kwargs['expected_video_filepath'] = new_storage_path
             kwargs['current_video_filepath_already_exists'] = storages.vidar_storage.exists(self.object.file.name)
@@ -1629,7 +1672,8 @@ class VideoManageView(PermissionRequiredMixin, DetailView):
             if self.object.file:
                 ext = self.object.file.name.rsplit('.', 1)[-1]
                 new_full_filepath, new_storage_path = video_services.generate_filepaths_for_storage(
-                    video=self.object, ext=ext,
+                    video=self.object,
+                    ext=ext,
                 )
                 self.object.file.name = str(new_storage_path)
                 self.object.save()
@@ -1682,13 +1726,15 @@ class VideoManageView(PermissionRequiredMixin, DetailView):
 
 class PlaylistListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin, ListView):
     model = Playlist
-    queryset = Playlist.objects.all().annotate(
-        daily_crontab_first=Case(
-            When(title='Watch Later', then=2),
-            When(crontab__endswith=' * * *', then=1),
-            default=0
+    queryset = (
+        Playlist.objects.all()
+        .annotate(
+            daily_crontab_first=Case(
+                When(title='Watch Later', then=2), When(crontab__endswith=' * * *', then=1), default=0
+            )
         )
-    ).order_by('-daily_crontab_first', 'channel', 'title')
+        .order_by('-daily_crontab_first', 'channel', 'title')
+    )
     permission_required = ['vidar.view_playlist']
 
     RequestBaseFilteringDefaultFields = ['title', 'description', 'channel__name']
@@ -1729,15 +1775,18 @@ class PlaylistListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMix
 
         kwargs['playlists_with_crontab'] = Playlist.objects.exclude(crontab='')
         kwargs['playlists_with_daily_crontab'] = Playlist.objects.filter(crontab__endswith='* * *')
-        kwargs['playlists_with_monthly_crontab'] = Playlist.objects.filter(crontab__endswith='* *').\
-            exclude(crontab__endswith='* * *')
+        kwargs['playlists_with_monthly_crontab'] = Playlist.objects.filter(crontab__endswith='* *').exclude(
+            crontab__endswith='* * *'
+        )
 
-        kwargs.update(paginator_helper(
-            context_key='object_list',
-            queryset=self.object_list,
-            params=self.request.GET,
-            limit=limit,
-        ))
+        kwargs.update(
+            paginator_helper(
+                context_key='object_list',
+                queryset=self.object_list,
+                params=self.request.GET,
+                limit=limit,
+            )
+        )
         return kwargs
 
 
@@ -1758,8 +1807,7 @@ class PlaylistDetailView(PermissionRequiredMixin, DetailView):
             for video in self.object.videos.all():
                 download_all_comments = 'download_all_comments' in request.POST
                 tasks.download_provider_video_comments.apply_async(
-                    args=[video.pk, download_all_comments],
-                    countdown=countdown
+                    args=[video.pk, download_all_comments], countdown=countdown
                 )
                 countdown += 67
         return redirect(self.object)
@@ -1882,8 +1930,11 @@ class PlaylistDeleteView(PermissionRequiredMixin, DeleteView):
             deleted_videos = playlist_services.delete_playlist_videos(playlist=self.object)
 
             if deleted_videos:
-                messages.success(self.request, f'{deleted_videos}/{total_videos} videos deleted from the system. '
-                                               f'Remaining videos were protected.')
+                messages.success(
+                    self.request,
+                    f'{deleted_videos}/{total_videos} videos deleted from the system. '
+                    f'Remaining videos were protected.',
+                )
 
         return super().form_valid(form=form)
 
@@ -1951,12 +2002,14 @@ class VideoHistoryListView(PermissionRequiredMixin, ListView):
 
     def get_context_data(self, *args, **kwargs):
         kwargs = super().get_context_data()
-        kwargs.update(paginator_helper(
-            context_key='object_list',
-            queryset=self.get_queryset(),
-            params=self.request.GET,
-            limit=self.paginate_by,
-        ))
+        kwargs.update(
+            paginator_helper(
+                context_key='object_list',
+                queryset=self.get_queryset(),
+                params=self.request.GET,
+                limit=self.paginate_by,
+            )
+        )
         return kwargs
 
 
@@ -1984,12 +2037,14 @@ class HighlightListView(PermissionRequiredMixin, ListView):
 
     def get_context_data(self, *args, **kwargs):
         kwargs = super().get_context_data(*args, **kwargs)
-        kwargs.update(paginator_helper(
-            context_key='object_list',
-            queryset=self.get_queryset(),
-            params=self.request.GET,
-            limit=self.paginate_by,
-        ))
+        kwargs.update(
+            paginator_helper(
+                context_key='object_list',
+                queryset=self.get_queryset(),
+                params=self.request.GET,
+                limit=self.paginate_by,
+            )
+        )
         return kwargs
 
 
@@ -2045,8 +2100,7 @@ def download_queue(request):
     for channel in Channel.objects.filter(full_archive=True):
 
         full_archive_videos_to_process = channel.videos.filter(
-            file='',
-            privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible
+            file='', privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible
         )
 
         if channel.full_archive_cutoff:
@@ -2066,12 +2120,9 @@ def download_queue(request):
     maximum_attempts_erroring_downloads = app_settings.VIDEO_DOWNLOAD_ERROR_ATTEMPTS
     minutes_to_wait_between_error_attempts = app_settings.VIDEO_DOWNLOAD_ERROR_WAIT_PERIOD
 
-    videos_with_download_errors = Video.objects\
-        .annotate(total_download_errors=Count('download_errors'))\
-        .filter(
-            total_download_errors__lt=maximum_attempts_erroring_downloads,
-            total_download_errors__gte=1
-        )
+    videos_with_download_errors = Video.objects.annotate(total_download_errors=Count('download_errors')).filter(
+        total_download_errors__lt=maximum_attempts_erroring_downloads, total_download_errors__gte=1
+    )
 
     for video in videos_with_download_errors:
 
@@ -2093,12 +2144,8 @@ def download_queue(request):
         tdl.append(video)
 
     for video in Video.objects.filter(
-        requested_max_quality=True,
-        at_max_quality=False,
-        system_notes__max_quality_upgraded__isnull=True
-    ).exclude(
-        file=''
-    ):
+        requested_max_quality=True, at_max_quality=False, system_notes__max_quality_upgraded__isnull=True
+    ).exclude(file=''):
         video.download_source = "Quality upgraded on provider after the fact."
         tdl.append(video)
 
@@ -2107,24 +2154,34 @@ def download_queue(request):
         video.download_source = f'Video was live, retry after {hours=}'
         tdl.append(video)
 
-    return render(request, 'vidar/queue.html', {
-        'videos': tdl,
-    })
+    return render(
+        request,
+        'vidar/queue.html',
+        {
+            'videos': tdl,
+        },
+    )
 
 
 @user_passes_test(lambda u: u.has_perms(['vidar.view_update_details_queue']))
 def update_video_details_queue(request):
 
-    videos_that_are_checkable = Video.objects.archived().filter(
-        # privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible
-        Q(channel__status=channel_helpers.ChannelStatuses.ACTIVE, channel__check_videos_privacy_status=True) |
-        Q(channel__isnull=True),
-    ).annotate(
-        last_checked_null_first=Case(When(last_privacy_status_check__isnull=True, then=1), default=0),
-        zero_quality_first=Case(When(quality=0, then=1), default=0),
-    ).filter(
-        privacy_status_checks__lt=app_settings.PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO,
-    ).order_by('-zero_quality_first', '-last_checked_null_first', 'last_privacy_status_check', 'upload_date')
+    videos_that_are_checkable = (
+        Video.objects.archived()
+        .filter(
+            # privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible
+            Q(channel__status=channel_helpers.ChannelStatuses.ACTIVE, channel__check_videos_privacy_status=True)
+            | Q(channel__isnull=True),
+        )
+        .annotate(
+            last_checked_null_first=Case(When(last_privacy_status_check__isnull=True, then=1), default=0),
+            zero_quality_first=Case(When(quality=0, then=1), default=0),
+        )
+        .filter(
+            privacy_status_checks__lt=app_settings.PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO,
+        )
+        .order_by('-zero_quality_first', '-last_checked_null_first', 'last_privacy_status_check', 'upload_date')
+    )
 
     checks_video_age_days = app_settings.PRIVACY_STATUS_CHECK_MIN_AGE
     thirty_days_ago = timezone.localtime() - timezone.timedelta(days=checks_video_age_days)
@@ -2160,9 +2217,13 @@ def update_channels_bulk(request):
 
             return redirect('vidar:channel-bulk-update')
 
-    return render(request, 'vidar/channel_form_bulk.html', {
-        'formset': formset,
-    })
+    return render(
+        request,
+        'vidar/channel_form_bulk.html',
+        {
+            'formset': formset,
+        },
+    )
 
 
 class ScheduleView(PermissionRequiredMixin, TemplateView):
@@ -2262,8 +2323,9 @@ class ScheduleCalendarView(PermissionRequiredMixin, TemplateView):
             if not channel.scanner_crontab:
                 continue
 
-            matched_datetimes = crontab_services.calculate_schedule(channel.scanner_crontab, now=start,
-                                                                    check_month=True)
+            matched_datetimes = crontab_services.calculate_schedule(
+                channel.scanner_crontab, now=start, check_month=True
+            )
 
             for dt in matched_datetimes:
                 datetimes_to_objects[dt].append(channel)
@@ -2318,12 +2380,14 @@ class ScheduleHistoryView(PermissionRequiredMixin, ListView):
             if next_date <= timezone.localdate():
                 kwargs['next_date'] = next_date
 
-        kwargs.update(paginator_helper(
-            context_key='object_list',
-            queryset=self.get_queryset(),
-            params=self.request.GET,
-            limit=self.paginate_by,
-        ))
+        kwargs.update(
+            paginator_helper(
+                context_key='object_list',
+                queryset=self.get_queryset(),
+                params=self.request.GET,
+                limit=self.paginate_by,
+            )
+        )
         return kwargs
 
 
@@ -2335,11 +2399,13 @@ class VideoBlockedListView(PermissionRequiredMixin, RequestBasedQuerysetFilterin
     def get_context_data(self, *args, **kwargs):
         kwargs = super().get_context_data(*args, **kwargs)
 
-        kwargs.update(paginator_helper(
-            context_key='object_list',
-            queryset=self.get_queryset(),
-            params=self.request.GET,
-        ))
+        kwargs.update(
+            paginator_helper(
+                context_key='object_list',
+                queryset=self.get_queryset(),
+                params=self.request.GET,
+            )
+        )
         return kwargs
 
 

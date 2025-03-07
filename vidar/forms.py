@@ -20,8 +20,15 @@ class VideoUpdateForm(forms.ModelForm):
 class VideoDownloaderForm(forms.ModelForm):
     class Meta:
         model = Video
-        fields = ["provider_object_id", "convert_to_audio", "quality",
-                  "download_comments_on_index", "download_all_comments", 'mark_for_deletion', 'delete_after_watching']
+        fields = [
+            "provider_object_id",
+            "convert_to_audio",
+            "quality",
+            "download_comments_on_index",
+            "download_all_comments",
+            'mark_for_deletion',
+            'delete_after_watching',
+        ]
         labels = {"provider_object_id": "Link To Video"}
         help_texts = {
             'download_comments_on_index': "Obtains latest 100 comments",
@@ -74,10 +81,23 @@ class VideoManualEditor(forms.ModelForm):
 class PlaylistAdderForm(forms.ModelForm):
     class Meta:
         model = Playlist
-        fields = ["provider_object_id", "convert_to_audio", "sync_deletions", "crontab", "channel", "title_skips",
-                  "disable_when_string_found_in_video_title", "quality", 'playback_speed', "playback_volume",
-                  "videos_playback_ordering", "videos_display_ordering", "hidden", "restrict_to_assigned_channel",
-                  "download_comments_on_index"]
+        fields = [
+            "provider_object_id",
+            "convert_to_audio",
+            "sync_deletions",
+            "crontab",
+            "channel",
+            "title_skips",
+            "disable_when_string_found_in_video_title",
+            "quality",
+            'playback_speed',
+            "playback_volume",
+            "videos_playback_ordering",
+            "videos_display_ordering",
+            "hidden",
+            "restrict_to_assigned_channel",
+            "download_comments_on_index",
+        ]
         labels = {"provider_object_id": "Link To Playlist"}
         widgets = {
             'title_skips': forms.Textarea(attrs={'rows': 2}),
@@ -85,12 +105,12 @@ class PlaylistAdderForm(forms.ModelForm):
         }
         help_texts = {
             'crontab': 'minute, hour, day of month, month, day of week. '
-                       'assign <a href="javascript:;" onclick="assign_crontab(\'hourly\')">hourly</a> '
-                       'or <a href="javascript:;" onclick="assign_crontab(\'daily\')">daily</a> '
-                       'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
-                       'or <a href="javascript:;" onclick="assign_crontab(\'monthly\')">monthly</a> '
-                       'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\')">bi-yearly</a> '
-                       'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> ',
+            'assign <a href="javascript:;" onclick="assign_crontab(\'hourly\')">hourly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'daily\')">daily</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'monthly\')">monthly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\')">bi-yearly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> ',
         }
 
     def __init__(self, *args, **kwargs):
@@ -115,22 +135,36 @@ class PlaylistAdderForm(forms.ModelForm):
 class PlaylistEditForm(forms.ModelForm):
     class Meta:
         model = Playlist
-        fields = ["convert_to_audio", "sync_deletions", "crontab", "channel", "title_skips",
-                  "disable_when_string_found_in_video_title", "quality", 'playback_speed', "playback_volume",
-                  "videos_playback_ordering", "videos_display_ordering", "hidden", "restrict_to_assigned_channel",
-                  "download_comments_on_index", "provider_object_id", "provider_object_id_old"]
+        fields = [
+            "convert_to_audio",
+            "sync_deletions",
+            "crontab",
+            "channel",
+            "title_skips",
+            "disable_when_string_found_in_video_title",
+            "quality",
+            'playback_speed',
+            "playback_volume",
+            "videos_playback_ordering",
+            "videos_display_ordering",
+            "hidden",
+            "restrict_to_assigned_channel",
+            "download_comments_on_index",
+            "provider_object_id",
+            "provider_object_id_old",
+        ]
         widgets = {
             'title_skips': forms.Textarea(attrs={'rows': 2}),
             'disable_when_string_found_in_video_title': forms.Textarea(attrs={'rows': 2}),
         }
         help_texts = {
             'crontab': 'minute, hour, day of month, month, day of week. '
-                       'assign <a href="javascript:;" onclick="assign_crontab(\'hourly\')">hourly</a> '
-                       'or <a href="javascript:;" onclick="assign_crontab(\'daily\')">daily</a> '
-                       'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
-                       'or <a href="javascript:;" onclick="assign_crontab(\'monthly\')">monthly</a> '
-                       'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\')">bi-yearly</a> '
-                       'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> ',
+            'assign <a href="javascript:;" onclick="assign_crontab(\'hourly\')">hourly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'daily\')">daily</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'monthly\')">monthly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\')">bi-yearly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> ',
         }
 
     def __init__(self, *args, **kwargs):
@@ -144,11 +178,20 @@ class PlaylistManualAddForm(forms.ModelForm):
 
     class Meta:
         model = Playlist
-        fields = ['title', 'description', 'convert_to_audio', 'channel', 'quality',
-                  'videos_display_ordering', 'videos_playback_ordering',
-                  "video_indexing_add_by_title", "video_indexing_add_by_title_limit_to_channels",
-                  "download_comments_on_index", "restrict_to_assigned_channel",
-                  'remove_video_from_playlist_on_watched']
+        fields = [
+            'title',
+            'description',
+            'convert_to_audio',
+            'channel',
+            'quality',
+            'videos_display_ordering',
+            'videos_playback_ordering',
+            "video_indexing_add_by_title",
+            "video_indexing_add_by_title_limit_to_channels",
+            "download_comments_on_index",
+            "restrict_to_assigned_channel",
+            'remove_video_from_playlist_on_watched',
+        ]
         widgets = {
             'description': forms.Textarea(attrs={'rows': 2}),
             'video_indexing_add_by_title': forms.Textarea(attrs={'rows': 3}),
@@ -169,11 +212,22 @@ class PlaylistManualEditForm(PlaylistManualAddForm):
 
     class Meta:
         model = Playlist
-        fields = ['title', 'description', 'convert_to_audio', 'channel', 'quality',
-                  'videos_display_ordering', 'videos_playback_ordering',
-                  "video_indexing_add_by_title", "video_indexing_add_by_title_limit_to_channels",
-                  "download_comments_on_index", "restrict_to_assigned_channel", "provider_object_id",
-                  "provider_object_id_old", 'remove_video_from_playlist_on_watched']
+        fields = [
+            'title',
+            'description',
+            'convert_to_audio',
+            'channel',
+            'quality',
+            'videos_display_ordering',
+            'videos_playback_ordering',
+            "video_indexing_add_by_title",
+            "video_indexing_add_by_title_limit_to_channels",
+            "download_comments_on_index",
+            "restrict_to_assigned_channel",
+            "provider_object_id",
+            "provider_object_id_old",
+            'remove_video_from_playlist_on_watched',
+        ]
         widgets = {
             'description': forms.Textarea(attrs={'rows': 2}),
             'video_indexing_add_by_title': forms.Textarea(attrs={'rows': 3}),
@@ -264,15 +318,23 @@ class ChannelGeneralCreateOptionsForm(forms.ModelForm):
     class Meta:
         model = Channel
         fields = [
-            'provider_object_id', "display_name", 'sort_name', "quality", "allow_library_quality_upgrade",
-            "full_archive", "full_archive_after", "full_archive_cutoff", "slow_full_archive",
-            "full_index_after", "convert_videos_to_mp3",
+            'provider_object_id',
+            "display_name",
+            'sort_name',
+            "quality",
+            "allow_library_quality_upgrade",
+            "full_archive",
+            "full_archive_after",
+            "full_archive_cutoff",
+            "slow_full_archive",
+            "full_index_after",
+            "convert_videos_to_mp3",
         ]
 
         help_texts = {
             'provider_object_id': "Supply one url (with YouTube ID) for the channel you wish to subscribe to. "
-                                  "URL should look like https://www.youtube.com/channel/UCOix6FvdT2i7TLMbgtcyMKQ<br />"
-                                  "OR you can supply a video url and the channel will be obtained from there.",
+            "URL should look like https://www.youtube.com/channel/UCOix6FvdT2i7TLMbgtcyMKQ<br />"
+            "OR you can supply a video url and the channel will be obtained from there.",
         }
         labels = {
             'provider_object_id': "Channel ID (funny id, not human friendly).",
@@ -323,12 +385,12 @@ class ChannelSubGeneralOptionsForm(forms.ModelForm):
         ]
         help_texts = {
             'scanner_crontab': 'minute, hour, day of month, month, day of week. '
-                               'assign <a href="javascript:;" onclick="assign_crontab(\'hourly\')">hourly</a> '
-                               'or <a href="javascript:;" onclick="assign_crontab(\'daily\')">daily</a> '
-                               'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
-                               'or <a href="javascript:;" onclick="assign_crontab(\'monthly\')">monthly</a> '
-                               'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\')">bi-yearly</a> '
-                               'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> ',
+            'assign <a href="javascript:;" onclick="assign_crontab(\'hourly\')">hourly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'daily\')">daily</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'monthly\')">monthly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\')">bi-yearly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> ',
         }
         widgets = {
             'title_forces': forms.Textarea(attrs={'rows': 2}),
@@ -380,9 +442,15 @@ class ChannelVideosOptionsForm(forms.ModelForm):
 class ChannelShortsOptionsForm(forms.ModelForm):
     class Meta:
         model = Channel
-        fields = ['index_shorts', 'download_shorts', 'scanner_limit_shorts',
-                  'fully_indexed_shorts', 'swap_index_shorts_after',
-                  'delete_shorts_after_days', 'delete_shorts_after_watching']
+        fields = [
+            'index_shorts',
+            'download_shorts',
+            'scanner_limit_shorts',
+            'fully_indexed_shorts',
+            'swap_index_shorts_after',
+            'delete_shorts_after_days',
+            'delete_shorts_after_watching',
+        ]
         labels = {
             'index_shorts': 'Index',
             'download_shorts': 'Download',
@@ -425,8 +493,13 @@ class ChannelMirroringPlaylistsForm(forms.ModelForm):
 
     class Meta:
         model = Channel
-        fields = ['mirror_playlists', 'mirror_playlists_hidden', 'mirror_playlists_crontab',
-                  "mirror_playlists_restrict", 'force_mirror_now']
+        fields = [
+            'mirror_playlists',
+            'mirror_playlists_hidden',
+            'mirror_playlists_crontab',
+            "mirror_playlists_restrict",
+            'force_mirror_now',
+        ]
 
     def save(self, *args, **kwargs):
         output = super().save(*args, *kwargs)
@@ -457,8 +530,9 @@ class ChannelPlaybackOptionsForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if user and hasattr(user, 'vidar_playback_speed'):
-            self.fields['playback_speed'].help_text = f"Current User Default: {user.vidar_playback_speed} " \
-                                                      "Leave blank for user default."
+            self.fields['playback_speed'].help_text = (
+                f"Current User Default: {user.vidar_playback_speed} " "Leave blank for user default."
+            )
 
 
 class ChannelAdministrativeOptionsForm(forms.ModelForm):
@@ -480,12 +554,11 @@ class ChannelAdministrativeOptionsForm(forms.ModelForm):
         help_texts = {
             "fully_indexed": "Do not change this unless you know what you are doing.",
             "directory_schema": "The very root folder all videos for this channel "
-                                "are stored within. Blank for system default.",
+            "are stored within. Blank for system default.",
             "video_directory_schema": "If videos are stored in separate directories (enabled above), "
-                                      "this controls that directory name. Blank for system default.",
+            "this controls that directory name. Blank for system default.",
             "video_filename_schema": "How video filenames are built. Do not add an "
-                                     "extension to the end. Blank for system default."
-
+            "extension to the end. Blank for system default.",
         }
 
     def __init__(self, *args, **kwargs):
@@ -496,10 +569,7 @@ class ChannelAdministrativeOptionsForm(forms.ModelForm):
 
 
 class ChannelIndexingForm(forms.ModelForm):
-    limit = forms.IntegerField(
-        required=False, initial='',
-        help_text="How many videos to index? Optional."
-    )
+    limit = forms.IntegerField(required=False, initial='', help_text="How many videos to index? Optional.")
 
     class Meta:
         model = Channel
@@ -639,22 +709,21 @@ class BulkChannelForm(forms.ModelForm):
     class Meta:
         model = Channel
         fields = ['scanner_crontab']
-        labels = {
-            'scanner_crontab': ''
-        }
+        labels = {'scanner_crontab': ''}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         cid = self.instance.pk
 
-        self.fields['scanner_crontab'].help_text = \
-            f'<a href="javascript:;" onclick="assign_crontab(\'hourly\', {cid})">hourly</a> ' \
-            f'or <a href="javascript:;" onclick="assign_crontab(\'daily\', {cid})">daily</a> ' \
-            f'or <a href="javascript:;" onclick="assign_crontab(\'weekly\', {cid})">weekly</a> ' \
-            f'or <a href="javascript:;" onclick="assign_crontab(\'monthly\', {cid})">monthly</a> ' \
-            f'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\', {cid})">bi-yearly</a> ' \
+        self.fields['scanner_crontab'].help_text = (
+            f'<a href="javascript:;" onclick="assign_crontab(\'hourly\', {cid})">hourly</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'daily\', {cid})">daily</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'weekly\', {cid})">weekly</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'monthly\', {cid})">monthly</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\', {cid})">bi-yearly</a> '
             f'or <a href="javascript:;" onclick="assign_crontab(\'yearly\', {cid})">yearly</a> '
+        )
 
         self.fields['scanner_crontab'].widget.attrs['class'] = f'form-control channel-{cid}'
 

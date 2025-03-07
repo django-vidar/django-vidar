@@ -61,8 +61,7 @@ def find_existing_videos_without_local_file():
 
 def sponsorblocks_testing():
     ydl_opts = {
-        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/"
-                  "best[height<=720][ext=mp4]",
+        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/" "best[height<=720][ext=mp4]",
         "outtmpl": "%(id)s.%(ext)s",
         'quiet': False,
         'keepvideo': True,
@@ -70,15 +69,9 @@ def sponsorblocks_testing():
         # 'quiet': True,
         # "ratelimit": 10 * 1024,
         'postprocessors': [
-            {
-                'key': 'SponsorBlock',
-                'categories': ['sponsor']
-            },
-            {
-                'key': 'ModifyChapters',
-                'remove_sponsor_segments': ['sponsor']
-            }
-        ]
+            {'key': 'SponsorBlock', 'categories': ['sponsor']},
+            {'key': 'ModifyChapters', 'remove_sponsor_segments': ['sponsor']},
+        ],
     }
 
     sandwich_bread_with_sponsorblock = "https://www.youtube.com/watch?v=i3sP2jwG9jc"
@@ -92,7 +85,15 @@ def download_progress_hooks_testing():
 
     def progress_Check(d):
         yid = d['info_dict']['id']
-        print('#### inside ####', d['status'], d.get('downloaded_bytes'), d.get('total_bytes_estimate'), d.get('eta'), d.get('speed'), yid)
+        print(
+            '#### inside ####',
+            d['status'],
+            d.get('downloaded_bytes'),
+            d.get('total_bytes_estimate'),
+            d.get('eta'),
+            d.get('speed'),
+            yid,
+        )
 
     try:
         os.unlink('jT1tdfz6HYI.mp4')
@@ -100,8 +101,7 @@ def download_progress_hooks_testing():
         pass
 
     ydl_opts = {
-        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/"
-                  "best[height<=720][ext=mp4]",
+        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/" "best[height<=720][ext=mp4]",
         "outtmpl": "%(id)s.%(ext)s",
         "ratelimit": 800 * 1024,
         'progress_hooks': [progress_Check],
@@ -324,7 +324,9 @@ def assign_oldest_thumbnail_to_channel_year_directories(position='first', commit
 
     # TODO: Make this work for remote storage systems too.
     if not file_helpers.is_field_using_local_storage(Video.thumbnail.field):
-        raise FileStorageBackendHasNoMoveError('assign_oldest_thumbnail_to_channel_year_directories called while storage backend has no move ability')
+        raise FileStorageBackendHasNoMoveError(
+            'assign_oldest_thumbnail_to_channel_year_directories called while storage backend has no move ability'
+        )
 
     log.info('Assigning oldest thumbnail to channel year directories')
 
@@ -337,7 +339,9 @@ def assign_oldest_thumbnail_to_channel_year_directories(position='first', commit
             continue
 
         for year in range(oldest_video_year, current_year + 1):
-            videos_in_this_year = channel.videos.filter(upload_date__year=year).exclude(thumbnail='').order_by('-upload_date')
+            videos_in_this_year = (
+                channel.videos.filter(upload_date__year=year).exclude(thumbnail='').order_by('-upload_date')
+            )
             if not videos_in_this_year.exists():
                 continue
 
@@ -551,9 +555,7 @@ def fix_video_thumbnails_renamed_physically_but_path_not_saved_to_database(commi
 
         ext = video.thumbnail.name.rsplit('.', 1)[-1]
         new_full_filepath, new_storage_path = video_services.generate_filepaths_for_storage(
-            video=video,
-            ext=ext,
-            upload_to=video_helpers.upload_to_thumbnail
+            video=video, ext=ext, upload_to=video_helpers.upload_to_thumbnail
         )
         exists = video.thumbnail.storage.exists(new_storage_path)
         if not exists:

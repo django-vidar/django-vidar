@@ -317,11 +317,9 @@ class ChannelScraper:
         for tab in all_tabs:
             if "tabRenderer" in tab.keys():
                 if tab["tabRenderer"]["title"] == "About":
-                    about_tab = tab["tabRenderer"]["content"][
-                        "sectionListRenderer"
-                    ]["contents"][0]["itemSectionRenderer"]["contents"][0][
-                        "channelAboutFullMetadataRenderer"
-                    ]
+                    about_tab = tab["tabRenderer"]["content"]["sectionListRenderer"]["contents"][0][
+                        "itemSectionRenderer"
+                    ]["contents"][0]["channelAboutFullMetadataRenderer"]
                     break
         try:
             channel_views_text = about_tab["viewCountText"]["simpleText"]

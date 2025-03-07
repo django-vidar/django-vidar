@@ -60,20 +60,16 @@ class ChannelObjectsManager(models.Manager):
         return self.filter(status=channel_helpers.ChannelStatuses.ACTIVE)
 
     def indexing_enabled(self):
-        return self.active().filter(
-            Q(index_videos=True) | Q(index_shorts=True) | Q(index_livestreams=True)
-        )
+        return self.active().filter(Q(index_videos=True) | Q(index_shorts=True) | Q(index_livestreams=True))
 
     def actively_scanning(self):
-        return self.indexing_enabled().exclude(
-            Q(full_archive=True) | Q(scanner_crontab='')
-        )
+        return self.indexing_enabled().exclude(Q(full_archive=True) | Q(scanner_crontab=''))
 
     def indexing_and_archiving(self):
-        return self.indexing_enabled().filter(
-            Q(download_videos=True) | Q(download_shorts=True) | Q(download_livestreams=True)
-        ).exclude(
-            Q(full_archive=True) | Q(scanner_crontab='')
+        return (
+            self.indexing_enabled()
+            .filter(Q(download_videos=True) | Q(download_shorts=True) | Q(download_livestreams=True))
+            .exclude(Q(full_archive=True) | Q(scanner_crontab=''))
         )
 
     def already_exists(self, provider_object_id):
@@ -108,22 +104,13 @@ class Channel(models.Model):
     )
 
     banner = models.ImageField(
-        null=True, blank=True,
-        upload_to=channel_helpers.upload_to_banner,
-        storage=vidar_storage,
-        max_length=500
+        null=True, blank=True, upload_to=channel_helpers.upload_to_banner, storage=vidar_storage, max_length=500
     )
     thumbnail = models.ImageField(
-        null=True, blank=True,
-        upload_to=channel_helpers.upload_to_thumbnail,
-        storage=vidar_storage,
-        max_length=500
+        null=True, blank=True, upload_to=channel_helpers.upload_to_thumbnail, storage=vidar_storage, max_length=500
     )
     tvart = models.ImageField(
-        null=True, blank=True,
-        upload_to=channel_helpers.upload_to_tvart,
-        storage=vidar_storage,
-        max_length=500
+        null=True, blank=True, upload_to=channel_helpers.upload_to_tvart, storage=vidar_storage, max_length=500
     )
 
     swap_index_videos_after = models.DateTimeField(null=True, blank=True)
@@ -132,19 +119,19 @@ class Channel(models.Model):
     scanner_limit = models.PositiveIntegerField(
         default=5,
         help_text="Limit how many videos the system scans every time for this channel, "
-                  "How many potential videos could this channel put out in a single day?"
+        "How many potential videos could this channel put out in a single day?",
     )
     duration_minimum_videos = models.PositiveIntegerField(
         default=0,
         verbose_name='Duration Minimum For Videos (In Seconds)',
         help_text='Minimum duration in seconds of a video to download. '
-                  'Anything shorter than this will be skipped. 0 = disabled.'
+        'Anything shorter than this will be skipped. 0 = disabled.',
     )
     duration_maximum_videos = models.PositiveIntegerField(
         default=0,
         verbose_name='Duration Maximum For Videos (In Seconds)',
         help_text='Maximum duration in seconds of a video to download. '
-                  'Anything longer than this will be skipped. 0 = disabled.'
+        'Anything longer than this will be skipped. 0 = disabled.',
     )
     delete_videos_after_days = models.PositiveIntegerField(default=0)
 
@@ -155,7 +142,7 @@ class Channel(models.Model):
     scanner_limit_shorts = models.PositiveIntegerField(
         default=5,
         help_text="Limit how many shorts the system scans every time for this channel, "
-                  "How many potential shorts could this channel put out in a single day?"
+        "How many potential shorts could this channel put out in a single day?",
     )
     fully_indexed_shorts = models.BooleanField(default=False)
     delete_shorts_after_days = models.PositiveIntegerField(default=0)
@@ -167,62 +154,56 @@ class Channel(models.Model):
     scanner_limit_livestreams = models.PositiveIntegerField(
         default=5,
         help_text="Limit how many livestreams the system scans every time for this channel, "
-                  "How many potential livestreams could this channel put out in a single day?"
+        "How many potential livestreams could this channel put out in a single day?",
     )
     duration_minimum_livestreams = models.PositiveIntegerField(
         default=0,
         verbose_name='Duration Minimum For Livestreams (In Seconds)',
         help_text='Minimum duration in seconds of a livestream to download. '
-                  'Anything shorter than this will be skipped. 0 = disabled.'
+        'Anything shorter than this will be skipped. 0 = disabled.',
     )
     duration_maximum_livestreams = models.PositiveIntegerField(
         default=0,
         verbose_name='Duration Maximum For Livestreams (In Seconds)',
         help_text='Maximum duration in seconds of a livestream to download. '
-                  'Anything longer than this will be skipped. 0 = disabled.'
+        'Anything longer than this will be skipped. 0 = disabled.',
     )
     fully_indexed_livestreams = models.BooleanField(default=False)
     delete_livestreams_after_days = models.PositiveIntegerField(default=0)
 
-    download_comments_with_video = models.BooleanField(
-        default=False,
-        help_text="Should video comments be downloaded?"
-    )
+    download_comments_with_video = models.BooleanField(default=False, help_text="Should video comments be downloaded?")
     download_comments_during_scan = models.BooleanField(
-        default=False,
-        help_text='Should video comments be downloaded during indexing of videos?'
+        default=False, help_text='Should video comments be downloaded during indexing of videos?'
     )
 
     scanner_crontab = models.CharField(
-        max_length=50, blank=True,
-        help_text="minute, hour, day of month, month, day of week"
+        max_length=50, blank=True, help_text="minute, hour, day of month, month, day of week"
     )
     scan_after_datetime = models.DateTimeField(
         null=True,
         blank=True,
         help_text="A datetime representing the next time you wish to scan the channel, "
-                  "outside of the crontab schedule. Format: YYYY-MM-DD HH:MM"
+        "outside of the crontab schedule. Format: YYYY-MM-DD HH:MM",
     )
 
     slow_full_archive = models.BooleanField(
         default=False,
         help_text="Enabling this setting will cause the system to download all possible videos for this channel "
-                  "regardless of other settings at a slower rate. To be used instead of Full Archive option."
+        "regardless of other settings at a slower rate. To be used instead of Full Archive option.",
     )
 
     full_archive = models.BooleanField(
         default=False,
         help_text="Enabling this setting will cause the system to download all possible videos for this channel "
-                  "regardless of other settings."
+        "regardless of other settings.",
     )
     full_archive_after = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text='Instead of full archiving right now, enable full archive after this date.'
+        null=True, blank=True, help_text='Instead of full archiving right now, enable full archive after this date.'
     )
     full_archive_cutoff = models.DateField(
-        null=True, blank=True,
-        help_text="If full archive is enabled, only videos uploaded after this date will be downloaded."
+        null=True,
+        blank=True,
+        help_text="If full archive is enabled, only videos uploaded after this date will be downloaded.",
     )
 
     fully_indexed = models.BooleanField(default=False)
@@ -230,7 +211,7 @@ class Channel(models.Model):
     full_index_after = models.DateTimeField(
         null=True,
         blank=True,
-        help_text='Instead of fully indexing right now, trigger a full indexing scan after this date.'
+        help_text='Instead of fully indexing right now, trigger a full indexing scan after this date.',
     )
 
     convert_videos_to_mp3 = models.BooleanField(default=False)
@@ -238,20 +219,20 @@ class Channel(models.Model):
     title_skips = models.TextField(
         blank=True,
         verbose_name="Skip DL by Title contains",
-        help_text="If any of these words appear in the title, do not download the video. ONE PER LINE. i.e. #shorts"
+        help_text="If any of these words appear in the title, do not download the video. ONE PER LINE. i.e. #shorts",
     )
     title_forces = models.TextField(
         blank=True,
         verbose_name="Force DL by Title contains",
         help_text="If any of these words appear in the title, force download the video regardless of settings. "
-                  "ONE PER LINE. Overrides all other restriction settings."
+        "ONE PER LINE. Overrides all other restriction settings.",
     )
 
     quality = models.PositiveIntegerField(null=True, blank=True, choices=PossibleQualities)
 
     allow_library_quality_upgrade = models.BooleanField(
         default=False,
-        help_text="Changing the channel quality will cause all videos to redownload. Do you want this to happen?"
+        help_text="Changing the channel quality will cause all videos to redownload. Do you want this to happen?",
     )
 
     playback_speed = models.CharField(max_length=10, null=True, blank=True, choices=model_helpers.PlaybackSpeed.choices)
@@ -265,7 +246,7 @@ class Channel(models.Model):
     store_videos_in_separate_directories = models.BooleanField(
         default=True,
         help_text="Should videos be stored in separate directories for each video? Each directory will then "
-                  "contain the video file, info.json, and it's thumbnail."
+        "contain the video file, info.json, and it's thumbnail.",
     )
     video_filename_schema = models.CharField(max_length=500, blank=True)
     video_directory_schema = models.CharField(max_length=500, blank=True)
@@ -280,28 +261,34 @@ class Channel(models.Model):
     send_download_notification = models.BooleanField(default=True)
 
     skip_intro_duration = models.PositiveIntegerField(
-        default=0,
-        help_text="How many seconds of intro should be skipped?"
+        default=0, help_text="How many seconds of intro should be skipped?"
     )
     skip_outro_duration = models.PositiveIntegerField(
-        default=0,
-        help_text="How many seconds of outro should be skipped?"
+        default=0, help_text="How many seconds of outro should be skipped?"
     )
 
-    skip_next_downloads = models.PositiveIntegerField(
-        default=0,
-        help_text="Skip next X number of downloads"
-    )
+    skip_next_downloads = models.PositiveIntegerField(default=0, help_text="Skip next X number of downloads")
     force_next_downloads = models.PositiveIntegerField(
         default=0,
         help_text="Force next X number of downloads",
     )
     watched_percentage = models.PositiveIntegerField(
         default=95,
-        choices=[(50, '50%'), (55, '55%'), (60, '60%'), (65, '65%'), (70, '70%'),
-                 (75, '75%'), (80, '80%'), (85, '85%'), (90, '90%'), (95, '95%'), (100, '100%')],
+        choices=[
+            (50, '50%'),
+            (55, '55%'),
+            (60, '60%'),
+            (65, '65%'),
+            (70, '70%'),
+            (75, '75%'),
+            (80, '80%'),
+            (85, '85%'),
+            (90, '90%'),
+            (95, '95%'),
+            (100, '100%'),
+        ],
         help_text='At what percentage of watching a video on this channel should the video be marked as watched.',
-        validators=[channel_helpers.watched_percentage_minimum, channel_helpers.watched_percentage_maximum]
+        validators=[channel_helpers.watched_percentage_minimum, channel_helpers.watched_percentage_maximum],
     )
 
     mirror_playlists = models.BooleanField(
@@ -319,8 +306,7 @@ class Channel(models.Model):
         help_text="When adding a new playlist as a mirror, apply a crontab that matches this type.",
     )
     mirror_playlists_restrict = models.BooleanField(
-        default=False,
-        help_text="Sets the playlists \"Restrict to assigned channel\" field value."
+        default=False, help_text="Sets the playlists \"Restrict to assigned channel\" field value."
     )
 
     delete_videos_after_watching = models.BooleanField(
@@ -339,9 +325,10 @@ class Channel(models.Model):
     )
 
     block_rescan_window_in_hours = models.PositiveIntegerField(
-        null=True, blank=True,
+        null=True,
+        blank=True,
         help_text="If you manually scan a channel and the crontab tries to run within "
-                  "this many hours of the manual scan, don't rescan."
+        "this many hours of the manual scan, don't rescan.",
     )
 
     check_videos_privacy_status = models.BooleanField(default=True)
@@ -480,18 +467,23 @@ class Channel(models.Model):
                     changed_fields.append('fully_indexed_livestreams')
 
                 # Disabling full archive cutoff clears the fully_indexed flag as videos could have been missed.
-                if orig.full_archive_cutoff and not self.full_archive_after \
-                        and (self.fully_indexed or self.fully_indexed_shorts or self.fully_indexed_livestreams):
+                if (
+                    orig.full_archive_cutoff
+                    and not self.full_archive_after
+                    and (self.fully_indexed or self.fully_indexed_shorts or self.fully_indexed_livestreams)
+                ):
                     self.fully_indexed = False
                     self.fully_indexed_shorts = False
                     self.fully_indexed_livestreams = False
                     changed_fields.extend(['fully_indexed', 'fully_indexed_shorts', 'fully_indexed_livestreams'])
 
                 # Changing the cutoff date will clear the fully_indexed flag
-                if orig.full_archive_cutoff and \
-                        self.full_archive_after and \
-                        orig.full_archive_cutoff != self.full_archive_cutoff and \
-                        (self.fully_indexed or self.fully_indexed_shorts or self.fully_indexed_livestreams):
+                if (
+                    orig.full_archive_cutoff
+                    and self.full_archive_after
+                    and orig.full_archive_cutoff != self.full_archive_cutoff
+                    and (self.fully_indexed or self.fully_indexed_shorts or self.fully_indexed_livestreams)
+                ):
                     self.fully_indexed = False
                     self.fully_indexed_shorts = False
                     self.fully_indexed_livestreams = False
@@ -521,7 +513,7 @@ class Channel(models.Model):
         for video in qs:
 
             if prev:
-                diff = (prev.upload_date - video.upload_date)
+                diff = prev.upload_date - video.upload_date
                 days_between.append(diff.days)
 
             prev = video
@@ -533,7 +525,7 @@ class Channel(models.Model):
     def days_since_last_upload(self):
 
         for video in self.videos.exclude(upload_date__isnull=True):
-            diff = (timezone.now().date() - video.upload_date)
+            diff = timezone.now().date() - video.upload_date
             return diff.days
 
     def calculated_file_size(self):
@@ -552,7 +544,7 @@ class Channel(models.Model):
                 qualities[i] = (
                     base_qs.count(),
                     videos_at_this_quality_counter,
-                    base_qs.filter(at_max_quality=True).count()
+                    base_qs.filter(at_max_quality=True).count(),
                 )
 
         return qualities
@@ -618,22 +610,19 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     inserted = models.DateTimeField(null=True, blank=True)
     updated = models.DateTimeField(null=True, blank=True)
 
-    file = models.FileField(upload_to=video_helpers.upload_to_file, blank=True,
-                            storage=vidar_storage, max_length=500)
+    file = models.FileField(upload_to=video_helpers.upload_to_file, blank=True, storage=vidar_storage, max_length=500)
     file_size = models.PositiveBigIntegerField(null=True, blank=True)
     file_not_found = models.BooleanField(default=False)
 
-    info_json = models.FileField(upload_to=video_helpers.upload_to_infojson, blank=True,
-                                 storage=vidar_storage, max_length=500)
+    info_json = models.FileField(
+        upload_to=video_helpers.upload_to_infojson, blank=True, storage=vidar_storage, max_length=500
+    )
 
     description = models.TextField(blank=True)
     description_locked = models.BooleanField(default=False)
 
     thumbnail = models.ImageField(
-        upload_to=video_helpers.upload_to_thumbnail,
-        storage=vidar_storage,
-        null=True, blank=True,
-        max_length=500
+        upload_to=video_helpers.upload_to_thumbnail, storage=vidar_storage, null=True, blank=True, max_length=500
     )
 
     view_count = models.PositiveIntegerField(null=True, blank=True)
@@ -660,8 +649,9 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
     duration = models.IntegerField(default=0, blank=True)
 
-    quality = models.PositiveIntegerField(help_text='To be set by Channel quality setting.',
-                                          choices=PossibleQualities, null=True, blank=True)
+    quality = models.PositiveIntegerField(
+        help_text='To be set by Channel quality setting.', choices=PossibleQualities, null=True, blank=True
+    )
     at_max_quality = models.BooleanField(default=False)
 
     starred = models.DateTimeField(null=True, blank=True)
@@ -669,7 +659,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     mark_for_deletion = models.BooleanField(
         default=False,
         help_text='Used when downloading music videos and not wanting to keep the resulting files '
-                  'beyond the daily maintenance task runtime.'
+        'beyond the daily maintenance task runtime.',
     )
 
     width = models.IntegerField(default=0)
@@ -692,7 +682,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
         related_name='videos',
         through="vidar.PlaylistItem",
         through_fields=('video', 'playlist'),
-        blank=True
+        blank=True,
     )
 
     class VideoPrivacyStatuses(models.TextChoices):
@@ -741,7 +731,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     requested_max_quality = models.BooleanField(
         default=False,
         help_text='Tracks whether or not the system requested the max quality be downloaded. '
-                  'If at a later date the quality upgrades, this could catch those changes.'
+        'If at a later date the quality upgrades, this could catch those changes.',
     )
 
     playback_speed = models.CharField(max_length=10, blank=True, choices=model_helpers.PlaybackSpeed.choices)
@@ -757,9 +747,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     )
 
     download_requested_by = models.CharField(
-        max_length=255,
-        blank=True,
-        help_text="What triggered this video to download?"
+        max_length=255, blank=True, help_text="What triggered this video to download?"
     )
     filename_schema = models.CharField(max_length=500, blank=True)
     directory_schema = models.CharField(max_length=500, blank=True)
@@ -950,9 +938,12 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             pass
 
     def channel_page_number(self):
-        return math.ceil(self.channel.videos.filter(
-            upload_date__gt=self.upload_date or timezone.now(),
-        ).count() / 10)
+        return math.ceil(
+            self.channel.videos.filter(
+                upload_date__gt=self.upload_date or timezone.now(),
+            ).count()
+            / 10
+        )
 
     def save_download_kwargs(self, kwargs):
 
@@ -1047,8 +1038,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
                 if potential_match.lower() in self.title.lower():
                     playlists_added_to.add(playlist)
                     pli, pli_created = playlist.playlistitem_set.get_or_create(
-                        video=self,
-                        defaults={'manually_added': True}
+                        video=self, defaults={'manually_added': True}
                     )
                     if pli_created:
                         notification_services.video_added_to_playlist(video=self, playlist=playlist)
@@ -1096,12 +1086,14 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             self.last_privacy_status_check = timezone.now()
             self.save()
             return True
-        if 'deleted video' in exc_msg \
-                or 'copyright claim' in exc_msg \
-                or 'terminated' in exc_msg \
-                or ('closed' in exc_msg and 'account' in exc_msg) \
-                or ('removed' in exc_msg and 'harassment' in exc_msg) \
-                or ('removed' in exc_msg and 'bullying' in exc_msg):
+        if (
+            'deleted video' in exc_msg
+            or 'copyright claim' in exc_msg
+            or 'terminated' in exc_msg
+            or ('closed' in exc_msg and 'account' in exc_msg)
+            or ('removed' in exc_msg and 'harassment' in exc_msg)
+            or ('removed' in exc_msg and 'bullying' in exc_msg)
+        ):
             self.privacy_status = Video.VideoPrivacyStatuses.DELETED
             self.last_privacy_status_check = timezone.now()
             self.save()
@@ -1237,7 +1229,7 @@ class Playlist(models.Model):
         max_length=255,
         blank=True,
         help_text="System Internal ID. Used when converting playlist to custom and "
-                  "preventing user/mirroring from adding it again."
+        "preventing user/mirroring from adding it again.",
     )
     title = models.CharField(max_length=500, blank=True)
     description = models.TextField(blank=True, null=True)
@@ -1256,7 +1248,7 @@ class Playlist(models.Model):
     title_skips = models.TextField(
         blank=True,
         verbose_name="Skip DL by Title contains",
-        help_text="If any of these words appear in the title, do not download the video. ONE PER LINE. i.e. #shorts"
+        help_text="If any of these words appear in the title, do not download the video. ONE PER LINE. i.e. #shorts",
     )
 
     sync_deletions = models.BooleanField(default=False)
@@ -1264,14 +1256,14 @@ class Playlist(models.Model):
     disable_when_string_found_in_video_title = models.TextField(
         blank=True,
         help_text="Disable this playlist when this string is found in the a videos title. Case-insensitive e.g. finale."
-                  " Spaces are preserved, one per line."
+        " Spaces are preserved, one per line.",
     )
 
     quality = models.PositiveIntegerField(
         help_text='What minimum quality do you want these videos to be? '
-                  'Quality will be disabled automatically when the playlist is not '
-                  'enabled and all videos reach this quality selection. Videos that cannot '
-                  'reach this quality will be downloaded at the best available.',
+        'Quality will be disabled automatically when the playlist is not '
+        'enabled and all videos reach this quality selection. Videos that cannot '
+        'reach this quality will be downloaded at the best available.',
         choices=PossibleQualities,
         null=True,
         blank=True,
@@ -1312,18 +1304,20 @@ class Playlist(models.Model):
     video_indexing_add_by_title = models.TextField(
         blank=True,
         help_text="When indexing videos, if the video title contains the following text, "
-                  "add it to this playlist. One match per line.",
+        "add it to this playlist. One match per line.",
     )
     video_indexing_add_by_title_limit_to_channels = models.ManyToManyField(
-        Channel, blank=True, related_name='+',
+        Channel,
+        blank=True,
+        related_name='+',
         help_text="When indexing videos and attempting to match video titles, "
-                  "the video must be uploaded by these channels. Use CTRL+Click to select or de-select channels.",
+        "the video must be uploaded by these channels. Use CTRL+Click to select or de-select channels.",
     )
 
     hidden = models.BooleanField(
         default=False,
         help_text="Hide this playlist from list view. This also prevents "
-                  "the system from downloading any videos attached to it."
+        "the system from downloading any videos attached to it.",
     )
 
     download_comments_on_index = models.BooleanField(default=False)
@@ -1334,8 +1328,7 @@ class Playlist(models.Model):
     )
 
     remove_video_from_playlist_on_watched = models.BooleanField(
-        default=False,
-        help_text="Watch Later playlist allows videos to be auto-removed from list upon watching."
+        default=False, help_text="Watch Later playlist allows videos to be auto-removed from list upon watching."
     )
 
     class Meta:
@@ -1435,7 +1428,7 @@ class Playlist(models.Model):
         now = timezone.localtime()
 
         # Round to nearest 5 minutes
-        rounded_minute = 10 * round(now.minute/10)
+        rounded_minute = 10 * round(now.minute / 10)
         hour = now.hour
 
         if rounded_minute >= 60:
@@ -1475,9 +1468,10 @@ class PlaylistItem(models.Model):
     wl_playlist = models.ForeignKey(
         Playlist,
         on_delete=models.SET_NULL,
-        null=True, blank=True,
+        null=True,
+        blank=True,
         related_name='+',
-        help_text="Internal system field, do not use. Links watch later item to a specific playlist."
+        help_text="Internal system field, do not use. Links watch later item to a specific playlist.",
     )
 
     inserted = models.DateTimeField(auto_now_add=True)
@@ -1521,6 +1515,7 @@ class Comment(MPTTModel):
         }
     ]
     """
+
     video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='comments')
 
     id = models.CharField(max_length=255, primary_key=True)
@@ -1558,8 +1553,10 @@ class ScanHistory(models.Model):
         ordering = ['-inserted']
 
     def __str__(self):
-        return f"{self.channel=} {self.inserted=} {self.updated=} " \
-               f"{self.videos_downloaded=} {self.shorts_downloaded=} {self.livestreams_downloaded=}"
+        return (
+            f"{self.channel=} {self.inserted=} {self.updated=} "
+            f"{self.videos_downloaded=} {self.shorts_downloaded=} {self.livestreams_downloaded=}"
+        )
 
 
 class UserPlaybackHistory(models.Model):
@@ -1593,9 +1590,7 @@ class DurationSkip(models.Model):
     video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='duration_skips')
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='+'
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+'
     )
 
     start = models.PositiveIntegerField()
@@ -1616,9 +1611,7 @@ class Highlight(models.Model):
     video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='highlights')
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='video_highlights'
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='video_highlights'
     )
 
     point = models.PositiveIntegerField()
@@ -1646,11 +1639,7 @@ class Highlight(models.Model):
 class ExtraFile(models.Model):
     video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='extra_files')
 
-    file = models.FileField(
-        upload_to=extrafile_helpers.extrafile_file_upload_to,
-        storage=vidar_storage,
-        max_length=500
-    )
+    file = models.FileField(upload_to=extrafile_helpers.extrafile_file_upload_to, storage=vidar_storage, max_length=500)
 
     note = models.TextField(blank=True)
 

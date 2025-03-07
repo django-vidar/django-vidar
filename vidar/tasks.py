@@ -54,7 +54,7 @@ def trigger_update_channel_banners():
     bind=True,
     autoretry_for=(requests.exceptions.ConnectionError, KeyError, AttributeError),
     default_retry_delay=15,
-    queue='queue-vidar'
+    queue='queue-vidar',
 )
 def update_channel_banners(self, pk):
 
@@ -126,20 +126,21 @@ def check_missed_channel_scans_since_last_ran(start=None, end=None, delta=None, 
         delta = timezone.timedelta(minutes=5)
 
     if not start:
-        last_run = TaskResult.objects.filter(
-            task_name='vidar.tasks.trigger_crontab_scans',
-            status="SUCCESS",
-        ).order_by('-date_done').first()
+        last_run = (
+            TaskResult.objects.filter(
+                task_name='vidar.tasks.trigger_crontab_scans',
+                status="SUCCESS",
+            )
+            .order_by('-date_done')
+            .first()
+        )
 
         if not last_run:
             log.info('trigger_crontab_scans has never run before')
             return None, None
 
         if last_run:
-            last_run_date_done_as_local_tz = timezone.localtime(
-                last_run.date_done,
-                timezone.get_default_timezone()
-            )
+            last_run_date_done_as_local_tz = timezone.localtime(last_run.date_done, timezone.get_default_timezone())
             start = last_run_date_done_as_local_tz.replace(second=0, microsecond=0)
 
     time_since_last_run = end - start
@@ -181,8 +182,13 @@ def check_missed_channel_scans_since_last_ran(start=None, end=None, delta=None, 
 
 
 @shared_task(queue='queue-vidar')
-def trigger_crontab_scans(limit=None, now=None, processed_playlists: list=None,
-                          processed_channels: list=None, check_if_crontab_was_missed=True):
+def trigger_crontab_scans(
+    limit=None,
+    now=None,
+    processed_playlists: list = None,
+    processed_channels: list = None,
+    check_if_crontab_was_missed=True,
+):
     # NOTE: Update forms.CrontabCatchupForm if the task name changes
 
     if check_if_crontab_was_missed and app_settings.AUTOMATED_CRONTAB_CATCHUP:
@@ -342,8 +348,9 @@ def fully_index_channel(self, pk, limit=None):
     channel_services.recalculate_video_sort_ordering(channel=channel)
 
 
-def scan_channel_for_new_content(self, channel, url, limit=None, download_video=False,
-                                 is_video=False, is_short=False, is_livestream=False):
+def scan_channel_for_new_content(
+    self, channel, url, limit=None, download_video=False, is_video=False, is_short=False, is_livestream=False
+):
 
     dl_kwargs = {}
 
@@ -351,10 +358,7 @@ def scan_channel_for_new_content(self, channel, url, limit=None, download_video=
 
     try:
         chan = interactor_channel_videos_with_retry(
-            url=url,
-            limit=limit or channel.scanner_limit,
-            logger=msg_logger(),
-            **dl_kwargs
+            url=url, limit=limit or channel.scanner_limit, logger=msg_logger(), **dl_kwargs
         )
     except yt_dlp.DownloadError as exc:
 
@@ -592,8 +596,10 @@ def automated_archiver():
                 continue
 
             if playlist.restrict_to_assigned_channel and playlist.channel and video.channel != playlist.channel:
-                log.info(f'Playlist set to only download videos attached to the same channel. '
-                         f'Skipping. {playlist.channel=} {video.channel=} {video=}')
+                log.info(
+                    f'Playlist set to only download videos attached to the same channel. '
+                    f'Skipping. {playlist.channel=} {video.channel=} {video=}'
+                )
                 continue
 
             download_provider_video.delay(
@@ -609,17 +615,18 @@ def automated_archiver():
 
     for channel in Channel.objects.active().filter(full_archive=True):
 
-        needs_indexing = (channel.index_videos and not channel.fully_indexed) \
-                         or (channel.index_shorts and not channel.fully_indexed_shorts) \
-                         or (channel.index_livestreams and not channel.fully_indexed_livestreams)
+        needs_indexing = (
+            (channel.index_videos and not channel.fully_indexed)
+            or (channel.index_shorts and not channel.fully_indexed_shorts)
+            or (channel.index_livestreams and not channel.fully_indexed_livestreams)
+        )
 
         if needs_indexing:
             fully_index_channel.delay(pk=channel.pk)
             continue
 
         full_archive_videos_to_process = channel.videos.filter(
-            file='',
-            privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible
+            file='', privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible
         )
 
         if channel.full_archive_cutoff:
@@ -660,13 +667,11 @@ def automated_archiver():
     maximum_attempts_erroring_downloads = app_settings.VIDEO_DOWNLOAD_ERROR_ATTEMPTS
     minutes_to_wait_between_error_attempts = app_settings.VIDEO_DOWNLOAD_ERROR_WAIT_PERIOD
 
-    videos_with_download_errors = Video.objects\
-        .annotate(total_download_errors=Count('download_errors'))\
-        .filter(
-            permit_download=True,
-            total_download_errors__lt=maximum_attempts_erroring_downloads,
-            total_download_errors__gte=1
-        )
+    videos_with_download_errors = Video.objects.annotate(total_download_errors=Count('download_errors')).filter(
+        permit_download=True,
+        total_download_errors__lt=maximum_attempts_erroring_downloads,
+        total_download_errors__gte=1,
+    )
 
     for video in videos_with_download_errors:
 
@@ -677,8 +682,9 @@ def automated_archiver():
             continue
 
         if video.file:
-            log.error('automated_archiver just tried to process a video '
-                      'with download errors that already has a file.')
+            log.error(
+                'automated_archiver just tried to process a video ' 'with download errors that already has a file.'
+            )
             video.download_errors.all().delete()
             continue
 
@@ -703,13 +709,11 @@ def automated_archiver():
 
         # AMQ would change from update_video_details task.
         for video in Video.objects.filter(
-                requested_max_quality=True,
-                at_max_quality=False,
-                date_downloaded__lte=timezone.now() - timezone.timedelta(days=3),
-                system_notes__max_quality_upgraded__isnull=True
-        ).exclude(
-            file=''
-        ):
+            requested_max_quality=True,
+            at_max_quality=False,
+            date_downloaded__lte=timezone.now() - timezone.timedelta(days=3),
+            system_notes__max_quality_upgraded__isnull=True,
+        ).exclude(file=''):
 
             if total_downloads >= max_automated_downloads:
                 break
@@ -765,11 +769,12 @@ def automated_archiver():
     autoretry_for=(Video.DoesNotExist,),
     retry_kwargs={"max_retries": 3},
     default_retry_delay=5,
-    queue='queue-vidar'
+    queue='queue-vidar',
 )
 @celery_helpers.prevent_asynchronous_task_execution(lock_key='download-vidar-video-{pk}')
-def download_provider_video(self, pk, quality=None, automated_quality_upgrade=False,
-                   task_source='Unknown', requested_by=None):
+def download_provider_video(
+    self, pk, quality=None, automated_quality_upgrade=False, task_source='Unknown', requested_by=None
+):
 
     download_started = timezone.now()
     video = Video.objects.get(pk=pk)
@@ -808,9 +813,7 @@ def download_provider_video(self, pk, quality=None, automated_quality_upgrade=Fa
 
     try:
         info, used_dl_kwargs = YTDLPInteractor.video_download(
-            url=video.url,
-            local_url=video.get_absolute_url(),
-            **dl_kwargs
+            url=video.url, local_url=video.get_absolute_url(), **dl_kwargs
         )
     except yt_dlp.DownloadError as exc:
 
@@ -819,12 +822,14 @@ def download_provider_video(self, pk, quality=None, automated_quality_upgrade=Fa
         if 'downloads' not in video.system_notes:
             video.system_notes['downloads'] = []
 
-        video.system_notes['downloads'].append({
-            'dl_kwargs': dl_kwargs,
-            'status': 'failure',
-            'traceback': traceback.format_exc(),
-            'timestamp': timezone.now().isoformat()
-        })
+        video.system_notes['downloads'].append(
+            {
+                'dl_kwargs': dl_kwargs,
+                'status': 'failure',
+                'traceback': traceback.format_exc(),
+                'timestamp': timezone.now().isoformat(),
+            }
+        )
         video.save_system_notes(dl_kwargs)
         video.save()
 
@@ -911,18 +916,20 @@ def download_provider_video(self, pk, quality=None, automated_quality_upgrade=Fa
     if 'downloads' not in video.system_notes:
         video.system_notes['downloads'] = []
 
-    video.system_notes['downloads'].append({
-        'status': 'success',
-        'quality': video.quality,
-        'selected_quality': selected_quality,
-        'at_max_quality': video.at_max_quality,
-        'timestamp': timezone.now().isoformat(),
-        'dl_kwargs': dl_kwargs,
-        'used_dl_kwargs': used_dl_kwargs,
-        'raw_file_path': str(filepath),
-        'download_started': download_started.isoformat(),
-        'download_finished': timezone.now().isoformat(),
-    })
+    video.system_notes['downloads'].append(
+        {
+            'status': 'success',
+            'quality': video.quality,
+            'selected_quality': selected_quality,
+            'at_max_quality': video.at_max_quality,
+            'timestamp': timezone.now().isoformat(),
+            'dl_kwargs': dl_kwargs,
+            'used_dl_kwargs': used_dl_kwargs,
+            'raw_file_path': str(filepath),
+            'download_started': download_started.isoformat(),
+            'download_finished': timezone.now().isoformat(),
+        }
+    )
     video.save()
 
     post_download_processing.apply_async(
@@ -969,11 +976,7 @@ def post_download_processing(self, pk, filepath, **kwargs):
         c |= write_file_to_storage.si(pk=pk, filepath=str(filepath), field_name='file')
         c |= delete_cached_file.s()
 
-    c |= video_downloaded_successfully.si(
-        pk=pk,
-        processing_started=timezone.now().isoformat(),
-        **kwargs
-    )
+    c |= video_downloaded_successfully.si(pk=pk, processing_started=timezone.now().isoformat(), **kwargs)
 
     c()
     return True
@@ -1008,7 +1011,9 @@ def write_file_to_storage(filepath, pk, field_name):
 
         if app_settings.MEDIA_HARDLINK:
             new_full_filepath, new_storage_path = video_services.generate_filepaths_for_storage(
-                video=video, ext=ext, ensure_new_dir_exists=True,
+                video=video,
+                ext=ext,
+                ensure_new_dir_exists=True,
             )
             try:
                 log.info(f'Hard linking "{filepath=}" to "{new_full_filepath=}"')
@@ -1064,7 +1069,7 @@ def delete_cached_file(filepath):
     autoretry_for=(requests.exceptions.ConnectionError,),
     retry_kwargs={"max_retries": 3},
     default_retry_delay=15,
-    queue='queue-vidar'
+    queue='queue-vidar',
 )
 def load_video_thumbnail(pk, url):
     if not url:
@@ -1103,11 +1108,7 @@ def video_downloaded_successfully(self, pk, **kwargs):
         instance=video,
     )
 
-    notification_services.video_downloaded(
-        video=video,
-        processing_finished=timezone.now(),
-        **kwargs
-    )
+    notification_services.video_downloaded(video=video, processing_finished=timezone.now(), **kwargs)
 
     with transaction.atomic():
         video = Video.objects.select_for_update().get(pk=pk)
@@ -1128,7 +1129,7 @@ def video_downloaded_successfully(self, pk, **kwargs):
     autoretry_for=(Video.DoesNotExist,),
     retry_kwargs={"max_retries": 3},
     default_retry_delay=5,
-    queue='queue-vidar'
+    queue='queue-vidar',
 )
 def download_provider_video_comments(self, pk, all_comments=False):
     video = Video.objects.get(pk=pk)
@@ -1199,7 +1200,7 @@ def download_provider_video_comments(self, pk, all_comments=False):
                 timestamp=timestamp,
                 parent_youtube_id=data['parent'],
                 text=data['text'],
-            )
+            ),
         )
 
 
@@ -1208,7 +1209,7 @@ def download_provider_video_comments(self, pk, all_comments=False):
     autoretry_for=(Channel.DoesNotExist,),
     retry_kwargs={"max_retries": 3},
     default_retry_delay=5,
-    queue='queue-vidar'
+    queue='queue-vidar',
 )
 def subscribe_to_channel(self, channel_id):
 
@@ -1298,8 +1299,10 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
         if playlist.not_found_failures >= 5:
             playlist.crontab = ''
             notification_services.playlist_disabled_due_to_errors(playlist=playlist)
-            log.critical(f'Playlist {playlist}: failed to be found {playlist.not_found_failures} times, '
-                         f'disabling it from scans.')
+            log.critical(
+                f'Playlist {playlist}: failed to be found {playlist.not_found_failures} times, '
+                f'disabling it from scans.'
+            )
         else:
             log.info(f'Playlist {playlist}: Not found on provider')
 
@@ -1510,8 +1513,8 @@ def monthly_maintenances(self):
             log.exception('Failure to confirm filenames are correct as File backend does not support move.')
 
     dlp_formats_cleared = Video.objects.filter(
-        Q(privacy_status_checks__gt=app_settings.PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO) |
-        Q(file='', upload_date__lt=timezone.now().date() - timezone.timedelta(days=6*30))
+        Q(privacy_status_checks__gt=app_settings.PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO)
+        | Q(file='', upload_date__lt=timezone.now().date() - timezone.timedelta(days=6 * 30))
     )
     log.info(f'{dlp_formats_cleared=} from video.dlp_formats.')
 
@@ -1550,15 +1553,10 @@ def automated_video_quality_upgrades():
 
         public_channel_videos = channel.videos.filter(
             privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible
-        ).exclude(
-            file=''
-        )
+        ).exclude(file='')
 
         videos_potentially_needing_upgrade = public_channel_videos.exclude(
-            Q(quality=channel.quality)
-            | Q(is_short=True)
-            | Q(is_livestream=True)
-            | Q(at_max_quality=True)
+            Q(quality=channel.quality) | Q(is_short=True) | Q(is_livestream=True) | Q(at_max_quality=True)
         )
 
         for video in videos_potentially_needing_upgrade:
@@ -1614,9 +1612,7 @@ def automated_video_quality_upgrades():
             log.info(f'Playlist Video Upgrading {video=} : quality {video.quality=} >= {playlist.quality=}')
 
             download_provider_video.delay(
-                pk=video.pk,
-                automated_quality_upgrade=True,
-                task_source='Playlist Quality Upgrades'
+                pk=video.pk, automated_quality_upgrade=True, task_source='Playlist Quality Upgrades'
             )
 
             downloaded += 1
@@ -1638,7 +1634,7 @@ def automated_video_quality_upgrades():
     queue='queue-vidar',
     autoretry_for=(yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError),
     retry_kwargs={"max_retries": 4},
-    default_retry_delay=120
+    default_retry_delay=120,
 )
 def update_video_details(self, pk, download_file=False, dlp_output=None, mode='manual'):
 
@@ -1661,21 +1657,24 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode='m
             # TODO: If video is blocked in country and we have other proxies, try those somehow?
             if video.apply_privacy_status_based_on_dlp_exception_message(exc):
                 log.info(f'Video is {video.privacy_status}, privacy_status updated. Stopping download attempt.')
-                video_services.log_update_video_details_called(video=video, mode=mode,
-                                                               commit=True, result='Privacy Status Changed')
+                video_services.log_update_video_details_called(
+                    video=video, mode=mode, commit=True, result='Privacy Status Changed'
+                )
                 self.update_state(state=states.FAILURE, meta=f'Privacy Status Changed to {video.privacy_status}')
                 raise Ignore()
             if 'confirm' in str(exc) and 'age' in str(exc):
                 log.info('Video requires signin confirmation to confirm age. Stopping.')
-                video_services.log_update_video_details_called(video=video, mode=mode,
-                                                               commit=True, result='Sign in to confirm age')
+                video_services.log_update_video_details_called(
+                    video=video, mode=mode, commit=True, result='Sign in to confirm age'
+                )
                 self.update_state(state=states.FAILURE, meta='Sign-In Required')
                 raise Ignore()
             if self.request.retries == 3:
                 log.info('retrying update_video_details in one hour')
-                video_services.log_update_video_details_called(video=video, mode=mode,
-                                                               commit=True, result='4th attempt retry in 1 hour')
-                raise self.retry(exc=exc, countdown=60*60)
+                video_services.log_update_video_details_called(
+                    video=video, mode=mode, commit=True, result='4th attempt retry in 1 hour'
+                )
+                raise self.retry(exc=exc, countdown=60 * 60)
             raise
 
     if not dlp_output:
@@ -1709,11 +1708,13 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode='m
         if not video.at_max_quality:
             if 'uvd_max_quality_changed' not in video.system_notes:
                 video.system_notes['uvd_max_quality_changed'] = []
-            video.system_notes['uvd_max_quality_changed'].append({
-                'old_highest': video.quality,
-                'new_highest': highest_quality,
-                'last_checked': timezone.now().isoformat(),
-            })
+            video.system_notes['uvd_max_quality_changed'].append(
+                {
+                    'old_highest': video.quality,
+                    'new_highest': highest_quality,
+                    'last_checked': timezone.now().isoformat(),
+                }
+            )
 
     video.save()
 
@@ -1769,12 +1770,12 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode='m
     bind=True,
     queue='queue-vidar',
     autoretry_for=(
-            requests.exceptions.HTTPError,
-            requests.exceptions.ConnectionError,
-            requests.exceptions.ChunkedEncodingError
+        requests.exceptions.HTTPError,
+        requests.exceptions.ConnectionError,
+        requests.exceptions.ChunkedEncodingError,
     ),
     retry_kwargs={"max_retries": 3},
-    retry_backoff=10 * 60,          # 10 minutes
+    retry_backoff=10 * 60,  # 10 minutes
     retry_backoff_max=6 * 60 * 60,  # 6 hours
     retry_jitter=True,
 )
@@ -1804,8 +1805,8 @@ def daily_maintenances(self):
 
     # Sometimes thumbnails can fail to download during the video download process.
     for video in Video.objects.archived().filter(
-            thumbnail='',
-            privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible,
+        thumbnail='',
+        privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible,
     ):
         try:
             data = YTDLPInteractor.video_details(video.url)
@@ -1847,9 +1848,7 @@ def daily_maintenances(self):
         video.search_description_for_related_videos()
 
     for channel in Channel.objects.filter(
-            Q(delete_videos_after_days__gt=0) |
-            Q(delete_shorts_after_days__gt=0) |
-            Q(delete_livestreams_after_days__gt=0)
+        Q(delete_videos_after_days__gt=0) | Q(delete_shorts_after_days__gt=0) | Q(delete_livestreams_after_days__gt=0)
     ):
         if channel.delete_videos_after_days:
             dtr = timezone.now() - timezone.timedelta(days=channel.delete_videos_after_days)
@@ -1888,14 +1887,14 @@ def daily_maintenances(self):
         channel_services.recalculate_video_sort_ordering(channel=channel)
 
     for channel in Channel.objects.filter(
-            Q(delete_videos_after_watching=True) |
-            Q(delete_shorts_after_watching=True) |
-            Q(delete_livestreams_after_watching=True)
+        Q(delete_videos_after_watching=True)
+        | Q(delete_shorts_after_watching=True)
+        | Q(delete_livestreams_after_watching=True)
     ):
-        channel_videos_base_qs = channel.videos.exclude(file='').annotate(
-            percentage_of_video=F('duration') * 0.9
-        ).filter(
-            user_playback_history__seconds__gte=F('percentage_of_video')
+        channel_videos_base_qs = (
+            channel.videos.exclude(file='')
+            .annotate(percentage_of_video=F('duration') * 0.9)
+            .filter(user_playback_history__seconds__gte=F('percentage_of_video'))
         )
 
         if channel.delete_videos_after_watching:
@@ -1920,16 +1919,22 @@ def update_video_statuses_and_details():
 
     log.info('Triggering Video Status Updater tasks')
 
-    videos_that_are_checkable = Video.objects.archived().filter(
-        # privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible
-        Q(channel__status=channel_helpers.ChannelStatuses.ACTIVE, channel__check_videos_privacy_status=True) |
-        Q(channel__isnull=True),
-    ).annotate(
-        last_checked_null_first=Case(When(last_privacy_status_check__isnull=True, then=1), default=0),
-        zero_quality_first=Case(When(quality=0, then=1), default=0),
-    ).filter(
-        privacy_status_checks__lt=app_settings.PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO,
-    ).order_by('-zero_quality_first', '-last_checked_null_first', 'last_privacy_status_check', 'upload_date')
+    videos_that_are_checkable = (
+        Video.objects.archived()
+        .filter(
+            # privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible
+            Q(channel__status=channel_helpers.ChannelStatuses.ACTIVE, channel__check_videos_privacy_status=True)
+            | Q(channel__isnull=True),
+        )
+        .annotate(
+            last_checked_null_first=Case(When(last_privacy_status_check__isnull=True, then=1), default=0),
+            zero_quality_first=Case(When(quality=0, then=1), default=0),
+        )
+        .filter(
+            privacy_status_checks__lt=app_settings.PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO,
+        )
+        .order_by('-zero_quality_first', '-last_checked_null_first', 'last_privacy_status_check', 'upload_date')
+    )
 
     checks_video_age_days = app_settings.PRIVACY_STATUS_CHECK_MIN_AGE
 
@@ -1947,8 +1952,10 @@ def update_video_statuses_and_details():
     videos_to_check_per_ten_minutes = math.ceil(videos_to_check_per_hour / 6)
 
     log.info(f'{videos_that_are_checkable.count()=}')
-    log.info(f'Videos to check settings period:{checks_video_age_days} {videos_to_check_per_day}/day '
-             f'{videos_to_check_per_hour}/hr {videos_to_check_per_ten_minutes}/10min')
+    log.info(
+        f'Videos to check settings period:{checks_video_age_days} {videos_to_check_per_day}/day '
+        f'{videos_to_check_per_hour}/hr {videos_to_check_per_ten_minutes}/10min'
+    )
     log.info(f"Videos to check today {videos_to_check_per_day} - {tasks_completed_today} = {tasks_to_complete_today}")
 
     thirty_days_ago = (timezone.localtime() - timezone.timedelta(days=checks_video_age_days)).date()
@@ -1958,8 +1965,10 @@ def update_video_statuses_and_details():
         qs |= Q(info_json='')
 
     videos_needing_an_update = videos_that_are_checkable.filter(qs)
-    log.info(f"last_privacy_status_check__date__lt={thirty_days_ago} ({checks_video_age_days=}) "
-             f"OR isnull=True = {videos_needing_an_update.count()=}")
+    log.info(
+        f"last_privacy_status_check__date__lt={thirty_days_ago} ({checks_video_age_days=}) "
+        f"OR isnull=True = {videos_needing_an_update.count()=}"
+    )
 
     force_check_per_call = app_settings.PRIVACY_STATUS_CHECK_FORCE_CHECK_PER_CALL
     if force_check_per_call:
@@ -1992,7 +2001,9 @@ def update_video_statuses_and_details():
 
 
 @shared_task(bind=True, queue='queue-vidar')
-@celery_helpers.prevent_asynchronous_task_execution(lock_key='channel-rename-files-{channel_id}', lock_expiry=2*60*60)
+@celery_helpers.prevent_asynchronous_task_execution(
+    lock_key='channel-rename-files-{channel_id}', lock_expiry=2 * 60 * 60
+)
 def channel_rename_files(self, channel_id, commit=True, remove_empty=True, rename_videos=True):
 
     channel = Channel.objects.get(pk=channel_id)
@@ -2011,7 +2022,7 @@ def channel_rename_files(self, channel_id, commit=True, remove_empty=True, renam
 
 
 @shared_task(bind=True, queue='queue-vidar')
-@celery_helpers.prevent_asynchronous_task_execution(lock_expiry=2*60*60)
+@celery_helpers.prevent_asynchronous_task_execution(lock_expiry=2 * 60 * 60)
 def rename_all_archived_video_files(self, commit=True, remove_empty=True):
 
     if not file_helpers.can_file_be_moved(Video.file.field):
@@ -2252,17 +2263,18 @@ def slow_full_archive():
 
     for channel in Channel.objects.active().filter(slow_full_archive=True):
 
-        needs_indexing = (channel.index_videos and not channel.fully_indexed) \
-                         or (channel.index_shorts and not channel.fully_indexed_shorts) \
-                         or (channel.index_livestreams and not channel.fully_indexed_livestreams)
+        needs_indexing = (
+            (channel.index_videos and not channel.fully_indexed)
+            or (channel.index_shorts and not channel.fully_indexed_shorts)
+            or (channel.index_livestreams and not channel.fully_indexed_livestreams)
+        )
 
         if needs_indexing:
             fully_index_channel.delay(pk=channel.pk)
             continue
 
         full_archive_videos_to_process = channel.videos.filter(
-            file='',
-            privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible
+            file='', privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible
         )
 
         if channel.full_archive_cutoff:

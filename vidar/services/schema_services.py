@@ -28,17 +28,13 @@ def _render_string_using_object_data(string, **kwargs):
 def channel_directory_name(channel):
 
     if channel.directory_schema:
-        if rendered_value := _render_string_using_object_data(
-            channel.directory_schema,
-            self=channel, channel=channel
-        ):
+        if rendered_value := _render_string_using_object_data(channel.directory_schema, self=channel, channel=channel):
             return rendered_value
 
         log.critical(f'{channel=} has an invalid directory schema {channel.directory_schema=}. Using system default.')
 
     if rendered_value := _render_string_using_object_data(
-        app_settings.CHANNEL_DIRECTORY_SCHEMA,
-        self=channel, channel=channel
+        app_settings.CHANNEL_DIRECTORY_SCHEMA, self=channel, channel=channel
     ):
         return rendered_value
 
@@ -53,7 +49,8 @@ def video_directory_name(video):
     if video.directory_schema:
         if rendered_value := _render_string_using_object_data(
             video.directory_schema,
-            self=video, video=video,
+            self=video,
+            video=video,
         ):
             return rendered_value
 
@@ -61,17 +58,13 @@ def video_directory_name(video):
 
     if video.channel and video.channel.video_directory_schema:
         if rendered_value := _render_string_using_object_data(
-            video.channel.video_directory_schema,
-            self=video, video=video
+            video.channel.video_directory_schema, self=video, video=video
         ):
             return rendered_value
 
         log.critical(f"{video.pk=} {video.channel=} has an invalid value in {video.channel.video_directory_schema=}.")
 
-    if rendered_value := _render_string_using_object_data(
-        app_settings.VIDEO_DIRECTORY_SCHEMA,
-        self=video, video=video
-    ):
+    if rendered_value := _render_string_using_object_data(app_settings.VIDEO_DIRECTORY_SCHEMA, self=video, video=video):
         return rendered_value
 
     raise exceptions.DirectorySchemaInvalidError(
@@ -87,24 +80,21 @@ def video_file_name(video, ext):
     if not rendered_value and video.filename_schema:
         rendered_value = _render_string_using_object_data(
             video.filename_schema,
-            self=video, video=video,
+            self=video,
+            video=video,
         )
         if not rendered_value:
             log.critical(f"{video.pk=} has an invalid value in {video.filename_schema=}.")
 
     if not rendered_value and video.channel and video.channel.video_filename_schema:
         rendered_value = _render_string_using_object_data(
-            video.channel.video_filename_schema,
-            self=video, video=video, channel=video.channel
+            video.channel.video_filename_schema, self=video, video=video, channel=video.channel
         )
         if not rendered_value:
             log.critical(f"{video.pk=} {video.channel=} has an invalid schema {video.channel.video_filename_schema=}.")
 
     if not rendered_value:
-        rendered_value = _render_string_using_object_data(
-            app_settings.VIDEO_FILENAME_SCHEMA,
-            self=video, video=video
-        )
+        rendered_value = _render_string_using_object_data(app_settings.VIDEO_FILENAME_SCHEMA, self=video, video=video)
 
     if not rendered_value:
         raise exceptions.FilenameSchemaInvalidError(

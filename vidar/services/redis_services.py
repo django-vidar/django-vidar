@@ -19,9 +19,7 @@ class RedisMessaging:
 
     def __init__(self):
         self.conn = redis.Redis(
-            host=settings.CELERY_BROKER_HOSTNAME,
-            port=settings.CELERY_BROKER_PORT,
-            db=settings.CELERY_BROKER_DB
+            host=settings.CELERY_BROKER_HOSTNAME, port=settings.CELERY_BROKER_PORT, db=settings.CELERY_BROKER_DB
         )
 
     CHANNELS = [
@@ -59,9 +57,7 @@ class RedisMessaging:
 
     def list_items(self, query):
         """list all matches"""
-        reply = self.conn.execute_command(
-            "KEYS", self.NAME_SPACE + query + "*"
-        )
+        reply = self.conn.execute_command("KEYS", self.NAME_SPACE + query + "*")
         all_matches = [i.decode().lstrip(self.NAME_SPACE) for i in reply]
         all_results = []
         for match in all_matches:
@@ -85,9 +81,7 @@ class RedisMessaging:
         all_messages = []
         for channel in self.CHANNELS:
             key = "message:" + channel
-            reply = self.conn.execute_command(
-                "GET", self.NAME_SPACE + key
-            )
+            reply = self.conn.execute_command("GET", self.NAME_SPACE + key)
             if reply:
                 json_str = json.loads(reply)
                 all_messages.append(json_str)

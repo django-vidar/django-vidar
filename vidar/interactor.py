@@ -70,8 +70,16 @@ class YTDLPInteractor:
             return ydl.extract_info(url)
 
     @staticmethod
-    def video_comments(url, all_comments=False, total_max_comments=None, max_parents=None,
-                       max_replies=None, max_replies_per_thread=None, sorting=None, **kwargs):
+    def video_comments(
+        url,
+        all_comments=False,
+        total_max_comments=None,
+        max_parents=None,
+        max_replies=None,
+        max_replies_per_thread=None,
+        sorting=None,
+        **kwargs,
+    ):
 
         kwargs.setdefault('download', False)
         kwargs.setdefault('getcomments', True)
@@ -126,8 +134,9 @@ class YTDLPInteractor:
         kwargs.setdefault('ignoreerrors', True)
 
         with get_ytdlp(kwargs) as ydl:
-            return ydl.extract_info(f"https://www.youtube.com/channel/{youtube_id}"
-                                    f"/playlists?view=1&sort=dd&shelf_id=0", download=False)
+            return ydl.extract_info(
+                f"https://www.youtube.com/channel/{youtube_id}" f"/playlists?view=1&sort=dd&shelf_id=0", download=False
+            )
 
 
 def interactor_channel_videos_with_retry(url, **dl_kwargs):

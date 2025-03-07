@@ -118,9 +118,11 @@ def video_downloaded(video, task_source, download_started, download_finished, pr
     if processing_completed >= datetime.timedelta(seconds=1):
         msg_output.append(f"Processing: {processing_completed}")
 
-    msg_output.extend([
-        f"Task Call Source: {task_source}",
-    ])
+    msg_output.extend(
+        [
+            f"Task Call Source: {task_source}",
+        ]
+    )
     return send_message(
         message="\n".join(msg_output),
         title=f"{video.channel} @ {quality}:{video.get_quality_display()}",
@@ -159,9 +161,9 @@ def full_indexing_complete(channel, target, new_videos_count, total_videos_count
         return
     return send_message(
         message=f"Full Indexing {target} Completed\n\n"
-                f"New Videos: {new_videos_count}\n"
-                f"Total Videos: {total_videos_count}",
-        title=f"{channel}"
+        f"New Videos: {new_videos_count}\n"
+        f"Total Videos: {total_videos_count}",
+        title=f"{channel}",
     )
 
 
@@ -225,7 +227,7 @@ def convert_to_mp4_complete(video, task_started):
     return send_message(
         title='Video Directly Converted to MP4',
         message=f'Finished converting video from source format into mp4\n\n{video}\n\n'
-                f'Task Call Timer: {timezone.now() - task_started}\n',
+        f'Task Call Timer: {timezone.now() - task_started}\n',
     )
 
 
