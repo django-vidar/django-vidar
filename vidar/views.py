@@ -1176,7 +1176,7 @@ def download_video(request, pk, quality):
     obj = Video.objects.get(pk=pk)
 
     messages.success(request, f'{obj} queued for download.')
-    tasks.download_video.delay(
+    tasks.download_provider_video.delay(
         pk=obj.pk,
         quality=quality,
         task_source='Manual Download Selection',
@@ -1195,7 +1195,7 @@ def download_video_comments(request, pk):
     if request.method == 'POST':
         messages.success(request, f'{obj} comments queued for download.')
         all_comments = 'Get All Comments' in request.POST.get('download-comments')
-        tasks.download_video_comments.delay(pk=obj.pk, all_comments=all_comments)
+        tasks.download_provider_video_comments.delay(pk=obj.pk, all_comments=all_comments)
 
     return HttpResponseRedirect(obj.get_absolute_url() + '#yt-comments')
 
@@ -1757,7 +1757,7 @@ class PlaylistDetailView(PermissionRequiredMixin, DetailView):
             countdown = 0
             for video in self.object.videos.all():
                 download_all_comments = 'download_all_comments' in request.POST
-                tasks.download_video_comments.apply_async(
+                tasks.download_provider_video_comments.apply_async(
                     args=[video.pk, download_all_comments],
                     countdown=countdown
                 )

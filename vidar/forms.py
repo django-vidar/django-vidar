@@ -48,7 +48,7 @@ class VideoDownloaderForm(forms.ModelForm):
     def save(self, commit=True):
         obj = super().save(commit=commit)  # type: Video
 
-        tasks.download_video.apply_async(
+        tasks.download_provider_video.apply_async(
             kwargs=dict(
                 pk=obj.pk,
                 quality=self.cleaned_data["quality"],

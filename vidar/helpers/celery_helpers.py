@@ -116,7 +116,7 @@ def celery_is_task_active_or_pending(search_for_these_tasks: list, value, kwargs
 def is_video_being_downloaded_now(video):
     # NOTE: Bad. celery doesn't always return the tasks that are actually running, use object_lock below.
 
-    search_for_these_tasks = ['vidar.tasks.download_video']
+    search_for_these_tasks = ['vidar.tasks.download_provider_video']
     return celery_is_task_active_or_pending(
         search_for_these_tasks=search_for_these_tasks,
         value=video.pk,

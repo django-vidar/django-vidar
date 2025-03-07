@@ -402,7 +402,7 @@ def scan_channel_for_new_content(self, channel, url, limit=None, download_video=
         if video.file:
             log.info('Video already has file, skipping.')
             if video_services.should_download_comments(video=video):
-                download_video_comments.delay(pk=video.pk)
+                download_provider_video_comments.delay(pk=video.pk)
             continue
 
         try:
@@ -420,7 +420,7 @@ def scan_channel_for_new_content(self, channel, url, limit=None, download_video=
 
         if video_services.should_force_download_based_on_requirements_requested(video=video):
             log.info(f'Forcing video to download, {video=}')
-            download_video.delay(pk=video.pk, task_source='scanner', requested_by='Channel Scanner')
+            download_provider_video.delay(pk=video.pk, task_source='scanner', requested_by='Channel Scanner')
             continue
 
         if not download_video:
@@ -436,7 +436,7 @@ def scan_channel_for_new_content(self, channel, url, limit=None, download_video=
 
         if video_services.is_permitted_to_download_requested(video=video):
             log.info('Video download is permitted, triggering downloader')
-            download_video.delay(pk=video.pk, task_source='scanner', requested_by='Channel Scanner')
+            download_provider_video.delay(pk=video.pk, task_source='scanner', requested_by='Channel Scanner')
         else:
             log.info('Video not permitted, skipping.')
 
@@ -596,7 +596,7 @@ def automated_archiver():
                          f'Skipping. {playlist.channel=} {video.channel=} {video=}')
                 continue
 
-            download_video.delay(
+            download_provider_video.delay(
                 pk=video.pk,
                 task_source=f'automated_archiver - Playlist Scanner: {playlist}',
                 requested_by=f'Playlist: {playlist!r}',
@@ -645,7 +645,7 @@ def automated_archiver():
             if celery_helpers.is_object_locked(obj=video):
                 continue
 
-            download_video.delay(
+            download_provider_video.delay(
                 pk=video.pk,
                 task_source='automated_archiver - Channel Full Archive',
                 requested_by=f'Full Archive: {channel!r}',
@@ -692,7 +692,7 @@ def automated_archiver():
             log.debug(f"{video=} retried too soon, waiting longer.")
             continue
 
-        download_video.delay(pk=video.pk, task_source='automated_archiver - Video Download Errors Attempts')
+        download_provider_video.delay(pk=video.pk, task_source='automated_archiver - Video Download Errors Attempts')
 
         total_downloads += 1
 
@@ -727,7 +727,7 @@ def automated_archiver():
             video.system_notes['max_quality_upgraded'] = timezone.now().isoformat()
             video.save()
 
-            download_video.delay(
+            download_provider_video.delay(
                 pk=video.pk, task_source='automated_archiver - Video Quality Changed Afterwards'
             )
 
@@ -751,7 +751,7 @@ def automated_archiver():
         if video.file:
             continue
 
-        download_video.apply_async(
+        download_provider_video.apply_async(
             kwargs=dict(
                 pk=video.pk,
                 task_source='Live Download - Reattempt',
@@ -768,7 +768,7 @@ def automated_archiver():
     queue='queue-vidar'
 )
 @celery_helpers.prevent_asynchronous_task_execution(lock_key='download-vidar-video-{pk}')
-def download_video(self, pk, quality=None, automated_quality_upgrade=False,
+def download_provider_video(self, pk, quality=None, automated_quality_upgrade=False,
                    task_source='Unknown', requested_by=None):
 
     download_started = timezone.now()
@@ -1115,7 +1115,7 @@ def video_downloaded_successfully(self, pk, **kwargs):
         video.save()
 
     if video_services.should_download_comments(video=video):
-        download_video_comments.delay(pk=pk)
+        download_provider_video_comments.delay(pk=pk)
 
     if app_settings.LOAD_SPONSORBLOCK_DATA_ON_DOWNLOAD:
         load_sponsorblock_data.delay(pk=pk)
@@ -1130,7 +1130,7 @@ def video_downloaded_successfully(self, pk, **kwargs):
     default_retry_delay=5,
     queue='queue-vidar'
 )
-def download_video_comments(self, pk, all_comments=False):
+def download_provider_video_comments(self, pk, all_comments=False):
     video = Video.objects.get(pk=pk)
 
     if video.privacy_status not in Video.VideoPrivacyStatuses_Publicly_Visible:
@@ -1388,7 +1388,7 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
             log.exception('Failure to check and add video to playlists based on title matching')
 
         if video_services.should_download_comments(video=video):
-            download_video_comments.apply_async(args=[video.pk], countdown=comments_countdown)
+            download_provider_video_comments.apply_async(args=[video.pk], countdown=comments_countdown)
             comments_countdown += 26
 
     for video in videos_existing:
@@ -1576,7 +1576,7 @@ def automated_video_quality_upgrades():
 
             log.info(f'Channel Video Upgrading {video=} : quality {video.quality=} >= {channel.quality=}')
 
-            download_video.delay(
+            download_provider_video.delay(
                 pk=video.pk,
                 automated_quality_upgrade=True,
                 task_source='Channel Quality Upgrades',
@@ -1613,7 +1613,7 @@ def automated_video_quality_upgrades():
 
             log.info(f'Playlist Video Upgrading {video=} : quality {video.quality=} >= {playlist.quality=}')
 
-            download_video.delay(
+            download_provider_video.delay(
                 pk=video.pk,
                 automated_quality_upgrade=True,
                 task_source='Playlist Quality Upgrades'
@@ -1724,7 +1724,7 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode='m
     if not video.file or not video.file.storage.exists(video.file.path):
         if video.privacy_status in Video.VideoPrivacyStatuses_Publicly_Visible:
             log.info(f'{video.file=} does not exist, requesting replacement. {video=}')
-            download_video.delay(pk=video.pk, task_source='update_video_details missing file')
+            download_provider_video.delay(pk=video.pk, task_source='update_video_details missing file')
 
             # return because the downloader will do the remaining work.
             return 'Video should have had file but does not. Downloading now.'
@@ -1743,7 +1743,7 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode='m
         load_video_thumbnail.apply_async(args=[pk, dlp_output.get('thumbnail')], countdown=30)
 
     if video_services.should_download_comments(video=video):
-        download_video_comments.delay(pk=video.pk)
+        download_provider_video_comments.delay(pk=video.pk)
 
     try:
         video_services.load_chapters_from_info_json(video=video, info_json_data=dlp_output)
@@ -2118,7 +2118,7 @@ def trigger_convert_video_to_mp4(pk=None):
             video.system_notes['redownload_mkv_to_mp4_attempted'] = timezone.now().isoformat()
             video.save(update_fields=['system_notes'])
 
-            download_video.apply_async(kwargs=dict(pk=video.pk, task_source='mkv to mp4 conversion'))
+            download_provider_video.apply_async(kwargs=dict(pk=video.pk, task_source='mkv to mp4 conversion'))
 
             total_downloads += 1
 
@@ -2287,7 +2287,7 @@ def slow_full_archive():
             if celery_helpers.is_object_locked(obj=video):
                 continue
 
-            download_video.delay(
+            download_provider_video.delay(
                 pk=video.pk,
                 task_source='automated_archiver - Channel Slow Full Archive',
                 requested_by='Channel Slow Full Archive',
