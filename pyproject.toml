@@ -34,7 +34,7 @@ dependencies = [
 	"redis",
 	"requests",
 	"beautifulsoup4",
-	"yt-dlp>=2025.2.19",
+	"yt-dlp",
 	"moviepy",
 	"Pillow>=10.0.0",
 ]
