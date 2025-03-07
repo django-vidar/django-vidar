@@ -29,23 +29,23 @@ def download_and_convert_to_jpg(url):
     current_file_name_based_on_url = os.path.basename(url)
 
     # Some urls from youtube have a query string attached
-    tmp = current_file_name_based_on_url.split('?')
+    tmp = current_file_name_based_on_url.split("?")
     filename = tmp[0]
     try:
-        bare_filename, ext = filename.rsplit('.', 1)
+        bare_filename, ext = filename.rsplit(".", 1)
     except ValueError:
-        ext = 'jpg'
+        ext = "jpg"
 
     contents = requests.get(url).content
     final_ext = ext
 
-    if final_ext and final_ext.lower() == 'webp':
+    if final_ext and final_ext.lower() == "webp":
         try:
             conversion_tmp = _convert_image_to_jpg_in_memory(contents)
             contents = conversion_tmp
-            final_ext = 'jpg'
+            final_ext = "jpg"
         except (ValueError, TypeError, OSError):
-            log.exception(f'Failure to convert {ext} to jpg')
+            log.exception(f"Failure to convert {ext} to jpg")
             final_ext = ext
 
     return contents, final_ext

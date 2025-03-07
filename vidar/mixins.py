@@ -18,35 +18,36 @@ class UseProviderObjectIdMatchingMixin:
         if not queryset:
             queryset = self.get_queryset()
 
-        if 'pk' in self.kwargs:
-            return get_object_or_404(queryset, pk=self.kwargs['pk'])
+        if "pk" in self.kwargs:
+            return get_object_or_404(queryset, pk=self.kwargs["pk"])
 
-        if 'slug' in self.kwargs:
-            return get_object_or_404(queryset, slug=self.kwargs['slug'])
+        if "slug" in self.kwargs:
+            return get_object_or_404(queryset, slug=self.kwargs["slug"])
 
-        raise ValueError(f'Invalid value used in url pattern. {self.kwargs=}')
+        raise ValueError(f"Invalid value used in url pattern. {self.kwargs=}")
 
 
 class RequestBasedCustomQuerysetFilteringMixin:
 
     RequestBaseFilteringDefaultFields: list = None
-    RequestBaseFilteringDefaultSearchComparator: str = '__icontains'
+    RequestBaseFilteringDefaultSearchComparator: str = "__icontains"
     RequestBaseFilteringSearchValueSeparator: str = ":"
-    RequestBaseFilteringQueryParameter: str = 'q'
+    RequestBaseFilteringQueryParameter: str = "q"
 
-    def get_default_queryset_filters(self, query, fields: list=None):
+    def get_default_queryset_filters(self, query, fields: list = None):
         if fields is None:
             fields = self.RequestBaseFilteringDefaultFields
         qs_wheres = Q()
         if not fields:
-            warnings.warn('No fields defined to search for based on request query. '
-                          'See RequestBaseFilteringDefaultFields')
+            warnings.warn(
+                "No fields defined to search for based on request query. See RequestBaseFilteringDefaultFields"
+            )
             return qs_wheres
         for field in fields:
             qs_wheres |= Q(**{f"{field}{self.RequestBaseFilteringDefaultSearchComparator}": query})
         return qs_wheres
 
-    def apply_queryset_filtering(self, qs, fields: list=None):
+    def apply_queryset_filtering(self, qs, fields: list = None):
         if q := self.request.GET.get(self.RequestBaseFilteringQueryParameter):
             q = q.strip()
 
@@ -59,18 +60,16 @@ class RequestBasedCustomQuerysetFilteringMixin:
                 field = field.strip()
                 q = q.strip()
 
-                if q.lower() in ['true', 'false']:
-                    q = q.lower() == 'true'
-                elif q.lower() == 'none':
+                if q.lower() in ["true", "false"]:
+                    q = q.lower() == "true"
+                elif q.lower() == "none":
                     q = None
 
-                if '__' not in field:
+                if "__" not in field:
                     field = f"{field}{self.RequestBaseFilteringDefaultSearchComparator}"
 
                 try:
-                    qs = qs.filter(
-                        **{field: q}
-                    )
+                    qs = qs.filter(**{field: q})
                 except FieldError:
                     qs_wheres = self.get_default_queryset_filters(query=q, fields=fields)
                     if qs_wheres:
@@ -93,7 +92,7 @@ class RequestBasedQuerysetFilteringMixin(RequestBasedCustomQuerysetFilteringMixi
 
 class RestrictQuerySetToAuthorizedUserMixin:
 
-    queryset_restrict_user_field = 'user'
+    queryset_restrict_user_field = "user"
 
     def get_queryset(self):
         return super().get_queryset().filter(**{self.queryset_restrict_user_field: self.request.user})
@@ -101,8 +100,8 @@ class RestrictQuerySetToAuthorizedUserMixin:
 
 class HTMXIconBooleanSwapper:
 
-    HTMX_ICON_TRUE = 'fa fa-lg fa-check'
-    HTMX_ICON_FALSE = 'fa fa-lg fa-xmark'
+    HTMX_ICON_TRUE = "fa fa-lg fa-check"
+    HTMX_ICON_FALSE = "fa fa-lg fa-xmark"
     HTMX_RAISE_404 = False
 
     def htmx_swapper_get_object_value(self, field_name):
@@ -120,7 +119,7 @@ class HTMXIconBooleanSwapper:
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
-        field_name = self.kwargs.get('field', self.request.GET.get('field'))
+        field_name = self.kwargs.get("field", self.request.GET.get("field"))
         if not field_name:
             if self.HTMX_RAISE_404:
                 raise Http404
@@ -134,13 +133,9 @@ class HTMXIconBooleanSwapper:
         #     raise Http404
 
         current_object_value = self.htmx_swapper_get_object_value(field_name=field_name)
-        self.htmx_swapper_check_value_is_valid(
-            field_name=field_name,
-            value=current_object_value
-        )
+        self.htmx_swapper_check_value_is_valid(field_name=field_name, value=current_object_value)
         new_value = self.htmx_swapper_calculate_new_field_value(
-            field_name=field_name,
-            current_value=current_object_value
+            field_name=field_name, current_value=current_object_value
         )
         self.htmx_swapper_set_object_value(field_name=field_name, new_value=new_value)
 
@@ -164,9 +159,9 @@ class FieldFilteringMixin:
                 continue
             try:
                 field_data = self.model._meta.get_field(k)
-                if v in ['1', 'True']:
+                if v in ["1", "True"]:
                     v = True
-                elif v in ['0', 'False']:
+                elif v in ["0", "False"]:
                     v = False
                 print(field_data.attname, v)
                 qs = qs.filter(**{field_data.attname: v})

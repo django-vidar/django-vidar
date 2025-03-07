@@ -26,7 +26,7 @@ def get_video_upload_to_directory(instance):
             path /= schema_services.video_directory_name(video=instance)
 
     else:
-        path = pathlib.PurePosixPath('public')
+        path = pathlib.PurePosixPath("public")
 
         if instance.upload_date:
             year = instance.upload_date.year
@@ -60,7 +60,7 @@ def upload_to_audio(instance, filename):
     if instance.channel_id:
         root = schema_services.channel_directory_name(channel=instance.channel)
     if not root:
-        root = 'public'
+        root = "public"
 
     path = pathlib.PurePosixPath(root)
 

@@ -61,8 +61,13 @@ python_files = [
 [tool.black]
 line-length = 120
 target-version = ['py312']
-skip-string-normalization = true
-exclude = "/tests/"
+# skip-string-normalization = true
+extend-exclude = '''
+/(
+  | migrations
+  | tests
+)/
+'''
 
 [tool.isort]
 py_version = 311

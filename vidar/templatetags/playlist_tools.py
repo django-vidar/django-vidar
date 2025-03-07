@@ -27,22 +27,26 @@ def is_subscribed_to_playlist(playlist_id):
 def user_played_entire_playlist(playlist: Playlist, user, raise_error=False):
     if not user.is_authenticated:
         return False
-    if not hasattr(user, 'vidar_playback_completion_percentage'):
+    if not hasattr(user, "vidar_playback_completion_percentage"):
         return False
     if not playlist.videos.exists():
         return False
 
     try:
-        return playlist.videos.annotate(
-            percentage_of_video=F('duration') * float(user.vidar_playback_completion_percentage)
-        ).filter(
-            user_playback_history__user=user,
-            user_playback_history__seconds__gte=F('percentage_of_video')
-        ).distinct('id').order_by().count() == playlist.videos.count()
+        return (
+            playlist.videos.annotate(
+                percentage_of_video=F("duration") * float(user.vidar_playback_completion_percentage)
+            )
+            .filter(user_playback_history__user=user, user_playback_history__seconds__gte=F("percentage_of_video"))
+            .distinct("id")
+            .order_by()
+            .count()
+            == playlist.videos.count()
+        )
     except NotSupportedError:
         if raise_error:
             raise
-        warnings.warn('Call to templatetags.playlist_tools.user_played_entire_playlist without DB support')
+        warnings.warn("Call to templatetags.playlist_tools.user_played_entire_playlist without DB support")
         return False
 
 
@@ -50,22 +54,23 @@ def user_played_entire_playlist(playlist: Playlist, user, raise_error=False):
 def get_next_unwatched_video_on_playlist(playlist: Playlist, user: User):
     if not user.is_authenticated:
         return False
-    if not hasattr(user, 'vidar_playback_completion_percentage'):
+    if not hasattr(user, "vidar_playback_completion_percentage"):
         return False
 
-    qs = playlist.playlistitem_set.exclude(video__file='')
+    qs = playlist.playlistitem_set.exclude(video__file="")
     qs = playlist.apply_display_ordering_to_queryset(qs)
 
     for pi in qs:
         video = pi.video
-        if UserPlaybackHistory.objects.filter(
+        if (
+            UserPlaybackHistory.objects.filter(
                 user=user,
                 video=video,
-        ).annotate(
-            percentage_of_video=F('video__duration') * float(user.vidar_playback_completion_percentage)
-        ).filter(
-            seconds__gte=F('percentage_of_video')
-        ).exists():
+            )
+            .annotate(percentage_of_video=F("video__duration") * float(user.vidar_playback_completion_percentage))
+            .filter(seconds__gte=F("percentage_of_video"))
+            .exists()
+        ):
             continue
         return pi
 
@@ -74,21 +79,22 @@ def get_next_unwatched_video_on_playlist(playlist: Playlist, user: User):
 def get_next_unwatched_audio_on_playlist(playlist: Playlist, user: User):
     if not user.is_authenticated:
         return False
-    if not hasattr(user, 'vidar_playback_completion_percentage'):
+    if not hasattr(user, "vidar_playback_completion_percentage"):
         return False
 
-    qs = playlist.playlistitem_set.exclude(video__audio='')
+    qs = playlist.playlistitem_set.exclude(video__audio="")
     qs = playlist.apply_display_ordering_to_queryset(qs)
 
     for pi in qs:
         video = pi.video
-        if UserPlaybackHistory.objects.filter(
+        if (
+            UserPlaybackHistory.objects.filter(
                 user=user,
                 video=video,
-        ).annotate(
-            percentage_of_video=F('video__duration') * float(user.vidar_playback_completion_percentage)
-        ).filter(
-            seconds__gte=F('percentage_of_video')
-        ).exists():
+            )
+            .annotate(percentage_of_video=F("video__duration") * float(user.vidar_playback_completion_percentage))
+            .filter(seconds__gte=F("percentage_of_video"))
+            .exists()
+        ):
             continue
         return pi

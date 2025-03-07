@@ -37,8 +37,8 @@ class AppSettings(object):
 
     @property
     def AUTOMATED_DOWNLOADS_DURATION_LIMIT_SPLIT(self):
-        """ If a video duration (in seconds) is longer than this value,
-            the AUTOMATED_DOWNLOADS_PER_TASK_LIMIT will be halved."""
+        """If a video duration (in seconds) is longer than this value,
+        the AUTOMATED_DOWNLOADS_PER_TASK_LIMIT will be halved."""
         return self._setting(
             "AUTOMATED_DOWNLOADS_DURATION_LIMIT_SPLIT",
             90 * 60,
@@ -92,7 +92,7 @@ class AppSettings(object):
     def COMMENTS_MAX_PARENTS(self):
         return self._setting(
             "COMMENTS_MAX_PARENTS",
-            'all',
+            "all",
         )
 
     @property
@@ -113,7 +113,7 @@ class AppSettings(object):
     def COMMENTS_SORTING(self):
         return self._setting(
             "COMMENTS_SORTING",
-            'top',
+            "top",
         )
 
     @property
@@ -127,22 +127,26 @@ class AppSettings(object):
     def CRON_DEFAULT_SELECTION(self):
         return self._setting(
             "CRON_DEFAULT_SELECTION",
-            '6-22/4 * * *|7-21/4 * * *',
+            "6-22/4 * * *|7-21/4 * * *",
         )
 
     @property
     def CRONTAB_CHECK_INTERVAL(self):
-        return int(self._setting(
-            "CRONTAB_CHECK_INTERVAL",
-            10,
-        ))
+        return int(
+            self._setting(
+                "CRONTAB_CHECK_INTERVAL",
+                10,
+            )
+        )
 
     @property
     def CRONTAB_CHECK_INTERVAL_MAX_IN_DAYS(self):
-        return int(self._setting(
-            "CRONTAB_CHECK_INTERVAL_MAX_IN_DAYS",
-            3,
-        ))
+        return int(
+            self._setting(
+                "CRONTAB_CHECK_INTERVAL_MAX_IN_DAYS",
+                3,
+            )
+        )
 
     @property
     def DELETE_DOWNLOAD_CACHE(self):
@@ -153,10 +157,12 @@ class AppSettings(object):
 
     @property
     def DEFAULT_QUALITY(self):
-        return int(self._setting(
-            "DEFAULT_QUALITY",
-            1080,
-        ))
+        return int(
+            self._setting(
+                "DEFAULT_QUALITY",
+                1080,
+            )
+        )
 
     @property
     def DOWNLOAD_SPEED_RATE_LIMIT(self):
@@ -171,7 +177,7 @@ class AppSettings(object):
 
     @property
     def GOTIFY_TITLE_PREFIX(self):
-        return self._setting("GOTIFY_TITLE_PREFIX", '')
+        return self._setting("GOTIFY_TITLE_PREFIX", "")
 
     @property
     def GOTIFY_TOKEN(self):
@@ -201,27 +207,27 @@ class AppSettings(object):
 
     @property
     def MEDIA_CACHE(self):
-        return self._setting('MEDIA_CACHE', '')
+        return self._setting("MEDIA_CACHE", "")
 
     @property
     def MEDIA_HARDLINK(self):
-        return self._setting('MEDIA_HARDLINK', False)
+        return self._setting("MEDIA_HARDLINK", False)
 
     @property
     def MEDIA_ROOT(self):
-        return self._setting('MEDIA_ROOT', settings.MEDIA_ROOT)
+        return self._setting("MEDIA_ROOT", settings.MEDIA_ROOT)
 
     @property
     def MEDIA_URL(self):
-        return self._setting('MEDIA_URL', settings.MEDIA_URL)
+        return self._setting("MEDIA_URL", settings.MEDIA_URL)
 
     @property
     def MONTHLY_CHANNEL_CRONTAB_BALANCING(self):
-        return self._setting('MONTHLY_CHANNEL_CRONTAB_BALANCING', False)
+        return self._setting("MONTHLY_CHANNEL_CRONTAB_BALANCING", False)
 
     @property
     def MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT(self):
-        return self._setting('MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT', True)
+        return self._setting("MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT", True)
 
     @property
     def NOTIFICATIONS_CHANNEL_STATUS_CHANGED(self):
@@ -297,7 +303,7 @@ class AppSettings(object):
 
     @property
     def PRIVACY_STATUS_CHECK_HOURS_PER_DAY(self):
-        """ How many hours per day does the update_video_statuses_and_details task run for? """
+        """How many hours per day does the update_video_statuses_and_details task run for?"""
         return self._setting(
             "PRIVACY_STATUS_CHECK_HOURS_PER_DAY",
             16,  # 5am to 9pm
@@ -305,7 +311,7 @@ class AppSettings(object):
 
     @property
     def PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO(self):
-        """ How many times should an update_video_details be used on a video, automatically. """
+        """How many times should an update_video_details be used on a video, automatically."""
         return self._setting(
             "PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO",
             3,
@@ -313,7 +319,7 @@ class AppSettings(object):
 
     @property
     def PRIVACY_STATUS_CHECK_MIN_AGE(self):
-        """ How many days before a video status should be checked. """
+        """How many days before a video status should be checked."""
         return self._setting(
             "PRIVACY_STATUS_CHECK_MIN_AGE",
             30,
@@ -335,7 +341,7 @@ class AppSettings(object):
 
     @property
     def PROXIES(self):
-        """ A list of proxies to select from.
+        """A list of proxies to select from.
 
         If a callable is supplied, it will be called with the previous proxies,
             the current video being attempted, and the number of attempt the system is on.
@@ -360,8 +366,7 @@ class AppSettings(object):
 
     @property
     def PROXIES_DEFAULT(self):
-        """ The default proxy to use if all PROXIES fails
-        """
+        """The default proxy to use if all PROXIES fails"""
         return self._setting("PROXIES_DEFAULT", "")
 
     @cached_property
@@ -387,10 +392,12 @@ class AppSettings(object):
 
     @property
     def SHORTS_FORCE_MAX_QUALITY(self):
-        return bool(self._setting(
-            "SHORTS_FORCE_MAX_QUALITY",
-            False,
-        ))
+        return bool(
+            self._setting(
+                "SHORTS_FORCE_MAX_QUALITY",
+                False,
+            )
+        )
 
     @property
     def SLOW_FULL_ARCHIVE_TASK_DOWNLOAD_LIMIT(self):
@@ -401,7 +408,7 @@ class AppSettings(object):
 
     @property
     def VIDEO_AUTO_DOWNLOAD_LIVE_AMQ_WHEN_DETECTED(self):
-        """ When update_video_details task is called, a video's live quality may have been
+        """When update_video_details task is called, a video's live quality may have been
         updated since it was last downloaded. Maybe the download task grabbed 480p while youtube
         was still processing 1080p. If a channel is set to download the best quality available,
         this will track if a videos quality has been upgraded since the video was last downloaded.
@@ -413,8 +420,8 @@ class AppSettings(object):
 
     @property
     def VIDEO_DOWNLOAD_ERROR_ATTEMPTS(self):
-        """ How many times to try downloading a video, divide this by VIDEO_DOWNLOAD_ERROR_DAILY_ATTEMPTS
-            to see how many days it takes to fully error and stop trying. Default is 14 days worth."""
+        """How many times to try downloading a video, divide this by VIDEO_DOWNLOAD_ERROR_DAILY_ATTEMPTS
+        to see how many days it takes to fully error and stop trying. Default is 14 days worth."""
         return self._setting(
             "VIDEO_DOWNLOAD_ERROR_ATTEMPTS",
             70,
@@ -447,21 +454,21 @@ class AppSettings(object):
     def VIDEO_DOWNLOAD_FORMAT_BEST(self):
         return self._setting(
             "VIDEO_DOWNLOAD_FORMAT_BEST",
-            'bestvideo[ext=mp4]+bestaudio[ext=mp4]',
+            "bestvideo[ext=mp4]+bestaudio[ext=mp4]",
         )
 
     @property
     def VIDEO_DIRECTORY_SCHEMA(self):
         return self._setting(
             "VIDEO_DIRECTORY_SCHEMA",
-            "{{ video.upload_date|date:\"Y-m-d\" }} - {{ video.system_safe_title }} [{{ video.provider_object_id }}]",
+            '{{ video.upload_date|date:"Y-m-d" }} - {{ video.system_safe_title }} [{{ video.provider_object_id }}]',
         )
 
     @property
     def VIDEO_FILENAME_SCHEMA(self):
         return self._setting(
             "VIDEO_FILENAME_SCHEMA",
-            "{{ video.upload_date|date:\"Y-m-d\" }} - {{ video.system_safe_title }} [{{ video.provider_object_id }}]",
+            '{{ video.upload_date|date:"Y-m-d" }} - {{ video.system_safe_title }} [{{ video.provider_object_id }}]',
         )
 
     @property

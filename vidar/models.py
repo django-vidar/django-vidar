@@ -28,13 +28,13 @@ log = logging.getLogger(__name__)
 # Reminder, when using this on a model field. After making a change to the field,
 #   manually edit the migration file to reference this tuple instead of the raw strings
 PossibleQualities = (
-    (None, 'System Default'),
-    (0, 'Best'),
-    (480, '480p (SD)'),
-    (720, '720p'),
-    (1080, '1080p (HD)'),
-    (1440, '2K (1440p)'),
-    (2160, '4K (2160)'),
+    (None, "System Default"),
+    (0, "Best"),
+    (480, "480p (SD)"),
+    (720, "720p"),
+    (1080, "1080p (HD)"),
+    (1440, "2K (1440p)"),
+    (2160, "4K (2160)"),
 )
 PossibleQualitiesList = [k for k, v in PossibleQualities]
 
@@ -46,11 +46,11 @@ class RightsSupport(models.Model):
         default_permissions = ()  # disable default permissions
 
         permissions = (
-            ('access_vidar', 'General Access to Vidar'),
-            ('view_index_download_stats', 'Index View - See Download Stats'),
-            ('view_download_queue', 'View Download Queue'),
-            ('view_update_details_queue', 'View Update Details Queue'),
-            ('access_watch_later_playlist', 'Access Watch Later Functionality'),
+            ("access_vidar", "General Access to Vidar"),
+            ("view_index_download_stats", "Index View - See Download Stats"),
+            ("view_download_queue", "View Download Queue"),
+            ("view_update_details_queue", "View Update Details Queue"),
+            ("access_watch_later_playlist", "Access Watch Later Functionality"),
         )
 
 
@@ -60,20 +60,16 @@ class ChannelObjectsManager(models.Manager):
         return self.filter(status=channel_helpers.ChannelStatuses.ACTIVE)
 
     def indexing_enabled(self):
-        return self.active().filter(
-            Q(index_videos=True) | Q(index_shorts=True) | Q(index_livestreams=True)
-        )
+        return self.active().filter(Q(index_videos=True) | Q(index_shorts=True) | Q(index_livestreams=True))
 
     def actively_scanning(self):
-        return self.indexing_enabled().exclude(
-            Q(full_archive=True) | Q(scanner_crontab='')
-        )
+        return self.indexing_enabled().exclude(Q(full_archive=True) | Q(scanner_crontab=""))
 
     def indexing_and_archiving(self):
-        return self.indexing_enabled().filter(
-            Q(download_videos=True) | Q(download_shorts=True) | Q(download_livestreams=True)
-        ).exclude(
-            Q(full_archive=True) | Q(scanner_crontab='')
+        return (
+            self.indexing_enabled()
+            .filter(Q(download_videos=True) | Q(download_shorts=True) | Q(download_livestreams=True))
+            .exclude(Q(full_archive=True) | Q(scanner_crontab=""))
         )
 
     def already_exists(self, provider_object_id):
@@ -99,7 +95,7 @@ class Channel(models.Model):
     description = models.TextField(blank=True)
 
     provider_object_id = models.CharField(max_length=250)
-    uploader_id = models.CharField(max_length=250, blank=True, help_text='The @ style name of the channel')
+    uploader_id = models.CharField(max_length=250, blank=True, help_text="The @ style name of the channel")
     active = models.BooleanField(default=True)
     status = models.CharField(
         max_length=50,
@@ -108,22 +104,13 @@ class Channel(models.Model):
     )
 
     banner = models.ImageField(
-        null=True, blank=True,
-        upload_to=channel_helpers.upload_to_banner,
-        storage=vidar_storage,
-        max_length=500
+        null=True, blank=True, upload_to=channel_helpers.upload_to_banner, storage=vidar_storage, max_length=500
     )
     thumbnail = models.ImageField(
-        null=True, blank=True,
-        upload_to=channel_helpers.upload_to_thumbnail,
-        storage=vidar_storage,
-        max_length=500
+        null=True, blank=True, upload_to=channel_helpers.upload_to_thumbnail, storage=vidar_storage, max_length=500
     )
     tvart = models.ImageField(
-        null=True, blank=True,
-        upload_to=channel_helpers.upload_to_tvart,
-        storage=vidar_storage,
-        max_length=500
+        null=True, blank=True, upload_to=channel_helpers.upload_to_tvart, storage=vidar_storage, max_length=500
     )
 
     swap_index_videos_after = models.DateTimeField(null=True, blank=True)
@@ -132,19 +119,19 @@ class Channel(models.Model):
     scanner_limit = models.PositiveIntegerField(
         default=5,
         help_text="Limit how many videos the system scans every time for this channel, "
-                  "How many potential videos could this channel put out in a single day?"
+        "How many potential videos could this channel put out in a single day?",
     )
     duration_minimum_videos = models.PositiveIntegerField(
         default=0,
-        verbose_name='Duration Minimum For Videos (In Seconds)',
-        help_text='Minimum duration in seconds of a video to download. '
-                  'Anything shorter than this will be skipped. 0 = disabled.'
+        verbose_name="Duration Minimum For Videos (In Seconds)",
+        help_text="Minimum duration in seconds of a video to download. "
+        "Anything shorter than this will be skipped. 0 = disabled.",
     )
     duration_maximum_videos = models.PositiveIntegerField(
         default=0,
-        verbose_name='Duration Maximum For Videos (In Seconds)',
-        help_text='Maximum duration in seconds of a video to download. '
-                  'Anything longer than this will be skipped. 0 = disabled.'
+        verbose_name="Duration Maximum For Videos (In Seconds)",
+        help_text="Maximum duration in seconds of a video to download. "
+        "Anything longer than this will be skipped. 0 = disabled.",
     )
     delete_videos_after_days = models.PositiveIntegerField(default=0)
 
@@ -155,7 +142,7 @@ class Channel(models.Model):
     scanner_limit_shorts = models.PositiveIntegerField(
         default=5,
         help_text="Limit how many shorts the system scans every time for this channel, "
-                  "How many potential shorts could this channel put out in a single day?"
+        "How many potential shorts could this channel put out in a single day?",
     )
     fully_indexed_shorts = models.BooleanField(default=False)
     delete_shorts_after_days = models.PositiveIntegerField(default=0)
@@ -167,62 +154,56 @@ class Channel(models.Model):
     scanner_limit_livestreams = models.PositiveIntegerField(
         default=5,
         help_text="Limit how many livestreams the system scans every time for this channel, "
-                  "How many potential livestreams could this channel put out in a single day?"
+        "How many potential livestreams could this channel put out in a single day?",
     )
     duration_minimum_livestreams = models.PositiveIntegerField(
         default=0,
-        verbose_name='Duration Minimum For Livestreams (In Seconds)',
-        help_text='Minimum duration in seconds of a livestream to download. '
-                  'Anything shorter than this will be skipped. 0 = disabled.'
+        verbose_name="Duration Minimum For Livestreams (In Seconds)",
+        help_text="Minimum duration in seconds of a livestream to download. "
+        "Anything shorter than this will be skipped. 0 = disabled.",
     )
     duration_maximum_livestreams = models.PositiveIntegerField(
         default=0,
-        verbose_name='Duration Maximum For Livestreams (In Seconds)',
-        help_text='Maximum duration in seconds of a livestream to download. '
-                  'Anything longer than this will be skipped. 0 = disabled.'
+        verbose_name="Duration Maximum For Livestreams (In Seconds)",
+        help_text="Maximum duration in seconds of a livestream to download. "
+        "Anything longer than this will be skipped. 0 = disabled.",
     )
     fully_indexed_livestreams = models.BooleanField(default=False)
     delete_livestreams_after_days = models.PositiveIntegerField(default=0)
 
-    download_comments_with_video = models.BooleanField(
-        default=False,
-        help_text="Should video comments be downloaded?"
-    )
+    download_comments_with_video = models.BooleanField(default=False, help_text="Should video comments be downloaded?")
     download_comments_during_scan = models.BooleanField(
-        default=False,
-        help_text='Should video comments be downloaded during indexing of videos?'
+        default=False, help_text="Should video comments be downloaded during indexing of videos?"
     )
 
     scanner_crontab = models.CharField(
-        max_length=50, blank=True,
-        help_text="minute, hour, day of month, month, day of week"
+        max_length=50, blank=True, help_text="minute, hour, day of month, month, day of week"
     )
     scan_after_datetime = models.DateTimeField(
         null=True,
         blank=True,
         help_text="A datetime representing the next time you wish to scan the channel, "
-                  "outside of the crontab schedule. Format: YYYY-MM-DD HH:MM"
+        "outside of the crontab schedule. Format: YYYY-MM-DD HH:MM",
     )
 
     slow_full_archive = models.BooleanField(
         default=False,
         help_text="Enabling this setting will cause the system to download all possible videos for this channel "
-                  "regardless of other settings at a slower rate. To be used instead of Full Archive option."
+        "regardless of other settings at a slower rate. To be used instead of Full Archive option.",
     )
 
     full_archive = models.BooleanField(
         default=False,
         help_text="Enabling this setting will cause the system to download all possible videos for this channel "
-                  "regardless of other settings."
+        "regardless of other settings.",
     )
     full_archive_after = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text='Instead of full archiving right now, enable full archive after this date.'
+        null=True, blank=True, help_text="Instead of full archiving right now, enable full archive after this date."
     )
     full_archive_cutoff = models.DateField(
-        null=True, blank=True,
-        help_text="If full archive is enabled, only videos uploaded after this date will be downloaded."
+        null=True,
+        blank=True,
+        help_text="If full archive is enabled, only videos uploaded after this date will be downloaded.",
     )
 
     fully_indexed = models.BooleanField(default=False)
@@ -230,7 +211,7 @@ class Channel(models.Model):
     full_index_after = models.DateTimeField(
         null=True,
         blank=True,
-        help_text='Instead of fully indexing right now, trigger a full indexing scan after this date.'
+        help_text="Instead of fully indexing right now, trigger a full indexing scan after this date.",
     )
 
     convert_videos_to_mp3 = models.BooleanField(default=False)
@@ -238,20 +219,20 @@ class Channel(models.Model):
     title_skips = models.TextField(
         blank=True,
         verbose_name="Skip DL by Title contains",
-        help_text="If any of these words appear in the title, do not download the video. ONE PER LINE. i.e. #shorts"
+        help_text="If any of these words appear in the title, do not download the video. ONE PER LINE. i.e. #shorts",
     )
     title_forces = models.TextField(
         blank=True,
         verbose_name="Force DL by Title contains",
         help_text="If any of these words appear in the title, force download the video regardless of settings. "
-                  "ONE PER LINE. Overrides all other restriction settings."
+        "ONE PER LINE. Overrides all other restriction settings.",
     )
 
     quality = models.PositiveIntegerField(null=True, blank=True, choices=PossibleQualities)
 
     allow_library_quality_upgrade = models.BooleanField(
         default=False,
-        help_text="Changing the channel quality will cause all videos to redownload. Do you want this to happen?"
+        help_text="Changing the channel quality will cause all videos to redownload. Do you want this to happen?",
     )
 
     playback_speed = models.CharField(max_length=10, null=True, blank=True, choices=model_helpers.PlaybackSpeed.choices)
@@ -265,7 +246,7 @@ class Channel(models.Model):
     store_videos_in_separate_directories = models.BooleanField(
         default=True,
         help_text="Should videos be stored in separate directories for each video? Each directory will then "
-                  "contain the video file, info.json, and it's thumbnail."
+        "contain the video file, info.json, and it's thumbnail.",
     )
     video_filename_schema = models.CharField(max_length=500, blank=True)
     video_directory_schema = models.CharField(max_length=500, blank=True)
@@ -280,28 +261,34 @@ class Channel(models.Model):
     send_download_notification = models.BooleanField(default=True)
 
     skip_intro_duration = models.PositiveIntegerField(
-        default=0,
-        help_text="How many seconds of intro should be skipped?"
+        default=0, help_text="How many seconds of intro should be skipped?"
     )
     skip_outro_duration = models.PositiveIntegerField(
-        default=0,
-        help_text="How many seconds of outro should be skipped?"
+        default=0, help_text="How many seconds of outro should be skipped?"
     )
 
-    skip_next_downloads = models.PositiveIntegerField(
-        default=0,
-        help_text="Skip next X number of downloads"
-    )
+    skip_next_downloads = models.PositiveIntegerField(default=0, help_text="Skip next X number of downloads")
     force_next_downloads = models.PositiveIntegerField(
         default=0,
         help_text="Force next X number of downloads",
     )
     watched_percentage = models.PositiveIntegerField(
         default=95,
-        choices=[(50, '50%'), (55, '55%'), (60, '60%'), (65, '65%'), (70, '70%'),
-                 (75, '75%'), (80, '80%'), (85, '85%'), (90, '90%'), (95, '95%'), (100, '100%')],
-        help_text='At what percentage of watching a video on this channel should the video be marked as watched.',
-        validators=[channel_helpers.watched_percentage_minimum, channel_helpers.watched_percentage_maximum]
+        choices=[
+            (50, "50%"),
+            (55, "55%"),
+            (60, "60%"),
+            (65, "65%"),
+            (70, "70%"),
+            (75, "75%"),
+            (80, "80%"),
+            (85, "85%"),
+            (90, "90%"),
+            (95, "95%"),
+            (100, "100%"),
+        ],
+        help_text="At what percentage of watching a video on this channel should the video be marked as watched.",
+        validators=[channel_helpers.watched_percentage_minimum, channel_helpers.watched_percentage_maximum],
     )
 
     mirror_playlists = models.BooleanField(
@@ -319,8 +306,7 @@ class Channel(models.Model):
         help_text="When adding a new playlist as a mirror, apply a crontab that matches this type.",
     )
     mirror_playlists_restrict = models.BooleanField(
-        default=False,
-        help_text="Sets the playlists \"Restrict to assigned channel\" field value."
+        default=False, help_text='Sets the playlists "Restrict to assigned channel" field value.'
     )
 
     delete_videos_after_watching = models.BooleanField(
@@ -339,40 +325,41 @@ class Channel(models.Model):
     )
 
     block_rescan_window_in_hours = models.PositiveIntegerField(
-        null=True, blank=True,
+        null=True,
+        blank=True,
         help_text="If you manually scan a channel and the crontab tries to run within "
-                  "this many hours of the manual scan, don't rescan."
+        "this many hours of the manual scan, don't rescan.",
     )
 
     check_videos_privacy_status = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ['name']
+        ordering = ["name"]
 
     def __str__(self):
         return self.display_name or self.name
 
     def get_absolute_url(self):
-        return reverse('vidar:channel-details', args=[self.slug or self.pk])
+        return reverse("vidar:channel-details", args=[self.slug or self.pk])
 
     @property
     def system_safe_name(self):
         replaceables = {
-            '&': 'and',
-            '–': '-',
+            "&": "and",
+            "–": "-",
         }
-        keepers = '&– -'
+        keepers = "&– -"
         safe_name = "".join([c for c in self.name if c.isalnum() or c in keepers]).rstrip()
         for k, v in replaceables.items():
             safe_name = safe_name.replace(k, v)
-        safe_string = re.sub(' +', ' ', safe_name)
-        safe_string_without_multiple_spaces = ' '.join(safe_string.split())
+        safe_string = re.sub(" +", " ", safe_name)
+        safe_string_without_multiple_spaces = " ".join(safe_string.split())
         return safe_string_without_multiple_spaces
 
     @property
     def system_safe_name_the(self):
         current_name = self.system_safe_name
-        if current_name.lower().startswith('the '):
+        if current_name.lower().startswith("the "):
             cased_the = current_name[:4].strip()
             title_without_the = current_name[4:]
             current_name = f"{title_without_the}, {cased_the}"
@@ -398,23 +385,23 @@ class Channel(models.Model):
     def banner_url(self):
         if self.banner:
             return self.banner.url
-        return ''
+        return ""
 
     @property
     def thumbnail_url(self):
         if self.thumbnail:
             return self.thumbnail.url
-        return ''
+        return ""
 
     @property
     def tvart_url(self):
         if self.tvart:
             return self.tvart.url
-        return ''
+        return ""
 
     @property
     def videos_archived(self):
-        return self.videos.exclude(file='')
+        return self.videos.exclude(file="")
 
     @property
     def videos_at_max_quality(self):
@@ -443,7 +430,7 @@ class Channel(models.Model):
             slug = slugify(self.name)
             if self.slug != slug:
                 self.slug = slug
-                changed_fields.append('slug')
+                changed_fields.append("slug")
 
         if self.status == channel_helpers.ChannelStatuses.ACTIVE:
 
@@ -452,16 +439,16 @@ class Channel(models.Model):
             # If index_videos==True and no crontab assigned, assign one.
             if is_indexing_something and not self.scanner_crontab:
                 self.scanner_crontab = crontab_services.generate_daily()
-                changed_fields.append('scanner_crontab')
+                changed_fields.append("scanner_crontab")
 
             # Ensure no crontab exists if disabled
             if not is_indexing_something and self.scanner_crontab:
-                self.scanner_crontab = ''
-                changed_fields.append('scanner_crontab')
+                self.scanner_crontab = ""
+                changed_fields.append("scanner_crontab")
 
             if self.full_archive and self.full_archive_after:
                 self.full_archive_after = None
-                changed_fields.append('full_archive_after')
+                changed_fields.append("full_archive_after")
 
         if self.pk:
             try:
@@ -471,37 +458,42 @@ class Channel(models.Model):
                 # it is now set to index, reset fully_indexed flag
                 if self.index_videos != orig.index_videos:
                     self.fully_indexed = False
-                    changed_fields.append('fully_indexed')
+                    changed_fields.append("fully_indexed")
                 if self.index_shorts != orig.index_shorts:
                     self.fully_indexed_shorts = False
-                    changed_fields.append('fully_indexed_shorts')
+                    changed_fields.append("fully_indexed_shorts")
                 if self.index_livestreams != orig.index_livestreams:
                     self.fully_indexed_livestreams = False
-                    changed_fields.append('fully_indexed_livestreams')
+                    changed_fields.append("fully_indexed_livestreams")
 
                 # Disabling full archive cutoff clears the fully_indexed flag as videos could have been missed.
-                if orig.full_archive_cutoff and not self.full_archive_after \
-                        and (self.fully_indexed or self.fully_indexed_shorts or self.fully_indexed_livestreams):
+                if (
+                    orig.full_archive_cutoff
+                    and not self.full_archive_after
+                    and (self.fully_indexed or self.fully_indexed_shorts or self.fully_indexed_livestreams)
+                ):
                     self.fully_indexed = False
                     self.fully_indexed_shorts = False
                     self.fully_indexed_livestreams = False
-                    changed_fields.extend(['fully_indexed', 'fully_indexed_shorts', 'fully_indexed_livestreams'])
+                    changed_fields.extend(["fully_indexed", "fully_indexed_shorts", "fully_indexed_livestreams"])
 
                 # Changing the cutoff date will clear the fully_indexed flag
-                if orig.full_archive_cutoff and \
-                        self.full_archive_after and \
-                        orig.full_archive_cutoff != self.full_archive_cutoff and \
-                        (self.fully_indexed or self.fully_indexed_shorts or self.fully_indexed_livestreams):
+                if (
+                    orig.full_archive_cutoff
+                    and self.full_archive_after
+                    and orig.full_archive_cutoff != self.full_archive_cutoff
+                    and (self.fully_indexed or self.fully_indexed_shorts or self.fully_indexed_livestreams)
+                ):
                     self.fully_indexed = False
                     self.fully_indexed_shorts = False
                     self.fully_indexed_livestreams = False
-                    changed_fields.extend(['fully_indexed', 'fully_indexed_shorts', 'fully_indexed_livestreams'])
+                    changed_fields.extend(["fully_indexed", "fully_indexed_shorts", "fully_indexed_livestreams"])
 
             except Channel.DoesNotExist:
                 pass
 
-        if changed_fields and 'update_fields' in kwargs:
-            kwargs['update_fields'].extend(changed_fields)
+        if changed_fields and "update_fields" in kwargs:
+            kwargs["update_fields"].extend(changed_fields)
 
         return super().save(*args, **kwargs)
 
@@ -521,7 +513,7 @@ class Channel(models.Model):
         for video in qs:
 
             if prev:
-                diff = (prev.upload_date - video.upload_date)
+                diff = prev.upload_date - video.upload_date
                 days_between.append(diff.days)
 
             prev = video
@@ -533,44 +525,44 @@ class Channel(models.Model):
     def days_since_last_upload(self):
 
         for video in self.videos.exclude(upload_date__isnull=True):
-            diff = (timezone.now().date() - video.upload_date)
+            diff = timezone.now().date() - video.upload_date
             return diff.days
 
     def calculated_file_size(self):
-        return self.videos.exclude(file='').aggregate(sumd=models.Sum('file_size'))['sumd'] or 0
+        return self.videos.exclude(file="").aggregate(sumd=models.Sum("file_size"))["sumd"] or 0
 
     def existing_video_qualities(self):
 
         qualities = {}
 
-        for i in Video.objects.distinct('quality').order_by('quality').values_list('quality'):
+        for i in Video.objects.distinct("quality").order_by("quality").values_list("quality"):
             i = i[0]
             base_qs = self.videos.filter(quality=i)
-            sumd = base_qs.exclude(file='').aggregate(sumd=models.Sum('file_size'))
-            videos_at_this_quality_counter = sumd['sumd'] or 0
+            sumd = base_qs.exclude(file="").aggregate(sumd=models.Sum("file_size"))
+            videos_at_this_quality_counter = sumd["sumd"] or 0
             if videos_at_this_quality_counter:
                 qualities[i] = (
                     base_qs.count(),
                     videos_at_this_quality_counter,
-                    base_qs.filter(at_max_quality=True).count()
+                    base_qs.filter(at_max_quality=True).count(),
                 )
 
         return qualities
 
     def total_video_durations(self):
-        return self.videos.aggregate(sumd=Sum('duration'))['sumd']
+        return self.videos.aggregate(sumd=Sum("duration"))["sumd"]
 
     def total_archived_video_durations(self):
-        return self.videos.exclude(file='').aggregate(sumd=Sum('duration'))['sumd']
+        return self.videos.exclude(file="").aggregate(sumd=Sum("duration"))["sumd"]
 
     def existing_video_privacy_statuses(self):
 
         statuses = {}
 
-        for i in Video.objects.distinct('privacy_status').order_by('privacy_status').values_list('privacy_status'):
+        for i in Video.objects.distinct("privacy_status").order_by("privacy_status").values_list("privacy_status"):
             i = i[0]
             base_qs = self.videos.filter(privacy_status=i)
-            videos_counter = base_qs.exclude(file='').aggregate(sumd=models.Sum('file_size'))['sumd'] or 0
+            videos_counter = base_qs.exclude(file="").aggregate(sumd=models.Sum("file_size"))["sumd"] or 0
             if videos_counter:
                 statuses[i] = base_qs.count(), videos_counter
 
@@ -580,10 +572,10 @@ class Channel(models.Model):
 
         statuses = {}
 
-        for i in Video.objects.distinct('privacy_status').order_by('privacy_status').values_list('privacy_status'):
+        for i in Video.objects.distinct("privacy_status").order_by("privacy_status").values_list("privacy_status"):
             i = i[0]
             base_qs = self.videos.filter(privacy_status=i)
-            videos_counter = base_qs.aggregate(sumd=models.Sum('file_size'))['sumd'] or 0
+            videos_counter = base_qs.aggregate(sumd=models.Sum("file_size"))["sumd"] or 0
             if bqs := base_qs.count():
                 statuses[i] = bqs, videos_counter
 
@@ -593,21 +585,21 @@ class Channel(models.Model):
 class VideoObjectsManager(models.Manager):
 
     def archived(self):
-        return self.exclude(file='')
+        return self.exclude(file="")
 
 
 class Video(model_helpers.CeleryLockableModel, models.Model):
 
     class Meta:
-        ordering = ['-upload_date', '-inserted']
+        ordering = ["-upload_date", "-inserted"]
         permissions = [
-            ('play_videos', 'Can play video'),
-            ('star_video', 'Can Star video'),
+            ("play_videos", "Can play video"),
+            ("star_video", "Can Star video"),
         ]
 
     objects = VideoObjectsManager()
 
-    channel = models.ForeignKey(Channel, on_delete=models.SET_NULL, null=True, blank=True, related_name='videos')
+    channel = models.ForeignKey(Channel, on_delete=models.SET_NULL, null=True, blank=True, related_name="videos")
 
     provider_object_id = models.CharField(max_length=255)
     channel_provider_object_id = models.CharField(max_length=255, blank=True)
@@ -618,22 +610,19 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     inserted = models.DateTimeField(null=True, blank=True)
     updated = models.DateTimeField(null=True, blank=True)
 
-    file = models.FileField(upload_to=video_helpers.upload_to_file, blank=True,
-                            storage=vidar_storage, max_length=500)
+    file = models.FileField(upload_to=video_helpers.upload_to_file, blank=True, storage=vidar_storage, max_length=500)
     file_size = models.PositiveBigIntegerField(null=True, blank=True)
     file_not_found = models.BooleanField(default=False)
 
-    info_json = models.FileField(upload_to=video_helpers.upload_to_infojson, blank=True,
-                                 storage=vidar_storage, max_length=500)
+    info_json = models.FileField(
+        upload_to=video_helpers.upload_to_infojson, blank=True, storage=vidar_storage, max_length=500
+    )
 
     description = models.TextField(blank=True)
     description_locked = models.BooleanField(default=False)
 
     thumbnail = models.ImageField(
-        upload_to=video_helpers.upload_to_thumbnail,
-        storage=vidar_storage,
-        null=True, blank=True,
-        max_length=500
+        upload_to=video_helpers.upload_to_thumbnail, storage=vidar_storage, null=True, blank=True, max_length=500
     )
 
     view_count = models.PositiveIntegerField(null=True, blank=True)
@@ -648,9 +637,9 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
     upload_date = models.DateField(null=True, blank=True)
 
-    is_video = models.BooleanField(default=False, help_text='Is this video under the Video tab for this channel?')
-    is_short = models.BooleanField(default=False, help_text='Is this video under the Shorts tab for this channel?')
-    is_livestream = models.BooleanField(default=False, help_text='Is this video under the Live tab for this channel?')
+    is_video = models.BooleanField(default=False, help_text="Is this video under the Video tab for this channel?")
+    is_short = models.BooleanField(default=False, help_text="Is this video under the Shorts tab for this channel?")
+    is_livestream = models.BooleanField(default=False, help_text="Is this video under the Live tab for this channel?")
 
     force_download = models.BooleanField(default=False)
     watched = models.DateTimeField(null=True, blank=True)
@@ -660,16 +649,17 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
     duration = models.IntegerField(default=0, blank=True)
 
-    quality = models.PositiveIntegerField(help_text='To be set by Channel quality setting.',
-                                          choices=PossibleQualities, null=True, blank=True)
+    quality = models.PositiveIntegerField(
+        help_text="To be set by Channel quality setting.", choices=PossibleQualities, null=True, blank=True
+    )
     at_max_quality = models.BooleanField(default=False)
 
     starred = models.DateTimeField(null=True, blank=True)
 
     mark_for_deletion = models.BooleanField(
         default=False,
-        help_text='Used when downloading music videos and not wanting to keep the resulting files '
-                  'beyond the daily maintenance task runtime.'
+        help_text="Used when downloading music videos and not wanting to keep the resulting files "
+        "beyond the daily maintenance task runtime.",
     )
 
     width = models.IntegerField(default=0)
@@ -689,21 +679,21 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
     playlists = models.ManyToManyField(
         "vidar.Playlist",
-        related_name='videos',
+        related_name="videos",
         through="vidar.PlaylistItem",
-        through_fields=('video', 'playlist'),
-        blank=True
+        through_fields=("video", "playlist"),
+        blank=True,
     )
 
     class VideoPrivacyStatuses(models.TextChoices):
-        PUBLIC = 'Public'
-        PRIVATE = 'Private'
-        UNLISTED = 'Unlisted'
-        UNAVAILABLE = 'Unavailable'
-        DELETED = 'Deleted'
-        MISSING = 'Missing'
-        BLOCKED = 'Blocked'
-        AUTH = 'needs_auth', 'Needs Auth'
+        PUBLIC = "Public"
+        PRIVATE = "Private"
+        UNLISTED = "Unlisted"
+        UNAVAILABLE = "Unavailable"
+        DELETED = "Deleted"
+        MISSING = "Missing"
+        BLOCKED = "Blocked"
+        AUTH = "needs_auth", "Needs Auth"
 
     VideoPrivacyStatuses_Publicly_Visible = [
         VideoPrivacyStatuses.PUBLIC,
@@ -730,7 +720,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
     system_notes = models.JSONField(blank=True, default=dict, encoder=json_encoders.JSONSetToListEncoder)
 
-    related = models.ManyToManyField('self', blank=True)
+    related = models.ManyToManyField("self", blank=True)
 
     prevent_deletion = models.BooleanField(default=False)
 
@@ -740,8 +730,8 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
     requested_max_quality = models.BooleanField(
         default=False,
-        help_text='Tracks whether or not the system requested the max quality be downloaded. '
-                  'If at a later date the quality upgrades, this could catch those changes.'
+        help_text="Tracks whether or not the system requested the max quality be downloaded. "
+        "If at a later date the quality upgrades, this could catch those changes.",
     )
 
     playback_speed = models.CharField(max_length=10, blank=True, choices=model_helpers.PlaybackSpeed.choices)
@@ -757,21 +747,19 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     )
 
     download_requested_by = models.CharField(
-        max_length=255,
-        blank=True,
-        help_text="What triggered this video to download?"
+        max_length=255, blank=True, help_text="What triggered this video to download?"
     )
     filename_schema = models.CharField(max_length=500, blank=True)
     directory_schema = models.CharField(max_length=500, blank=True)
 
     def __str__(self):
-        return self.title or '<Title Placeholder>'
+        return self.title or "<Title Placeholder>"
 
     def __repr__(self):
         return f"<{self.__class__.__name__}.pk={self.pk}: {self.title}>"
 
     def get_absolute_url(self):
-        return reverse('vidar:video-detail', args=[self.pk])
+        return reverse("vidar:video-detail", args=[self.pk])
 
     @property
     def url(self):
@@ -781,13 +769,13 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
         if not self.inserted:
             self.inserted = timezone.now()
-            if 'update_fields' in kwargs and 'inserted' not in kwargs['update_fields']:
-                kwargs['update_fields'].append('inserted')
+            if "update_fields" in kwargs and "inserted" not in kwargs["update_fields"]:
+                kwargs["update_fields"].append("inserted")
 
         self.updated = timezone.now()
 
-        if 'update_fields' in kwargs and 'updated' not in kwargs['update_fields']:
-            kwargs['update_fields'].append('updated')
+        if "update_fields" in kwargs and "updated" not in kwargs["update_fields"]:
+            kwargs["update_fields"].append("updated")
 
         if self.pk:
             original_obj = Video.objects.get(pk=self.pk)
@@ -796,22 +784,22 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             # Video must have a title because the way our system works is that it create the
             # video entry with just the youtube_id and then applies the details.
             if original_obj.title and self.title != original_obj.title:
-                values['new_title'] = self.title
-                values['old_title'] = original_obj.title
+                values["new_title"] = self.title
+                values["old_title"] = original_obj.title
 
             if original_obj.description and self.description != original_obj.description:
-                values['new_description'] = self.description
-                values['old_description'] = original_obj.description
+                values["new_description"] = self.description
+                values["old_description"] = original_obj.description
 
             if original_obj.privacy_status and self.privacy_status != original_obj.privacy_status:
-                values['new_privacy_status'] = self.privacy_status
-                values['old_privacy_status'] = original_obj.privacy_status
+                values["new_privacy_status"] = self.privacy_status
+                values["old_privacy_status"] = original_obj.privacy_status
 
             if values:
                 self.change_history.create(**values)
 
         if self.channel and not self.sort_ordering:
-            last_obj = self.channel.videos.order_by('sort_ordering').last()
+            last_obj = self.channel.videos.order_by("sort_ordering").last()
             last_id = 0
             if last_obj:
                 last_id = last_obj.sort_ordering
@@ -820,14 +808,14 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
             self.sort_ordering = new_id
 
-            if 'update_fields' in kwargs:
-                kwargs['update_fields'].append('sort_ordering')
+            if "update_fields" in kwargs:
+                kwargs["update_fields"].append("sort_ordering")
 
         return super().save(*args, **kwargs)
 
     def delete(self, using=None, keep_parents=False, deletion_permitted=False):
         if not deletion_permitted:
-            raise exceptions.UnauthorizedVideoDeletionError('Use video_services to delete a Video object.')
+            raise exceptions.UnauthorizedVideoDeletionError("Use video_services to delete a Video object.")
         return super().delete(using=using, keep_parents=keep_parents)
 
     def embed_url(self):
@@ -835,14 +823,14 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
     @property
     def system_safe_title(self):
-        safe_string = "".join([c for c in self.title if c.isalnum() or c == ' ']).rstrip()
-        safe_string_without_multiple_spaces = ' '.join(safe_string.split())
+        safe_string = "".join([c for c in self.title if c.isalnum() or c == " "]).rstrip()
+        safe_string_without_multiple_spaces = " ".join(safe_string.split())
         return safe_string_without_multiple_spaces
 
     @property
     def system_safe_title_the(self):
         current_title = self.system_safe_title
-        if current_title.lower().startswith('the '):
+        if current_title.lower().startswith("the "):
             cased_the = current_title[:4].strip()
             title_without_the = current_title[4:]
             current_title = f"{title_without_the}, {cased_the}"
@@ -851,25 +839,25 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     def set_details_from_yt_dlp_response(self, data):
 
         if not self.title:
-            if title := data.get('title'):
+            if title := data.get("title"):
                 self.title = title
         elif not self.title_locked:
-            if title := data.get('title'):
+            if title := data.get("title"):
                 self.title = title
 
         if not self.description:
-            if description := data.get('description'):
+            if description := data.get("description"):
                 self.description = description
         elif not self.description_locked:
-            if description := data.get('description'):
+            if description := data.get("description"):
                 self.description = description
 
-        simple_fields = ['view_count', 'like_count', 'duration', 'width', 'height', 'fps']
+        simple_fields = ["view_count", "like_count", "duration", "width", "height", "fps"]
         for field in simple_fields:
             if live_data := data.get(field):
                 setattr(self, field, live_data)
 
-        if channel_provider_object_id := data.get('channel_id'):
+        if channel_provider_object_id := data.get("channel_id"):
             self.channel_provider_object_id = channel_provider_object_id
 
             if not self.channel:
@@ -878,25 +866,25 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
                 except Channel.DoesNotExist:
                     pass
 
-        if live_upload_date_raw := data.get('upload_date'):
-            self.upload_date = datetime.datetime.strptime(live_upload_date_raw, '%Y%m%d').date()
+        if live_upload_date_raw := data.get("upload_date"):
+            self.upload_date = datetime.datetime.strptime(live_upload_date_raw, "%Y%m%d").date()
         elif not self.upload_date:
             self.upload_date = timezone.make_aware(timezone.datetime.fromtimestamp(0))
 
-        if formats := data.get('formats'):
+        if formats := data.get("formats"):
             self.dlp_formats = formats
 
-        if live_status := data.get('availability'):
+        if live_status := data.get("availability"):
             status_mapping = {
-                'unlisted': Video.VideoPrivacyStatuses.UNLISTED,
-                'public': Video.VideoPrivacyStatuses.PUBLIC,
-                'private': Video.VideoPrivacyStatuses.PRIVATE,
-                'deleted': Video.VideoPrivacyStatuses.DELETED,
+                "unlisted": Video.VideoPrivacyStatuses.UNLISTED,
+                "public": Video.VideoPrivacyStatuses.PUBLIC,
+                "private": Video.VideoPrivacyStatuses.PRIVATE,
+                "deleted": Video.VideoPrivacyStatuses.DELETED,
             }
             if wanted_status := status_mapping.get(live_status.lower()):
                 self.privacy_status = wanted_status
 
-            elif data['title'] and data['description']:
+            elif data["title"] and data["description"]:
                 self.privacy_status = Video.VideoPrivacyStatuses.PUBLIC
             else:
                 self.privacy_status = live_status
@@ -904,12 +892,12 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             self.last_privacy_status_check = timezone.now()
 
         if not self.is_video and not self.is_short and not self.is_livestream:
-            if orig_url := data.get('original_url'):
-                if '/shorts/' in orig_url:
+            if orig_url := data.get("original_url"):
+                if "/shorts/" in orig_url:
                     self.is_short = True
 
         if not self.is_video and not self.is_short and not self.is_livestream:
-            if data.get('was_live'):
+            if data.get("was_live"):
                 self.is_livestream = True
 
     def duration_as_timedelta(self):
@@ -938,36 +926,39 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             return
 
         try:
-            history = self.channel.scan_history.latest('inserted')
+            history = self.channel.scan_history.latest("inserted")
             # history = self.channel.scan_history.create()
 
             self.channel.scan_history.filter(pk=history.pk).update(
-                videos_downloaded=F('videos_downloaded') + int(self.is_video),
-                shorts_downloaded=F('shorts_downloaded') + int(self.is_short),
-                livestreams_downloaded=F('livestreams_downloaded') + int(self.is_livestream),
+                videos_downloaded=F("videos_downloaded") + int(self.is_video),
+                shorts_downloaded=F("shorts_downloaded") + int(self.is_short),
+                livestreams_downloaded=F("livestreams_downloaded") + int(self.is_livestream),
             )
         except ScanHistory.DoesNotExist:
             pass
 
     def channel_page_number(self):
-        return math.ceil(self.channel.videos.filter(
-            upload_date__gt=self.upload_date or timezone.now(),
-        ).count() / 10)
+        return math.ceil(
+            self.channel.videos.filter(
+                upload_date__gt=self.upload_date or timezone.now(),
+            ).count()
+            / 10
+        )
 
     def save_download_kwargs(self, kwargs):
 
-        if 'progress_hooks' in kwargs:
-            del kwargs['progress_hooks']
+        if "progress_hooks" in kwargs:
+            del kwargs["progress_hooks"]
 
         self.download_kwargs = kwargs
         self.save()
 
     def save_system_notes(self, kwargs):
 
-        if 'proxy' in kwargs:
-            proxies_attempted = self.system_notes.get('proxies_attempted', [])
-            proxies_attempted.append(kwargs['proxy'])
-            self.system_notes['proxies_attempted'] = proxies_attempted
+        if "proxy" in kwargs:
+            proxies_attempted = self.system_notes.get("proxies_attempted", [])
+            proxies_attempted.append(kwargs["proxy"])
+            self.system_notes["proxies_attempted"] = proxies_attempted
 
             self.save()
 
@@ -988,34 +979,34 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             uploader = self.channel.name
 
         data = {
-            'id': self.provider_object_id,
-            'title': self.title,
-            'description': self.description,
-            'duration': self.duration,
-            'upload_date': self.upload_date.strftime('%Y%m%d'),
-            'view_count': self.view_count,
-            'channel_id': channel_id,
-            'channel_url': channel_url,
-            'uploader': uploader,
-            'uploader_id': channel_id,
-            'uploader_url': channel_url,
-            'availability': self.privacy_status.lower(),
-            'format': self.format_note or self.get_quality_display(),
-            'format_id': self.format_id,
-            'ext': self.file.name.rsplit('.', 1)[-1],
-            'like_count': self.like_count,
-            'width': self.width,
-            'height': self.height,
+            "id": self.provider_object_id,
+            "title": self.title,
+            "description": self.description,
+            "duration": self.duration,
+            "upload_date": self.upload_date.strftime("%Y%m%d"),
+            "view_count": self.view_count,
+            "channel_id": channel_id,
+            "channel_url": channel_url,
+            "uploader": uploader,
+            "uploader_id": channel_id,
+            "uploader_url": channel_url,
+            "availability": self.privacy_status.lower(),
+            "format": self.format_note or self.get_quality_display(),
+            "format_id": self.format_id,
+            "ext": self.file.name.rsplit(".", 1)[-1],
+            "like_count": self.like_count,
+            "width": self.width,
+            "height": self.height,
         }
         if self.thumbnail:
-            data['thumbnails'] = [
+            data["thumbnails"] = [
                 {
-                    'url': self.thumbnail.url,
-                    'preference': 99,
-                    'id': "99",
+                    "url": self.thumbnail.url,
+                    "preference": 99,
+                    "id": "99",
                 }
             ]
-            data['thumbnail'] = self.thumbnail.url
+            data["thumbnail"] = self.thumbnail.url
 
         return data
 
@@ -1024,13 +1015,13 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             return True
         if self.dlp_formats:
             if ytdlp_services.is_quality_at_highest_quality_from_dlp_formats(self.dlp_formats, self.quality):
-                log.info(f'Setting at_max_quality=True on Video.id={self.pk} : True based on dlp_formats.')
+                log.info(f"Setting at_max_quality=True on Video.id={self.pk} : True based on dlp_formats.")
                 self.at_max_quality = True
                 self.save()
         return self.at_max_quality
 
     def check_and_add_video_to_playlists_based_on_title_matching(self):
-        playlists_with_potential_matches = Playlist.objects.exclude(video_indexing_add_by_title='')
+        playlists_with_potential_matches = Playlist.objects.exclude(video_indexing_add_by_title="")
         playlists_added_to = set()
         for playlist in playlists_with_potential_matches:
 
@@ -1047,8 +1038,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
                 if potential_match.lower() in self.title.lower():
                     playlists_added_to.add(playlist)
                     pli, pli_created = playlist.playlistitem_set.get_or_create(
-                        video=self,
-                        defaults={'manually_added': True}
+                        video=self, defaults={"manually_added": True}
                     )
                     if pli_created:
                         notification_services.video_added_to_playlist(video=self, playlist=playlist)
@@ -1058,15 +1048,15 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
     def search_description_for_related_videos(self):
         if not self.description:
-            log.info(f'No description found on {self=}')
+            log.info(f"No description found on {self=}")
             return
 
-        for url in re.findall(r'(https?://[^\s]+)', self.description):
+        for url in re.findall(r"(https?://[^\s]+)", self.description):
 
-            if 'yout' not in url:
+            if "yout" not in url:
                 continue
 
-            url = url.replace('(', '').replace(')', '').replace(':', '').replace(',', '')
+            url = url.replace("(", "").replace(")", "").replace(":", "").replace(",", "")
 
             if ytid := utils.get_video_id_from_url(url):
 
@@ -1076,32 +1066,34 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
                     continue
 
                 for video2 in Video.objects.filter(provider_object_id=ytid):
-                    log.info(f'Relating {self=} to {video2=}')
+                    log.info(f"Relating {self=} to {video2=}")
                     self.related.add(video2)
 
     def apply_privacy_status_based_on_dlp_exception_message(self, exception_message):
         exc_msg = str(exception_message).lower()
-        if 'blocked' in exc_msg and 'country' in exc_msg:
+        if "blocked" in exc_msg and "country" in exc_msg:
             self.privacy_status = Video.VideoPrivacyStatuses.BLOCKED
             self.last_privacy_status_check = timezone.now()
             self.save()
             return True
-        if 'private video' in exc_msg:
+        if "private video" in exc_msg:
             self.privacy_status = Video.VideoPrivacyStatuses.PRIVATE
             self.last_privacy_status_check = timezone.now()
             self.save()
             return True
-        if 'video unavailable' in exc_msg or 'video is not available' in exc_msg:
+        if "video unavailable" in exc_msg or "video is not available" in exc_msg:
             self.privacy_status = Video.VideoPrivacyStatuses.UNAVAILABLE
             self.last_privacy_status_check = timezone.now()
             self.save()
             return True
-        if 'deleted video' in exc_msg \
-                or 'copyright claim' in exc_msg \
-                or 'terminated' in exc_msg \
-                or ('closed' in exc_msg and 'account' in exc_msg) \
-                or ('removed' in exc_msg and 'harassment' in exc_msg) \
-                or ('removed' in exc_msg and 'bullying' in exc_msg):
+        if (
+            "deleted video" in exc_msg
+            or "copyright claim" in exc_msg
+            or "terminated" in exc_msg
+            or ("closed" in exc_msg and "account" in exc_msg)
+            or ("removed" in exc_msg and "harassment" in exc_msg)
+            or ("removed" in exc_msg and "bullying" in exc_msg)
+        ):
             self.privacy_status = Video.VideoPrivacyStatuses.DELETED
             self.last_privacy_status_check = timezone.now()
             self.save()
@@ -1110,11 +1102,11 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     @classmethod
     def get_or_create_from_ytdlp_response(cls, data):
         try:
-            video = cls.objects.get(provider_object_id=data['id'])
+            video = cls.objects.get(provider_object_id=data["id"])
             created = False
         except cls.DoesNotExist:
             # Don't use get_or_create, we need Video.save to be called.
-            video = cls(provider_object_id=data['id'])
+            video = cls(provider_object_id=data["id"])
             video.save()
             created = True
 
@@ -1133,7 +1125,7 @@ class VideoBlocked(models.Model):
     inserted = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-inserted']
+        ordering = ["-inserted"]
 
     def __str__(self):
         return self.provider_object_id
@@ -1146,12 +1138,12 @@ class VideoBlocked(models.Model):
         return Video.objects.filter(provider_object_id=self.provider_object_id).exists()
 
     def local_url(self):
-        return reverse('vidar:video-detail', args=[self.provider_object_id])
+        return reverse("vidar:video-detail", args=[self.provider_object_id])
 
 
 class VideoDownloadError(models.Model):
 
-    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='download_errors')
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="download_errors")
 
     traceback = models.TextField(blank=True)
 
@@ -1165,13 +1157,13 @@ class VideoDownloadError(models.Model):
     inserted = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-inserted']
+        ordering = ["-inserted"]
         get_latest_by = "inserted"
 
     def save_kwargs(self, kwargs, commit=True):
 
-        if 'progress_hooks' in kwargs:
-            del kwargs['progress_hooks']
+        if "progress_hooks" in kwargs:
+            del kwargs["progress_hooks"]
 
         self.kwargs = kwargs
         if commit:
@@ -1181,10 +1173,10 @@ class VideoDownloadError(models.Model):
 class VideoNote(models.Model):
 
     class Meta:
-        ordering = ['-inserted']
+        ordering = ["-inserted"]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
-    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='notes')
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="notes")
 
     note = models.TextField()
 
@@ -1193,7 +1185,7 @@ class VideoNote(models.Model):
 
 
 class VideoHistory(models.Model):
-    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='change_history')
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="change_history")
     inserted = models.DateTimeField(auto_now_add=True)
 
     old_title = models.CharField(max_length=500, blank=True)
@@ -1206,9 +1198,9 @@ class VideoHistory(models.Model):
     new_privacy_status = models.TextField(blank=True)
 
     class Meta:
-        ordering = ['-inserted']
-        verbose_name = 'Video Change History'
-        verbose_name_plural = 'Video Change History'
+        ordering = ["-inserted"]
+        verbose_name = "Video Change History"
+        verbose_name_plural = "Video Change History"
 
     def title_changed(self):
         return self.old_title != self.new_title
@@ -1221,14 +1213,14 @@ class VideoHistory(models.Model):
 
     def diff(self):
         if self.title_changed():
-            diff = difflib.Differ().compare(self.old_title.split('\n'), self.new_title.split('\n'))
-            return '\n'.join([line for line in diff if not line.startswith(' ')])
+            diff = difflib.Differ().compare(self.old_title.split("\n"), self.new_title.split("\n"))
+            return "\n".join([line for line in diff if not line.startswith(" ")])
         if self.description_changed():
-            diff = difflib.Differ().compare(self.old_description.split('\n'), self.new_description.split('\n'))
-            return '\n'.join([line for line in diff if not line.startswith(' ')])
+            diff = difflib.Differ().compare(self.old_description.split("\n"), self.new_description.split("\n"))
+            return "\n".join([line for line in diff if not line.startswith(" ")])
         if self.privacy_status_changed():
-            diff = difflib.Differ().compare(self.old_privacy_status.split('\n'), self.new_privacy_status.split('\n'))
-            return '\n'.join([line for line in diff if not line.startswith(' ')])
+            diff = difflib.Differ().compare(self.old_privacy_status.split("\n"), self.new_privacy_status.split("\n"))
+            return "\n".join([line for line in diff if not line.startswith(" ")])
 
 
 class Playlist(models.Model):
@@ -1237,7 +1229,7 @@ class Playlist(models.Model):
         max_length=255,
         blank=True,
         help_text="System Internal ID. Used when converting playlist to custom and "
-                  "preventing user/mirroring from adding it again."
+        "preventing user/mirroring from adding it again.",
     )
     title = models.CharField(max_length=500, blank=True)
     description = models.TextField(blank=True, null=True)
@@ -1251,12 +1243,12 @@ class Playlist(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
 
     channel_provider_object_id = models.CharField(max_length=255, blank=True, null=True)
-    channel = models.ForeignKey(Channel, on_delete=models.SET_NULL, null=True, blank=True, related_name='playlists')
+    channel = models.ForeignKey(Channel, on_delete=models.SET_NULL, null=True, blank=True, related_name="playlists")
 
     title_skips = models.TextField(
         blank=True,
         verbose_name="Skip DL by Title contains",
-        help_text="If any of these words appear in the title, do not download the video. ONE PER LINE. i.e. #shorts"
+        help_text="If any of these words appear in the title, do not download the video. ONE PER LINE. i.e. #shorts",
     )
 
     sync_deletions = models.BooleanField(default=False)
@@ -1264,14 +1256,14 @@ class Playlist(models.Model):
     disable_when_string_found_in_video_title = models.TextField(
         blank=True,
         help_text="Disable this playlist when this string is found in the a videos title. Case-insensitive e.g. finale."
-                  " Spaces are preserved, one per line."
+        " Spaces are preserved, one per line.",
     )
 
     quality = models.PositiveIntegerField(
-        help_text='What minimum quality do you want these videos to be? '
-                  'Quality will be disabled automatically when the playlist is not '
-                  'enabled and all videos reach this quality selection. Videos that cannot '
-                  'reach this quality will be downloaded at the best available.',
+        help_text="What minimum quality do you want these videos to be? "
+        "Quality will be disabled automatically when the playlist is not "
+        "enabled and all videos reach this quality selection. Videos that cannot "
+        "reach this quality will be downloaded at the best available.",
         choices=PossibleQualities,
         null=True,
         blank=True,
@@ -1286,10 +1278,10 @@ class Playlist(models.Model):
     )
 
     class PlaylistVideoOrderingChoices(models.TextChoices):
-        DEFAULT = 'default', 'Default (display order)'
-        DEFAULT_REVERSED = 'default_reversed', 'Reversed display order'
-        VIDEO_UPLOAD_DATE_ASC = 'video_upload_date_asc', 'Upload Date Ascending (oldest first)'
-        VIDEO_UPLOAD_DATE_DESC = 'video_upload_date_desc', 'Upload Date Descending (newest first)'
+        DEFAULT = "default", "Default (display order)"
+        DEFAULT_REVERSED = "default_reversed", "Reversed display order"
+        VIDEO_UPLOAD_DATE_ASC = "video_upload_date_asc", "Upload Date Ascending (oldest first)"
+        VIDEO_UPLOAD_DATE_DESC = "video_upload_date_desc", "Upload Date Descending (newest first)"
 
     videos_display_ordering = models.CharField(
         max_length=255,
@@ -1312,18 +1304,20 @@ class Playlist(models.Model):
     video_indexing_add_by_title = models.TextField(
         blank=True,
         help_text="When indexing videos, if the video title contains the following text, "
-                  "add it to this playlist. One match per line.",
+        "add it to this playlist. One match per line.",
     )
     video_indexing_add_by_title_limit_to_channels = models.ManyToManyField(
-        Channel, blank=True, related_name='+',
+        Channel,
+        blank=True,
+        related_name="+",
         help_text="When indexing videos and attempting to match video titles, "
-                  "the video must be uploaded by these channels. Use CTRL+Click to select or de-select channels.",
+        "the video must be uploaded by these channels. Use CTRL+Click to select or de-select channels.",
     )
 
     hidden = models.BooleanField(
         default=False,
         help_text="Hide this playlist from list view. This also prevents "
-                  "the system from downloading any videos attached to it."
+        "the system from downloading any videos attached to it.",
     )
 
     download_comments_on_index = models.BooleanField(default=False)
@@ -1334,12 +1328,11 @@ class Playlist(models.Model):
     )
 
     remove_video_from_playlist_on_watched = models.BooleanField(
-        default=False,
-        help_text="Watch Later playlist allows videos to be auto-removed from list upon watching."
+        default=False, help_text="Watch Later playlist allows videos to be auto-removed from list upon watching."
     )
 
     class Meta:
-        ordering = ["channel", 'title']
+        ordering = ["channel", "title"]
 
     def __str__(self):
         if self.channel:
@@ -1354,22 +1347,22 @@ class Playlist(models.Model):
     def get_user_watch_later(cls, user):
         playlist, _ = cls.objects.get_or_create(
             user=user,
-            title='Watch Later',
-            provider_object_id='',
+            title="Watch Later",
+            provider_object_id="",
         )
         return playlist
 
     def save(self, *args, **kwargs):
 
         if not self.provider_object_id:
-            self.crontab = ''
+            self.crontab = ""
         else:
-            self.video_indexing_add_by_title = ''
+            self.video_indexing_add_by_title = ""
 
         if self.hidden:
-            self.crontab = ''
-            self.video_indexing_add_by_title = ''
-            self.disable_when_string_found_in_video_title = ''
+            self.crontab = ""
+            self.video_indexing_add_by_title = ""
+            self.disable_when_string_found_in_video_title = ""
 
         value = super().save(*args, **kwargs)
 
@@ -1384,45 +1377,45 @@ class Playlist(models.Model):
         return f"https://www.youtube.com/playlist?list={self.provider_object_id}"
 
     def missing_videos(self):
-        return self.playlistitem_set.filter(Q(video__isnull=True) | Q(video__file=''))
+        return self.playlistitem_set.filter(Q(video__isnull=True) | Q(video__file=""))
 
     def archived_videos(self):
-        return self.playlistitem_set.exclude(Q(video__isnull=True) | Q(video__file=''))
+        return self.playlistitem_set.exclude(Q(video__isnull=True) | Q(video__file=""))
 
     def items_missing_from_live(self):
         return self.playlistitem_set.filter(missing_from_playlist_on_provider=True)
 
     def latest_video_by_upload_date(self):
         try:
-            return self.playlistitem_set.order_by('-video__upload_date').first().video
+            return self.playlistitem_set.order_by("-video__upload_date").first().video
         except AttributeError:
             pass
 
     def apply_display_ordering_to_queryset(self, queryset):
         if self.videos_display_ordering != Playlist.PlaylistVideoOrderingChoices.DEFAULT:
             if self.videos_display_ordering == Playlist.PlaylistVideoOrderingChoices.DEFAULT_REVERSED:
-                return queryset.order_by('-display_order')
+                return queryset.order_by("-display_order")
             elif self.videos_display_ordering == Playlist.PlaylistVideoOrderingChoices.VIDEO_UPLOAD_DATE_ASC:
-                return queryset.order_by('video__upload_date')
+                return queryset.order_by("video__upload_date")
             elif self.videos_display_ordering == Playlist.PlaylistVideoOrderingChoices.VIDEO_UPLOAD_DATE_DESC:
-                return queryset.order_by('-video__upload_date')
-        return queryset.order_by('display_order')
+                return queryset.order_by("-video__upload_date")
+        return queryset.order_by("display_order")
 
     def apply_playback_ordering_to_queryset(self, queryset):
         if self.videos_playback_ordering != Playlist.PlaylistVideoOrderingChoices.DEFAULT:
             if self.videos_playback_ordering == Playlist.PlaylistVideoOrderingChoices.DEFAULT_REVERSED:
-                return queryset.order_by('-pk')
+                return queryset.order_by("-pk")
             elif self.videos_playback_ordering == Playlist.PlaylistVideoOrderingChoices.VIDEO_UPLOAD_DATE_ASC:
-                return queryset.order_by('video__upload_date')
+                return queryset.order_by("video__upload_date")
             elif self.videos_playback_ordering == Playlist.PlaylistVideoOrderingChoices.VIDEO_UPLOAD_DATE_DESC:
-                return queryset.order_by('-video__upload_date')
+                return queryset.order_by("-video__upload_date")
         return queryset
 
     def calculated_file_size(self):
-        return self.videos.exclude(file='').aggregate(sumd=models.Sum('file_size'))['sumd'] or 0
+        return self.videos.exclude(file="").aggregate(sumd=models.Sum("file_size"))["sumd"] or 0
 
     def calculated_duration(self):
-        return self.videos.exclude(file='').aggregate(sumd=models.Sum('duration'))['sumd'] or 0
+        return self.videos.exclude(file="").aggregate(sumd=models.Sum("duration"))["sumd"] or 0
 
     def calculated_duration_as_timedelta(self):
         return datetime.timedelta(seconds=self.calculated_duration())
@@ -1435,7 +1428,7 @@ class Playlist(models.Model):
         now = timezone.localtime()
 
         # Round to nearest 5 minutes
-        rounded_minute = 10 * round(now.minute/10)
+        rounded_minute = 10 * round(now.minute / 10)
         hour = now.hour
 
         if rounded_minute >= 60:
@@ -1466,7 +1459,7 @@ class PlaylistItem(models.Model):
 
     missing_from_playlist_on_provider = models.BooleanField(default=False)
 
-    display_order = PositionField(default=-1, collection='playlist')
+    display_order = PositionField(default=-1, collection="playlist")
 
     manually_added = models.BooleanField(default=False)
 
@@ -1475,9 +1468,10 @@ class PlaylistItem(models.Model):
     wl_playlist = models.ForeignKey(
         Playlist,
         on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='+',
-        help_text="Internal system field, do not use. Links watch later item to a specific playlist."
+        null=True,
+        blank=True,
+        related_name="+",
+        help_text="Internal system field, do not use. Links watch later item to a specific playlist.",
     )
 
     inserted = models.DateTimeField(auto_now_add=True)
@@ -1521,7 +1515,8 @@ class Comment(MPTTModel):
         }
     ]
     """
-    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='comments')
+
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="comments")
 
     id = models.CharField(max_length=255, primary_key=True)
 
@@ -1531,7 +1526,7 @@ class Comment(MPTTModel):
     author_thumbnail = models.CharField(max_length=500, null=True, blank=True)
 
     parent_youtube_id = models.CharField(max_length=255, blank=True, null=True)
-    parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children')
+    parent = TreeForeignKey("self", on_delete=models.CASCADE, null=True, blank=True, related_name="children")
 
     text = models.TextField(blank=True)
 
@@ -1544,8 +1539,8 @@ class Comment(MPTTModel):
 
 
 class ScanHistory(models.Model):
-    channel = models.ForeignKey(Channel, on_delete=models.CASCADE, related_name='scan_history', null=True, blank=True)
-    playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name='scan_history', null=True, blank=True)
+    channel = models.ForeignKey(Channel, on_delete=models.CASCADE, related_name="scan_history", null=True, blank=True)
+    playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="scan_history", null=True, blank=True)
 
     videos_downloaded = models.PositiveIntegerField(default=0)
     shorts_downloaded = models.PositiveIntegerField(default=0)
@@ -1555,18 +1550,20 @@ class ScanHistory(models.Model):
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-inserted']
+        ordering = ["-inserted"]
 
     def __str__(self):
-        return f"{self.channel=} {self.inserted=} {self.updated=} " \
-               f"{self.videos_downloaded=} {self.shorts_downloaded=} {self.livestreams_downloaded=}"
+        return (
+            f"{self.channel=} {self.inserted=} {self.updated=} "
+            f"{self.videos_downloaded=} {self.shorts_downloaded=} {self.livestreams_downloaded=}"
+        )
 
 
 class UserPlaybackHistory(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='video_playback_history')
-    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='user_playback_history')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="video_playback_history")
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="user_playback_history")
 
-    playlist = models.ForeignKey(Playlist, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    playlist = models.ForeignKey(Playlist, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
 
     seconds = models.PositiveBigIntegerField()
 
@@ -1574,8 +1571,8 @@ class UserPlaybackHistory(models.Model):
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-updated']
-        get_latest_by = ['updated']
+        ordering = ["-updated"]
+        get_latest_by = ["updated"]
 
     def completion_percentage(self):
         percentage = math.ceil((self.seconds / self.video.duration) * 100)
@@ -1584,18 +1581,16 @@ class UserPlaybackHistory(models.Model):
         return percentage
 
     def considered_fully_played(self):
-        if not hasattr(self.user, 'vidar_playback_completion_percentage'):
+        if not hasattr(self.user, "vidar_playback_completion_percentage"):
             return False
         return self.completion_percentage() > (float(self.user.vidar_playback_completion_percentage) * 100)
 
 
 class DurationSkip(models.Model):
-    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='duration_skips')
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="duration_skips")
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='+'
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
 
     start = models.PositiveIntegerField()
@@ -1609,16 +1604,14 @@ class DurationSkip(models.Model):
     sb_data = models.JSONField(blank=True, default=dict)
 
     class Meta:
-        ordering = ['video', 'start']
+        ordering = ["video", "start"]
 
 
 class Highlight(models.Model):
-    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='highlights')
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="highlights")
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='video_highlights'
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="video_highlights"
     )
 
     point = models.PositiveIntegerField()
@@ -1626,31 +1619,27 @@ class Highlight(models.Model):
     note = models.TextField(blank=True)
 
     class Sources(models.TextChoices):
-        USER = 'User'
-        CHAPTERS = 'Chapters'
-        POI = 'POI'
+        USER = "User"
+        CHAPTERS = "Chapters"
+        POI = "POI"
 
     source = models.CharField(max_length=50, choices=Sources.choices)
 
     inserted = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['video', 'point']
+        ordering = ["video", "point"]
 
     def get_absolute_url(self):
         if self.source == Highlight.Sources.CHAPTERS:
-            return reverse('vidar:video-chapter-list', args=[self.video_id])
-        return reverse('vidar:video-highlight-list', args=[self.video_id])
+            return reverse("vidar:video-chapter-list", args=[self.video_id])
+        return reverse("vidar:video-highlight-list", args=[self.video_id])
 
 
 class ExtraFile(models.Model):
-    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name='extra_files')
+    video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="extra_files")
 
-    file = models.FileField(
-        upload_to=extrafile_helpers.extrafile_file_upload_to,
-        storage=vidar_storage,
-        max_length=500
-    )
+    file = models.FileField(upload_to=extrafile_helpers.extrafile_file_upload_to, storage=vidar_storage, max_length=500)
 
     note = models.TextField(blank=True)
 

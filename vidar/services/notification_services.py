@@ -30,23 +30,23 @@ def send_message(message, title=None):
         return
 
     data = {
-        'message': message,
-        'priority': app_settings.GOTIFY_PRIORITY,
+        "message": message,
+        "priority": app_settings.GOTIFY_PRIORITY,
     }
 
     if title:
         if pt := app_settings.GOTIFY_TITLE_PREFIX:
             title = f"{pt}{title}"
-        data['title'] = title
+        data["title"] = title
 
     url_base = app_settings.GOTIFY_URL
     token = app_settings.GOTIFY_TOKEN
     verify = app_settings.GOTIFY_URL_VERIFY
 
     try:
-        return requests.post(f'{url_base}/message?token={token}', json=data, verify=verify)
+        return requests.post(f"{url_base}/message?token={token}", json=data, verify=verify)
     except requests.exceptions.RequestException:
-        log.exception('Failed to send gotify notification')
+        log.exception("Failed to send gotify notification")
 
 
 def video_downloaded(video, task_source, download_started, download_finished, processing_started, processing_finished):
@@ -59,9 +59,9 @@ def video_downloaded(video, task_source, download_started, download_finished, pr
 
     quality = "C"
     if video.quality == 0:
-        quality = 'BV'
+        quality = "BV"
     elif video.at_max_quality:
-        quality = 'AMQ'
+        quality = "AMQ"
 
     file_size = video.file_size
     if file_size:
@@ -82,16 +82,16 @@ def video_downloaded(video, task_source, download_started, download_finished, pr
     processing_started = isoformat_or_now(processing_started)
     processing_finished = isoformat_or_now(processing_finished)
 
-    convert_to_audio_started = video.system_notes.get('convert_video_to_audio_started')
-    convert_to_audio_finished = video.system_notes.get('convert_video_to_audio_finished')
+    convert_to_audio_started = video.system_notes.get("convert_video_to_audio_started")
+    convert_to_audio_finished = video.system_notes.get("convert_video_to_audio_finished")
     convert_to_audio_timer = None
     if convert_to_audio_started and convert_to_audio_finished:
         convert_to_audio_started = isoformat_or_now(convert_to_audio_started)
         convert_to_audio_finished = isoformat_or_now(convert_to_audio_finished)
         convert_to_audio_timer = convert_to_audio_finished - convert_to_audio_started
 
-    convert_to_mp4_started = video.system_notes.get('convert_video_to_mp4_started')
-    convert_to_mp4_finished = video.system_notes.get('convert_video_to_mp4_finished')
+    convert_to_mp4_started = video.system_notes.get("convert_video_to_mp4_started")
+    convert_to_mp4_finished = video.system_notes.get("convert_video_to_mp4_finished")
     convert_to_mp4_timer = None
     if convert_to_mp4_started and convert_to_mp4_finished:
         convert_to_mp4_started = isoformat_or_now(convert_to_mp4_started)
@@ -118,9 +118,11 @@ def video_downloaded(video, task_source, download_started, download_finished, pr
     if processing_completed >= datetime.timedelta(seconds=1):
         msg_output.append(f"Processing: {processing_completed}")
 
-    msg_output.extend([
-        f"Task Call Source: {task_source}",
-    ])
+    msg_output.extend(
+        [
+            f"Task Call Source: {task_source}",
+        ]
+    )
     return send_message(
         message="\n".join(msg_output),
         title=f"{video.channel} @ {quality}:{video.get_quality_display()}",
@@ -131,8 +133,8 @@ def video_removed_from_playlist(video, playlist, removed=False):
     if not app_settings.NOTIFICATIONS_VIDEO_REMOVED_FROM_PLAYLIST:
         return
     return send_message(
-        message=f'Video {video!r} removed from playlist {playlist!r}\nLocally Removed: {removed}',
-        title='Video Removed From Playlist',
+        message=f"Video {video!r} removed from playlist {playlist!r}\nLocally Removed: {removed}",
+        title="Video Removed From Playlist",
     )
 
 
@@ -140,8 +142,8 @@ def video_added_to_playlist(video, playlist):
     if not app_settings.NOTIFICATIONS_VIDEO_ADDED_TO_PLAYLIST:
         return
     return send_message(
-        message=f'Video {video!r} added to playlist {playlist!r}',
-        title='Video Added To Playlist',
+        message=f"Video {video!r} added to playlist {playlist!r}",
+        title="Video Added To Playlist",
     )
 
 
@@ -149,8 +151,8 @@ def video_readded_to_playlist(video, playlist):
     if not app_settings.NOTIFICATIONS_VIDEO_READDED_TO_PLAYLIST:
         return
     return send_message(
-        message=f'Video {video!r} re-added to playlist {playlist!r}',
-        title='Video Re-Added To Playlist',
+        message=f"Video {video!r} re-added to playlist {playlist!r}",
+        title="Video Re-Added To Playlist",
     )
 
 
@@ -159,9 +161,9 @@ def full_indexing_complete(channel, target, new_videos_count, total_videos_count
         return
     return send_message(
         message=f"Full Indexing {target} Completed\n\n"
-                f"New Videos: {new_videos_count}\n"
-                f"Total Videos: {total_videos_count}",
-        title=f"{channel}"
+        f"New Videos: {new_videos_count}\n"
+        f"Total Videos: {total_videos_count}",
+        title=f"{channel}",
     )
 
 
@@ -187,8 +189,8 @@ def playlist_disabled_due_to_string(playlist):
     if not app_settings.NOTIFICATIONS_PLAYLIST_DISABLED_DUE_TO_STRING:
         return
     return send_message(
-        message=f'Playlist Disabled: {playlist}, due to string found in video title',
-        title='Playlist Disabled',
+        message=f"Playlist Disabled: {playlist}, due to string found in video title",
+        title="Playlist Disabled",
     )
 
 
@@ -196,8 +198,8 @@ def playlist_disabled_due_to_errors(playlist):
     if not app_settings.NOTIFICATIONS_PLAYLIST_DISABLED_DUE_TO_ERRORS:
         return
     return send_message(
-        message=f'Playlist Disabled: {playlist}, due to not being found {playlist.not_found_failures} times',
-        title='Playlist Disabled',
+        message=f"Playlist Disabled: {playlist}, due to not being found {playlist.not_found_failures} times",
+        title="Playlist Disabled",
     )
 
 
@@ -205,8 +207,8 @@ def playlist_added_from_mirror(channel, playlist):
     if not app_settings.NOTIFICATIONS_PLAYLIST_ADDED_BY_MIRROR:
         return
     return send_message(
-        message=f'Channel playlist mirroring added: {playlist}',
-        title=f'{channel} mirroring added playlist',
+        message=f"Channel playlist mirroring added: {playlist}",
+        title=f"{channel} mirroring added playlist",
     )
 
 
@@ -214,8 +216,8 @@ def no_videos_archived_today():
     if not app_settings.NOTIFICATIONS_NO_VIDEOS_ARCHIVED_TODAY:
         return
     return send_message(
-        title='No Archived Videos Today',
-        message='Alerting, no videos were archived today. Is everything ok?',
+        title="No Archived Videos Today",
+        message="Alerting, no videos were archived today. Is everything ok?",
     )
 
 
@@ -223,9 +225,9 @@ def convert_to_mp4_complete(video, task_started):
     if not app_settings.NOTIFICATIONS_CONVERT_TO_MP4_COMPLETED:
         return
     return send_message(
-        title='Video Directly Converted to MP4',
-        message=f'Finished converting video from source format into mp4\n\n{video}\n\n'
-                f'Task Call Timer: {timezone.now() - task_started}\n',
+        title="Video Directly Converted to MP4",
+        message=f"Finished converting video from source format into mp4\n\n{video}\n\n"
+        f"Task Call Timer: {timezone.now() - task_started}\n",
     )
 
 
@@ -233,6 +235,6 @@ def channel_status_changed(channel):
     if not app_settings.NOTIFICATIONS_CHANNEL_STATUS_CHANGED:
         return
     return send_message(
-        title='Channel Status Change',
-        message=f'{channel=} status changed to {channel.status}',
+        title="Channel Status Change",
+        message=f"{channel=} status changed to {channel.status}",
     )
