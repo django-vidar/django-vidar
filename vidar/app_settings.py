@@ -295,13 +295,6 @@ class AppSettings(object):
         )
 
     @property
-    def PLAYLIST_CHECKS_RATE_LIMIT(self):
-        return self._setting(
-            "PLAYLIST_CHECKS_RATE_LIMIT",
-            5,
-        )
-
-    @property
     def PRIVACY_STATUS_CHECK_HOURS_PER_DAY(self):
         """How many hours per day does the update_video_statuses_and_details task run for?"""
         return self._setting(
@@ -330,13 +323,6 @@ class AppSettings(object):
         return self._setting(
             "PRIVACY_STATUS_CHECK_FORCE_CHECK_PER_CALL",
             0,
-        )
-
-    @property
-    def PROXY(self):
-        return self._setting(
-            "PROXY",
-            settings.HTTP_PROXY,
         )
 
     @property
@@ -395,7 +381,7 @@ class AppSettings(object):
         return bool(
             self._setting(
                 "SHORTS_FORCE_MAX_QUALITY",
-                False,
+                True,
             )
         )
 
