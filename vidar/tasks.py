@@ -133,7 +133,7 @@ def check_missed_channel_scans_since_last_ran(start=None, end=None, delta=None, 
 
         if not last_run:
             log.info('trigger_crontab_scans has never run before')
-            return
+            return None, None
 
         if last_run:
             last_run_date_done_as_local_tz = timezone.localtime(
