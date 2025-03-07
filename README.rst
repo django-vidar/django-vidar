@@ -140,6 +140,34 @@ I use Jellyfin with a `plugin called YouTubeMetadata <https://github.com/ankenyr
 The default configuration options related to SCHEMA and info json are required as-is for the plugin to work.
 
 
+redis messaging
+===============
+
+As Vidar tasks are processing various things they can send messages to the frontend indicating what is happening.
+
+Things like a channel or a playlist being indexed, video downloading and conversion statuses.
+
+Vidar makes use of redis for this functionality, you can enable this on your project by adding the following to
+your project settings::
+
+    TEMPLATES = [
+        {
+            ...
+            "OPTIONS": {
+                "context_processors": [
+                    ...
+                    'vidar.template_contexts.add_redis_messages',
+                    ...
+                ],
+            },
+        },
+    ]
+
+and within one of your template files add the following::
+
+    {% include 'vidar/messages-redis.html' %}
+
+
 Configurable Settings
 =====================
 

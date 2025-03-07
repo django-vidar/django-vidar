@@ -1,0 +1,9 @@
+
+{% if request.user.is_authenticated %}
+    {% for message in vidar_redis_messages %}
+        <div class="no-print alert alert-{% if message.level == 'error' or message.level == 'critical' %}danger{% else %}{{ message.level }}{% endif %}">
+            {% if message.url %}<a class="float-right" href="{{ message.url }}">{{ message.url_text|default_if_none:"Open" }}</a>{% endif %}
+            <strong>{{ message.message|safe }}</strong>
+        </div>
+    {% endfor %}
+{% endif %}
