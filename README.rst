@@ -323,9 +323,22 @@ Configurable Settings
 ``VIDAR_PROXIES_DEFAULT`` (default: ``""``)
     If you use a proxy for yt-dlp, this is the base proxy value to supply in the event all other VIDAR_PROXIES fail
 
-``VIDAR_REDIS_UPDATE_DOWNLOAD_MESSAGE`` (default: ``True``)
+``VIDAR_REDIS_CHANNEL_INDEXING`` (default: ``True``)
+    Update redis messaging when a Channel is being indexed
+
+``VIDAR_REDIS_ENABLED`` (default: ``True``)
+    If False vidar will not send any messages to redis.
+
+``VIDAR_REDIS_PLAYLIST_INDEXING`` (default: ``True``)
+    Update redis messaging when a Playlist is being indexed
+
+``VIDAR_REDIS_VIDEO_DOWNLOADING`` (default: ``True``)
     Vidar uses yt-dlp progress hook to send update messages to redis that can be used in django templates
     for messages to the user about the download state.
+
+``VIDAR_REDIS_VIDEO_CONVERSION_FINISHED`` (default: ``True``)
+
+``VIDAR_REDIS_VIDEO_CONVERSION_STARTED`` (default: ``True``)
 
 ``VIDAR_SAVE_INFO_JSON_FILE`` (default: ``True``)
     Write info.json file alongside video file?

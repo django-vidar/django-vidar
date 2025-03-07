@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
 
 
@@ -355,12 +354,29 @@ class AppSettings(object):
         """The default proxy to use if all PROXIES fails"""
         return self._setting("PROXIES_DEFAULT", "")
 
-    @cached_property
-    def REDIS_UPDATE_DOWNLOAD_MESSAGE(self):
-        return self._setting(
-            "REDIS_UPDATE_DOWNLOAD_MESSAGE",
-            True,
-        )
+    @property
+    def REDIS_CHANNEL_INDEXING(self):
+        return self._setting("REDIS_CHANNEL_INDEXING", True)
+
+    @property
+    def REDIS_ENABLED(self):
+        return self._setting("REDIS_ENABLED", False)
+
+    @property
+    def REDIS_PLAYLIST_INDEXING(self):
+        return self._setting("REDIS_PLAYLIST_INDEXING", True)
+
+    @property
+    def REDIS_VIDEO_DOWNLOADING(self):
+        return self._setting("REDIS_VIDEO_DOWNLOADING", True)
+
+    @property
+    def REDIS_VIDEO_CONVERSION_FINISHED(self):
+        return self._setting("REDIS_VIDEO_CONVERSION_FINISHED", True)
+
+    @property
+    def REDIS_VIDEO_CONVERSION_STARTED(self):
+        return self._setting("REDIS_VIDEO_CONVERSION_STARTED", True)
 
     @property
     def REQUESTS_RATE_LIMIT(self):

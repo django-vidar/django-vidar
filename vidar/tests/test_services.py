@@ -10,7 +10,15 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from vidar import models, exceptions
-from vidar.services import schema_services, ytdlp_services, channel_services, video_services, crontab_services, playlist_services
+from vidar.services import (
+    schema_services,
+    ytdlp_services,
+    channel_services,
+    video_services,
+    crontab_services,
+    playlist_services,
+    redis_services
+)
 from vidar.helpers import video_helpers
 
 UserModel = get_user_model()
@@ -1801,3 +1809,119 @@ class YtdlpServicesDLPResponseTest(SimpleTestCase):
 
         self.assertFalse(values, 'qualities returned does not match expected values.')
 
+
+class RedisServicesTests(TestCase):
+
+    def setUp(self) -> None:
+        redis_services._reset_call_counters()
+
+    @patch('vidar.services.redis_services.RedisMessaging.set_message')
+    @override_settings(VIDAR_REDIS_ENABLED=True)
+    def test_globally_enabled_but_all_items_disabled(self, mock_redis):
+        channel = models.Channel.objects.create(name='test channel')
+        playlist = models.Playlist.objects.create(title='test playlist')
+        video = models.Video.objects.create(title='test video')
+
+        with override_settings(VIDAR_REDIS_CHANNEL_INDEXING=False):
+            self.assertIsNone(redis_services.channel_indexing("[download] test msg", channel=channel))
+
+        with override_settings(VIDAR_REDIS_PLAYLIST_INDEXING=False):
+            self.assertIsNone(redis_services.playlist_indexing("[download] test msg", playlist=playlist))
+
+        with override_settings(VIDAR_REDIS_VIDEO_CONVERSION_STARTED=False):
+            self.assertIsNone(redis_services.video_conversion_to_mp4_started(video=video))
+
+        with override_settings(VIDAR_REDIS_VIDEO_CONVERSION_FINISHED=False):
+            self.assertIsNone(redis_services.video_conversion_to_mp4_finished(video=video))
+
+        mock_redis.assert_not_called()
+
+    @patch('vidar.services.redis_services.RedisMessaging.set_message')
+    @override_settings(VIDAR_REDIS_ENABLED=True)
+    def test_one_item_enabled(self, mock_redis):
+
+        channel = models.Channel.objects.create(name='test channel')
+        playlist = models.Playlist.objects.create(title='test playlist')
+        video = models.Video.objects.create(title='test video')
+
+        with override_settings(VIDAR_REDIS_CHANNEL_INDEXING=False):
+            self.assertIsNone(redis_services.channel_indexing("[download] test msg", channel=channel))
+
+        with override_settings(VIDAR_REDIS_PLAYLIST_INDEXING=False):
+            self.assertIsNone(redis_services.playlist_indexing("[download] test msg", playlist=playlist))
+
+        with override_settings(VIDAR_REDIS_VIDEO_CONVERSION_STARTED=False):
+            self.assertIsNone(redis_services.video_conversion_to_mp4_started(video=video))
+
+        with override_settings(VIDAR_REDIS_VIDEO_CONVERSION_FINISHED=True):
+            self.assertTrue(redis_services.video_conversion_to_mp4_finished(video=video))
+
+        with override_settings(VIDAR_REDIS_VIDEO_DOWNLOADING=False):
+            data = {
+                'info_dict': {
+                    'id': 'index dict id',
+                    'title': 'info dict title',
+                },
+                'status': 'data status',
+                '_percent_str': 'data percent str'
+            }
+            self.assertIsNone(redis_services.progress_hook_download_status(data))
+
+        mock_redis.assert_called_once()
+
+    @patch('vidar.services.redis_services.RedisMessaging.set_message')
+    @override_settings(VIDAR_REDIS_ENABLED=True)
+    def test_redis_all_enabled(self, mock_redis):
+        channel = models.Channel.objects.create(name='test channel')
+        self.assertTrue(redis_services.channel_indexing("[download] test msg", channel=channel))
+
+        playlist = models.Playlist.objects.create(title='test playlist')
+        self.assertTrue(redis_services.playlist_indexing("[download] test msg", playlist=playlist))
+
+        video = models.Video.objects.create(title='test video')
+        self.assertTrue(redis_services.video_conversion_to_mp4_started(video=video))
+        self.assertTrue(redis_services.video_conversion_to_mp4_finished(video=video))
+
+        data = {
+            'info_dict': {
+                'id': 'index dict id',
+                'title': 'info dict title',
+            },
+            'status': 'data status',
+            '_percent_str': 'data percent str'
+        }
+        self.assertTrue(redis_services.progress_hook_download_status(data))
+
+        self.assertEqual(5, mock_redis.call_count)
+
+    @patch('vidar.services.redis_services.RedisMessaging.set_message')
+    @override_settings(VIDAR_REDIS_ENABLED=False)
+    def test_globally_disabled(self, mock_redis):
+        channel = models.Channel.objects.create(name='test channel')
+        playlist = models.Playlist.objects.create(title='test playlist')
+        video = models.Video.objects.create(title='test video')
+
+        with override_settings(VIDAR_REDIS_CHANNEL_INDEXING=True):
+            self.assertIsNone(redis_services.channel_indexing("[download] test msg", channel=channel))
+
+        with override_settings(VIDAR_REDIS_PLAYLIST_INDEXING=True):
+            self.assertIsNone(redis_services.playlist_indexing("[download] test msg", playlist=playlist))
+
+        with override_settings(VIDAR_REDIS_VIDEO_CONVERSION_STARTED=True):
+            self.assertIsNone(redis_services.video_conversion_to_mp4_started(video=video))
+
+        with override_settings(VIDAR_REDIS_VIDEO_CONVERSION_FINISHED=True):
+            self.assertIsNone(redis_services.video_conversion_to_mp4_finished(video=video))
+
+        with override_settings(VIDAR_REDIS_VIDEO_DOWNLOADING=True):
+            data = {
+                'info_dict': {
+                    'id': 'index dict id',
+                    'title': 'info dict title',
+                },
+                'status': 'data status',
+                '_percent_str': 'data percent str'
+            }
+            self.assertIsNone(redis_services.progress_hook_download_status(data))
+
+        mock_redis.assert_not_called()

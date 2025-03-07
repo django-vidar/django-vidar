@@ -12,15 +12,52 @@ from vidar import app_settings
 log = logging.getLogger(__name__)
 
 
+_CALL_COUNTER = {}
+
+
+def _is_permitted_cached(name):
+    # I discovered using cached_property on AppSettings means a callable database value will not change the
+    #   value after the initial call to the property until the server restarts. I wanted the REDIS_ values to be
+    #   able to change on the fly and that was not possible. I also discovered the cached_property made
+    #   writing tests for redis_services impossible. So I came up with this. It will cache the value by name and
+    #   it will recheck the value every 100 calls.
+    global _CALL_COUNTER
+
+    if name not in _CALL_COUNTER:
+        _CALL_COUNTER[name] = {"count": 1, "previous": None}
+
+    _CALL_COUNTER[name]["count"] += 1
+
+    if _CALL_COUNTER[name]["previous"] is None:
+        _CALL_COUNTER[name]["previous"] = getattr(app_settings, name)
+    elif _CALL_COUNTER[name]["count"] % 100 == 0:
+        _CALL_COUNTER[name]["previous"] = getattr(app_settings, name)
+    return _CALL_COUNTER[name]["previous"]
+
+
+def _reset_call_counters():
+    global _CALL_COUNTER
+    _CALL_COUNTER = {}
+
+
+def check_redis_message_allow(name):
+    if isinstance(name, bool):
+        if not name:
+            return
+    elif not _is_permitted_cached(name):
+        return
+    return _is_permitted_cached("REDIS_ENABLED")
+
+
 class RedisMessaging:
     """collection of methods to interact with redis"""
 
     NAME_SPACE = "django:"
 
     def __init__(self):
-        self.conn = redis.Redis(
-            host=settings.CELERY_BROKER_HOSTNAME, port=settings.CELERY_BROKER_PORT, db=settings.CELERY_BROKER_DB
-        )
+        self.conn = None
+        if hostname := getattr(settings, "VIDAR_REDIS_HOSTNAME", None):
+            self.conn = redis.Redis(host=hostname, port=settings.VIDAR_REDIS_PORT, db=settings.VIDAR_REDIS_DB)
 
     CHANNELS = [
         "vidar",
@@ -116,6 +153,10 @@ class RedisMessaging:
 
 
 def channel_indexing(msg, **kwargs):
+
+    if not check_redis_message_allow(app_settings.REDIS_CHANNEL_INDEXING):
+        return
+
     if msg.startswith("[download]"):
         mess_dict = {
             "status": "message:vidar",
@@ -126,9 +167,14 @@ def channel_indexing(msg, **kwargs):
             "url_text": "Channel",
         }
         RedisMessaging().set_message(f'vidar:channel-index:{kwargs["channel"].pk}', mess_dict)
+        return True
 
 
 def playlist_indexing(msg, **kwargs):
+
+    if not check_redis_message_allow(app_settings.REDIS_PLAYLIST_INDEXING):
+        return
+
     if msg.startswith("[download]"):
         mess_dict = {
             "status": "message:vidar",
@@ -139,9 +185,14 @@ def playlist_indexing(msg, **kwargs):
             "url_text": "Playlist",
         }
         RedisMessaging().set_message(f'vidar:playlist-index:{kwargs["playlist"].pk}', mess_dict)
+        return True
 
 
 def video_conversion_to_mp4_started(video):
+
+    if not check_redis_message_allow(app_settings.REDIS_VIDEO_CONVERSION_STARTED):
+        return
+
     mess_dict = {
         "status": "message:vidar",
         "level": "info",
@@ -152,8 +203,14 @@ def video_conversion_to_mp4_started(video):
     }
     RedisMessaging().set_message(f"vidar:video-mkv-conversion:{video.pk}", mess_dict, expire=90 * 60)
 
+    return True
+
 
 def video_conversion_to_mp4_finished(video):
+
+    if not check_redis_message_allow(app_settings.REDIS_VIDEO_CONVERSION_FINISHED):
+        return
+
     mess_dict = {
         "status": "message:vidar",
         "level": "info",
@@ -164,10 +221,12 @@ def video_conversion_to_mp4_finished(video):
     }
     RedisMessaging().set_message(f"vidar:video-mkv-conversion:{video.pk}", mess_dict)
 
+    return True
+
 
 def progress_hook_download_status(d, raise_exceptions=False, **kwargs):
 
-    if not app_settings.REDIS_UPDATE_DOWNLOAD_MESSAGE:
+    if not check_redis_message_allow("REDIS_VIDEO_DOWNLOADING"):
         return
 
     try:
@@ -188,6 +247,8 @@ def progress_hook_download_status(d, raise_exceptions=False, **kwargs):
             "url_text": kwargs.get("url_text", "Video"),
         }
         RedisMessaging().set_message(f"vidar:{yid}", mess_dict)
+
+        return True
 
     except:  # noqa: E722
         log.exception("Failed to format progress_hook data")
