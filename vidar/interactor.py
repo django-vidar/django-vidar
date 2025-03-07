@@ -12,10 +12,10 @@ log = logging.getLogger(__name__)
 
 
 def get_ytdlp(kwargs):
-    if 'proxy' not in kwargs:
+    if "proxy" not in kwargs:
         if proxy := utils.get_proxy():
-            log.info(f'get_ytdlp: Setting kwargs.setdefault proxy to {proxy}')
-            kwargs.setdefault('proxy', proxy)
+            log.info(f"get_ytdlp: Setting kwargs.setdefault proxy to {proxy}")
+            kwargs.setdefault("proxy", proxy)
     log.debug(kwargs)
     return yt_dlp.YoutubeDL(kwargs)
 
@@ -25,13 +25,13 @@ class YTDLPInteractor:
     @staticmethod
     def playlist_details(url, ignore_errors=True, detailed_video_data=False, **kwargs):
 
-        kwargs.setdefault('default_search', 'ytsearch')
-        kwargs.setdefault('quiet', False)
-        kwargs.setdefault('skip_download', True)
-        kwargs.setdefault('extract_flat', not detailed_video_data)
-        kwargs.setdefault('ignoreerrors', ignore_errors)
-        kwargs.setdefault('noplaylist', True)
-        kwargs.setdefault('check_formats', 'none')
+        kwargs.setdefault("default_search", "ytsearch")
+        kwargs.setdefault("quiet", False)
+        kwargs.setdefault("skip_download", True)
+        kwargs.setdefault("extract_flat", not detailed_video_data)
+        kwargs.setdefault("ignoreerrors", ignore_errors)
+        kwargs.setdefault("noplaylist", True)
+        kwargs.setdefault("check_formats", "none")
 
         with get_ytdlp(kwargs) as ydl:
             return ydl.extract_info(url, download=False)
@@ -39,11 +39,11 @@ class YTDLPInteractor:
     @staticmethod
     def video_download(url, **kwargs):
 
-        local_url = kwargs.pop('local_url', None)
+        local_url = kwargs.pop("local_url", None)
         hook_partial = partial(redis_services.progress_hook_download_status, url=local_url)
 
-        kwargs.setdefault('progress_hooks', [hook_partial])
-        kwargs.setdefault('quiet', True)
+        kwargs.setdefault("progress_hooks", [hook_partial])
+        kwargs.setdefault("quiet", True)
 
         # kwargs.setdefault('postprocessors', [
         #     {
@@ -61,10 +61,10 @@ class YTDLPInteractor:
 
     @staticmethod
     def video_details(url, **kwargs):
-        kwargs.setdefault('default_search', 'ytsearch')
-        kwargs.setdefault('quiet', False)
-        kwargs.setdefault('skip_download', True)
-        kwargs.setdefault('extract_flat', True)
+        kwargs.setdefault("default_search", "ytsearch")
+        kwargs.setdefault("quiet", False)
+        kwargs.setdefault("skip_download", True)
+        kwargs.setdefault("extract_flat", True)
 
         with get_ytdlp(kwargs) as ydl:
             return ydl.extract_info(url)
@@ -81,11 +81,11 @@ class YTDLPInteractor:
         **kwargs,
     ):
 
-        kwargs.setdefault('download', False)
-        kwargs.setdefault('getcomments', True)
-        kwargs.setdefault('skip_download', False)
+        kwargs.setdefault("download", False)
+        kwargs.setdefault("getcomments", True)
+        kwargs.setdefault("skip_download", False)
 
-        if not all_comments and not kwargs.get('extractor_args'):
+        if not all_comments and not kwargs.get("extractor_args"):
 
             extractor_args = ytdlp_services.get_comment_downloader_extractor_args(
                 total_max_comments=total_max_comments,
@@ -102,22 +102,22 @@ class YTDLPInteractor:
 
     @staticmethod
     def channel_details(url, **kwargs):
-        kwargs.setdefault('default_search', 'ytsearch')
-        kwargs.setdefault('quiet', False)
-        kwargs.setdefault('skip_download', True)
+        kwargs.setdefault("default_search", "ytsearch")
+        kwargs.setdefault("quiet", False)
+        kwargs.setdefault("skip_download", True)
         # kwargs.setdefault('extract_flat', True)
-        kwargs.setdefault('playlist_items', '1,0')
+        kwargs.setdefault("playlist_items", "1,0")
 
         with get_ytdlp(kwargs) as ydl:
             return ydl.extract_info(url, download=False)
 
     @staticmethod
     def channel_videos(url, limit=None, **kwargs):
-        kwargs.setdefault('default_search', 'ytsearch')
-        kwargs.setdefault('quiet', False)
-        kwargs.setdefault('skip_download', True)
-        kwargs.setdefault('extract_flat', False)
-        kwargs.setdefault('ignoreerrors', True)
+        kwargs.setdefault("default_search", "ytsearch")
+        kwargs.setdefault("quiet", False)
+        kwargs.setdefault("skip_download", True)
+        kwargs.setdefault("extract_flat", False)
+        kwargs.setdefault("ignoreerrors", True)
         # kwargs.setdefault('sleep_interval_requests', 2)
 
         if limit:
@@ -128,10 +128,10 @@ class YTDLPInteractor:
 
     @staticmethod
     def channel_playlists(youtube_id, **kwargs):
-        kwargs.setdefault('quiet', False)
-        kwargs.setdefault('skip_download', True)
-        kwargs.setdefault('extract_flat', True)
-        kwargs.setdefault('ignoreerrors', True)
+        kwargs.setdefault("quiet", False)
+        kwargs.setdefault("skip_download", True)
+        kwargs.setdefault("extract_flat", True)
+        kwargs.setdefault("ignoreerrors", True)
 
         with get_ytdlp(kwargs) as ydl:
             return ydl.extract_info(
@@ -143,11 +143,11 @@ def interactor_channel_videos_with_retry(url, **dl_kwargs):
 
     for x in range(2):
         if x:
-            dl_kwargs['proxy'] = ''
+            dl_kwargs["proxy"] = ""
 
         chan = YTDLPInteractor.channel_videos(url=url, **dl_kwargs)
 
-        if not chan or not chan['entries']:
+        if not chan or not chan["entries"]:
             time.sleep(5)
             continue
 
@@ -187,13 +187,13 @@ class OutputCapturer:
             self.callback_func(msg, _type=_type, **self.kwargs)
 
     def info(self, msg):
-        self.msg_received(msg, 'info')
+        self.msg_received(msg, "info")
 
     def debug(self, msg):
-        self.msg_received(msg, 'debug')
+        self.msg_received(msg, "debug")
 
     def error(self, msg):
-        self.msg_received(msg, 'error')
+        self.msg_received(msg, "error")
 
     def warning(self, msg):
-        self.msg_received(msg, 'warning')
+        self.msg_received(msg, "warning")

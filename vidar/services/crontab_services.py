@@ -6,7 +6,7 @@ from django.db import models
 from django.utils import timezone
 
 
-DAYNAMES = 'sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'
+DAYNAMES = "sun", "mon", "tue", "wed", "thu", "fri", "sat"
 WEEKDAYS = dict(zip(DAYNAMES, range(7)))
 
 CrontabOptions = models.TextChoices("CrontabOptions", "HOURLY DAILY WEEKLY MONTHLY")
@@ -81,9 +81,9 @@ class CrontabParser:
 
     ParseException = ParseException
 
-    _range = r'(\w+?)-(\w+)'
-    _steps = r'/(\w+)?'
-    _star = r'\*'
+    _range = r"(\w+?)-(\w+)"
+    _steps = r"/(\w+)?"
+    _star = r"\*"
 
     def __init__(self, max_=60, min_=0):
         self.max_ = max_
@@ -92,14 +92,14 @@ class CrontabParser:
             (re.compile(self._range + self._steps), self._range_steps),
             (re.compile(self._range), self._expand_range),
             (re.compile(self._star + self._steps), self._star_steps),
-            (re.compile('^' + self._star + '$'), self._expand_star),
+            (re.compile("^" + self._star + "$"), self._expand_star),
         )
 
     def parse(self, spec):
         acc = set()
-        for part in spec.split(','):
+        for part in spec.split(","):
             if not part:
-                raise self.ParseException('empty part')
+                raise self.ParseException("empty part")
             acc |= set(self._parse_part(part))
         return acc
 
@@ -121,33 +121,33 @@ class CrontabParser:
 
     def _range_steps(self, toks):
         if len(toks) != 3 or not toks[2]:
-            raise self.ParseException('empty filter')
+            raise self.ParseException("empty filter")
         return self._expand_range(toks[:2])[:: int(toks[2])]
 
     def _star_steps(self, toks):
         if not toks or not toks[0]:
-            raise self.ParseException('empty filter')
+            raise self.ParseException("empty filter")
         return self._expand_star()[:: int(toks[0])]
 
     def _expand_star(self, *args):
         return list(range(self.min_, self.max_ + self.min_))
 
     def _expand_number(self, s):
-        if isinstance(s, str) and s[0] == '-':
-            raise self.ParseException('negative numbers not supported')
+        if isinstance(s, str) and s[0] == "-":
+            raise self.ParseException("negative numbers not supported")
         try:
             i = int(s)
         except ValueError:
             try:
                 i = weekday(s)
             except KeyError:
-                raise ValueError(f'Invalid weekday literal {s!r}.')
+                raise ValueError(f"Invalid weekday literal {s!r}.")
 
         max_val = self.min_ + self.max_ - 1
         if i > max_val:
-            raise ValueError(f'Invalid end range: {i} > {max_val}.')
+            raise ValueError(f"Invalid end range: {i} > {max_val}.")
         if i < self.min_:
-            raise ValueError(f'Invalid beginning range: {i} < {self.min_}.')
+            raise ValueError(f"Invalid beginning range: {i} < {self.min_}.")
 
         return i
 
@@ -167,7 +167,7 @@ def parse(crontab):
     >>> print(now.month in months_of_year)
 
     """
-    minutes_raw, hours_raw, day_of_month_raw, months_of_year_raw, day_of_week_raw = crontab.split(' ', 4)
+    minutes_raw, hours_raw, day_of_month_raw, months_of_year_raw, day_of_week_raw = crontab.split(" ", 4)
     minutes = CrontabParser(60).parse(minutes_raw)
     hours = CrontabParser(24).parse(hours_raw)
     days_of_month = CrontabParser(31, 1).parse(day_of_month_raw)
@@ -236,15 +236,15 @@ def calculate_schedule(crontab, check_month=False, period=10, now=None):
 def validate_crontab_values(minute=None, hour=None, day_of_week=None, day_of_month=None):
     if isinstance(minute, int):
         if not 0 <= minute <= 59:
-            raise ValueError(f'crontab minute must be between 0-59, was given {minute=}')
+            raise ValueError(f"crontab minute must be between 0-59, was given {minute=}")
         if minute % 10 != 0:
-            raise ValueError(f'crontab minute value must be divisible by 10, was given {minute=}')
+            raise ValueError(f"crontab minute value must be divisible by 10, was given {minute=}")
     if isinstance(hour, int) and not 0 <= hour <= 23:
-        raise ValueError(f'crontab hour must be between 0-23, was given {hour=}')
+        raise ValueError(f"crontab hour must be between 0-23, was given {hour=}")
     if isinstance(day_of_week, int) and not 0 <= day_of_week <= 6:
-        raise ValueError(f'crontab day_of_week must be between 0-6, was given {day_of_week=}')
+        raise ValueError(f"crontab day_of_week must be between 0-6, was given {day_of_week=}")
     if isinstance(day_of_month, int) and not 1 <= day_of_month <= 31:
-        raise ValueError(f'crontab day_of_month must be between 1-31, was given {day_of_month=}')
+        raise ValueError(f"crontab day_of_month must be between 1-31, was given {day_of_month=}")
     return True
 
 
@@ -257,14 +257,14 @@ def generate_weekly(minute=None, hour=None, day_of_week=None):
 
     minutes = list(range(0, 60, 10))
     hours = list(range(8, 20))
-    month = '*'
+    month = "*"
 
     if isinstance(hour, list):
         hour = random.choice(hour)
 
     minute = minute or random.choice(minutes)
     hour = hour or random.choice(hours)
-    day_of_month = '*'
+    day_of_month = "*"
 
     if not day_of_week:
         day_of_week = random.choice(list(range(0, 7)))
@@ -282,12 +282,12 @@ def generate_monthly(minute=None, hour=None, day=None):
     minutes = list(range(0, 60, 10))
     hours = list(range(8, 20))
     days = list(range(1, 29))  # 29 ensures it'll run even in February
-    month = '*'
+    month = "*"
 
     minute = minute or random.choice(minutes)
     hour = hour or random.choice(hours)
     day_of_month = day or random.choice(days)
-    day_of_week = '*'
+    day_of_week = "*"
 
     return f"{minute} {hour} {day_of_month} {month} {day_of_week}"
 
@@ -309,7 +309,7 @@ def generate_biyearly(minute=None, hour=None, day=None):
     day_of_month = day or random.choice(days)
     month1 = random.choice(month)
     month2 = (month1 + 6) % 12 or 1
-    day_of_week = '*'
+    day_of_week = "*"
 
     return f"{minute} {hour} {day_of_month} {month1},{month2} {day_of_week}"
 
@@ -330,7 +330,7 @@ def generate_yearly(minute=None, hour=None, day=None):
     hour = hour or random.choice(hours)
     day_of_month = day or random.choice(days)
     month = random.choice(month)
-    day_of_week = '*'
+    day_of_week = "*"
 
     return f"{minute} {hour} {day_of_month} {month} {day_of_week}"
 
@@ -347,9 +347,9 @@ def generate_daily(minute=None, hour=None):
 
     minute = minute or random.choice(minutes)
     hour = hour or random.choice(hours)
-    day_of_month = '*'
-    month = '*'
-    day_of_week = '*'
+    day_of_month = "*"
+    month = "*"
+    day_of_week = "*"
 
     return f"{minute} {hour} {day_of_month} {month} {day_of_week}"
 
@@ -361,7 +361,7 @@ def generate_selection_monthly_crontabs(length=22, minute=0, hour=5, increment_m
 
         day_of_month = random.choice(range(1, 30))
 
-        vals.append(f'{minute} {hour} {day_of_month} * *')
+        vals.append(f"{minute} {hour} {day_of_month} * *")
 
         minute += increment_minute
         if minute >= 60:
@@ -386,9 +386,9 @@ def generate_selection_biweekly_crontabs(length=22, minute=0, hour=13, increment
             check_day = random.choice(opt)
             day_of_week_selection_list.append(str(check_day))
 
-        day_of_month = ','.join(day_of_week_selection_list)
+        day_of_month = ",".join(day_of_week_selection_list)
 
-        vals.append(f'{minute} {hour} {day_of_month} * *')
+        vals.append(f"{minute} {hour} {day_of_month} * *")
 
         minute += increment_minute
         if minute >= 60:
@@ -403,7 +403,7 @@ def generate_selection_daily_crontabs(length=22, minute=0, hour=16, increment_mi
 
     for x in range(length):
 
-        vals.append(f'{minute} {hour} * * *')
+        vals.append(f"{minute} {hour} * * *")
 
         minute += increment_minute
         if minute >= 60:

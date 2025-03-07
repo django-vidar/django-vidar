@@ -15,7 +15,7 @@ class LocalFileSystemStorage(FileSystemStorage):
         old_full_filepath = pathlib.Path(self.path(old_path))
         new_full_filepath = pathlib.Path(self.path(new_path))
 
-        log.info(f'Moving {old_path=} to {new_path=}')
+        log.info(f"Moving {old_path=} to {new_path=}")
         log.debug(f"{old_full_filepath=}")
         log.debug(f"{new_full_filepath=}")
 
@@ -40,8 +40,8 @@ class VidarFileSystemStorage(DjangoStopMessingWithFinalFileName):
     def __init__(self, *args, **kwargs):
         base_url = app_settings.MEDIA_URL
         location = app_settings.MEDIA_ROOT
-        kwargs.setdefault('base_url', base_url)
-        kwargs.setdefault('location', location)
+        kwargs.setdefault("base_url", base_url)
+        kwargs.setdefault("location", location)
         super().__init__(*args, **kwargs)
 
 

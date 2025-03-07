@@ -90,8 +90,8 @@ class RedisMessaging:
 
     def get_all_messages(self):
         messages = []
-        for key in self.conn.scan_iter(f'{self.NAME_SPACE}*'):
-            key = key.decode('utf8')
+        for key in self.conn.scan_iter(f"{self.NAME_SPACE}*"):
+            key = key.decode("utf8")
             reply = self.get_direct_message(key)
             if reply:
                 messages.append(reply)
@@ -100,8 +100,8 @@ class RedisMessaging:
 
     def get_app_messages(self, app):
         messages = []
-        for key in self.conn.scan_iter(f'{self.NAME_SPACE}{app}*'):
-            key = key.decode('utf8')
+        for key in self.conn.scan_iter(f"{self.NAME_SPACE}{app}*"):
+            key = key.decode("utf8")
             reply = self.get_direct_message(key)
             if reply:
                 messages.append(reply)
@@ -116,27 +116,27 @@ class RedisMessaging:
 
 
 def channel_indexing(msg, **kwargs):
-    if msg.startswith('[download]'):
+    if msg.startswith("[download]"):
         mess_dict = {
             "status": "message:vidar",
             "level": "info",
             "title": "Processing Channel Index",
             "message": f"{kwargs['channel']}: {msg}",
-            "url": kwargs['channel'].get_absolute_url(),
+            "url": kwargs["channel"].get_absolute_url(),
             "url_text": "Channel",
         }
         RedisMessaging().set_message(f'vidar:channel-index:{kwargs["channel"].pk}', mess_dict)
 
 
 def playlist_indexing(msg, **kwargs):
-    if msg.startswith('[download]'):
+    if msg.startswith("[download]"):
         mess_dict = {
             "status": "message:vidar",
             "level": "info",
             "title": "Processing Playlist Index",
             "message": f"Playlist: {kwargs['playlist']}: {msg}",
-            "url": kwargs['playlist'].get_absolute_url(),
-            "url_text": 'Playlist',
+            "url": kwargs["playlist"].get_absolute_url(),
+            "url_text": "Playlist",
         }
         RedisMessaging().set_message(f'vidar:playlist-index:{kwargs["playlist"].pk}', mess_dict)
 
@@ -150,7 +150,7 @@ def video_conversion_to_mp4_started(video):
         "url": video.get_absolute_url(),
         "url_text": "Video",
     }
-    RedisMessaging().set_message(f'vidar:video-mkv-conversion:{video.pk}', mess_dict, expire=90 * 60)
+    RedisMessaging().set_message(f"vidar:video-mkv-conversion:{video.pk}", mess_dict, expire=90 * 60)
 
 
 def video_conversion_to_mp4_finished(video):
@@ -162,7 +162,7 @@ def video_conversion_to_mp4_finished(video):
         "url": video.get_absolute_url(),
         "url_text": "Video",
     }
-    RedisMessaging().set_message(f'vidar:video-mkv-conversion:{video.pk}', mess_dict)
+    RedisMessaging().set_message(f"vidar:video-mkv-conversion:{video.pk}", mess_dict)
 
 
 def progress_hook_download_status(d, raise_exceptions=False, **kwargs):
@@ -171,25 +171,25 @@ def progress_hook_download_status(d, raise_exceptions=False, **kwargs):
         return
 
     try:
-        yid = d.get('info_dict', {}).get('id')
+        yid = d.get("info_dict", {}).get("id")
 
         if not yid:
             return
 
-        eta = timezone.timedelta(seconds=d.get('eta') or 0)
-        speed = d.get('_speed_str', '')
+        eta = timezone.timedelta(seconds=d.get("eta") or 0)
+        speed = d.get("_speed_str", "")
 
         mess_dict = {
             "status": "message:vidar",
             "level": "info",
             "title": "Processing Archives",
             "message": f"{d['info_dict']['title']}: {d['status']} {d['_percent_str']} @ {speed} - ETA:{eta}",
-            "url": kwargs.get('url'),
-            "url_text": kwargs.get('url_text', 'Video'),
+            "url": kwargs.get("url"),
+            "url_text": kwargs.get("url_text", "Video"),
         }
-        RedisMessaging().set_message(f'vidar:{yid}', mess_dict)
+        RedisMessaging().set_message(f"vidar:{yid}", mess_dict)
 
     except:  # noqa: E722
-        log.exception('Failed to format progress_hook data')
+        log.exception("Failed to format progress_hook data")
         if raise_exceptions:
             raise

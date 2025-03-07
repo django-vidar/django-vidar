@@ -13,8 +13,8 @@ from vidar.models import Channel, DurationSkip, ExtraFile, Highlight, Playlist, 
 class VideoUpdateForm(forms.ModelForm):
     class Meta:
         model = Video
-        fields = '__all__'
-        exclude = ['related', 'playlists']
+        fields = "__all__"
+        exclude = ["related", "playlists"]
 
 
 class VideoDownloaderForm(forms.ModelForm):
@@ -26,13 +26,13 @@ class VideoDownloaderForm(forms.ModelForm):
             "quality",
             "download_comments_on_index",
             "download_all_comments",
-            'mark_for_deletion',
-            'delete_after_watching',
+            "mark_for_deletion",
+            "delete_after_watching",
         ]
         labels = {"provider_object_id": "Link To Video"}
         help_texts = {
-            'download_comments_on_index': "Obtains latest 100 comments",
-            'download_all_comments': "Use sparingly.",
+            "download_comments_on_index": "Obtains latest 100 comments",
+            "download_all_comments": "Use sparingly.",
         }
 
     quality = forms.ChoiceField(choices=PossibleQualities, required=True, initial=video_helpers.default_quality)
@@ -41,7 +41,7 @@ class VideoDownloaderForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if not user.is_authenticated:
-            del self.fields['download_all_comments']
+            del self.fields["download_all_comments"]
 
     def clean_provider_object_id(self):
         data = self.cleaned_data.get("provider_object_id")
@@ -59,7 +59,7 @@ class VideoDownloaderForm(forms.ModelForm):
             kwargs=dict(
                 pk=obj.pk,
                 quality=self.cleaned_data["quality"],
-                task_source='Video Downloader Form',
+                task_source="Video Downloader Form",
             )
         )
         return obj
@@ -68,14 +68,14 @@ class VideoDownloaderForm(forms.ModelForm):
 class VideoManualEditor(forms.ModelForm):
     class Meta:
         model = Video
-        fields = ['title', 'description', 'playback_speed', 'playback_volume']
+        fields = ["title", "description", "playback_speed", "playback_volume"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.instance.title_locked:
-            self.fields.pop('title')
+            self.fields.pop("title")
         if not self.instance.description_locked:
-            self.fields.pop('description')
+            self.fields.pop("description")
 
 
 class PlaylistAdderForm(forms.ModelForm):
@@ -90,7 +90,7 @@ class PlaylistAdderForm(forms.ModelForm):
             "title_skips",
             "disable_when_string_found_in_video_title",
             "quality",
-            'playback_speed',
+            "playback_speed",
             "playback_volume",
             "videos_playback_ordering",
             "videos_display_ordering",
@@ -100,11 +100,11 @@ class PlaylistAdderForm(forms.ModelForm):
         ]
         labels = {"provider_object_id": "Link To Playlist"}
         widgets = {
-            'title_skips': forms.Textarea(attrs={'rows': 2}),
-            'disable_when_string_found_in_video_title': forms.Textarea(attrs={'rows': 2}),
+            "title_skips": forms.Textarea(attrs={"rows": 2}),
+            "disable_when_string_found_in_video_title": forms.Textarea(attrs={"rows": 2}),
         }
         help_texts = {
-            'crontab': 'minute, hour, day of month, month, day of week. '
+            "crontab": "minute, hour, day of month, month, day of week. "
             'assign <a href="javascript:;" onclick="assign_crontab(\'hourly\')">hourly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'daily\')">daily</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
@@ -115,7 +115,7 @@ class PlaylistAdderForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['disable_when_string_found_in_video_title'].strip = False
+        self.fields["disable_when_string_found_in_video_title"].strip = False
 
     def clean_provider_object_id(self):
         data = self.cleaned_data.get("provider_object_id")
@@ -143,7 +143,7 @@ class PlaylistEditForm(forms.ModelForm):
             "title_skips",
             "disable_when_string_found_in_video_title",
             "quality",
-            'playback_speed',
+            "playback_speed",
             "playback_volume",
             "videos_playback_ordering",
             "videos_display_ordering",
@@ -154,11 +154,11 @@ class PlaylistEditForm(forms.ModelForm):
             "provider_object_id_old",
         ]
         widgets = {
-            'title_skips': forms.Textarea(attrs={'rows': 2}),
-            'disable_when_string_found_in_video_title': forms.Textarea(attrs={'rows': 2}),
+            "title_skips": forms.Textarea(attrs={"rows": 2}),
+            "disable_when_string_found_in_video_title": forms.Textarea(attrs={"rows": 2}),
         }
         help_texts = {
-            'crontab': 'minute, hour, day of month, month, day of week. '
+            "crontab": "minute, hour, day of month, month, day of week. "
             'assign <a href="javascript:;" onclick="assign_crontab(\'hourly\')">hourly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'daily\')">daily</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
@@ -169,7 +169,7 @@ class PlaylistEditForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['disable_when_string_found_in_video_title'].strip = False
+        self.fields["disable_when_string_found_in_video_title"].strip = False
 
 
 class PlaylistManualAddForm(forms.ModelForm):
@@ -179,33 +179,33 @@ class PlaylistManualAddForm(forms.ModelForm):
     class Meta:
         model = Playlist
         fields = [
-            'title',
-            'description',
-            'convert_to_audio',
-            'channel',
-            'quality',
-            'videos_display_ordering',
-            'videos_playback_ordering',
+            "title",
+            "description",
+            "convert_to_audio",
+            "channel",
+            "quality",
+            "videos_display_ordering",
+            "videos_playback_ordering",
             "video_indexing_add_by_title",
             "video_indexing_add_by_title_limit_to_channels",
             "download_comments_on_index",
             "restrict_to_assigned_channel",
-            'remove_video_from_playlist_on_watched',
+            "remove_video_from_playlist_on_watched",
         ]
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 2}),
-            'video_indexing_add_by_title': forms.Textarea(attrs={'rows': 3}),
+            "description": forms.Textarea(attrs={"rows": 2}),
+            "video_indexing_add_by_title": forms.Textarea(attrs={"rows": 3}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['video_indexing_add_by_title'].strip = False
-        if instance := kwargs.get('instance'):
+        self.fields["video_indexing_add_by_title"].strip = False
+        if instance := kwargs.get("instance"):
             if instance.id:
-                original_label = self.fields['video_indexing_add_by_title_limit_to_channels'].label
+                original_label = self.fields["video_indexing_add_by_title_limit_to_channels"].label
                 num_sel_channels = instance.video_indexing_add_by_title_limit_to_channels.count()
                 label = f"{original_label} ({num_sel_channels} selected)"
-                self.fields['video_indexing_add_by_title_limit_to_channels'].label = label
+                self.fields["video_indexing_add_by_title_limit_to_channels"].label = label
 
 
 class PlaylistManualEditForm(PlaylistManualAddForm):
@@ -213,24 +213,24 @@ class PlaylistManualEditForm(PlaylistManualAddForm):
     class Meta:
         model = Playlist
         fields = [
-            'title',
-            'description',
-            'convert_to_audio',
-            'channel',
-            'quality',
-            'videos_display_ordering',
-            'videos_playback_ordering',
+            "title",
+            "description",
+            "convert_to_audio",
+            "channel",
+            "quality",
+            "videos_display_ordering",
+            "videos_playback_ordering",
             "video_indexing_add_by_title",
             "video_indexing_add_by_title_limit_to_channels",
             "download_comments_on_index",
             "restrict_to_assigned_channel",
             "provider_object_id",
             "provider_object_id_old",
-            'remove_video_from_playlist_on_watched',
+            "remove_video_from_playlist_on_watched",
         ]
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 2}),
-            'video_indexing_add_by_title': forms.Textarea(attrs={'rows': 3}),
+            "description": forms.Textarea(attrs={"rows": 2}),
+            "video_indexing_add_by_title": forms.Textarea(attrs={"rows": 3}),
         }
 
 
@@ -242,7 +242,7 @@ class PlaylistDeleteForm(forms.Form):
 
     class Meta:
         model = Playlist
-        fields = ['delete_videos']
+        fields = ["delete_videos"]
 
 
 class PlaylistAddVideoBySearchForm(forms.Form):
@@ -271,7 +271,7 @@ class QualityChoiceForm(forms.ModelForm):
             if channel_default_quality and channel_default_quality == k:
                 v = f"Channel: {v}"
             qualities.append((k, v))
-        self.fields['quality'].choices = qualities
+        self.fields["quality"].choices = qualities
 
     def save(self, commit=False):
         raise ValueError("QualityChoiceForm cannot be used for editing an instance.")
@@ -283,24 +283,24 @@ class ChannelChoiceForm(forms.Form):
 
 class CrontabCatchupForm(forms.Form):
 
-    start = forms.DateTimeField(help_text='Remove the seconds, round the minutes to nearest 5')
+    start = forms.DateTimeField(help_text="Remove the seconds, round the minutes to nearest 5")
     end = forms.DateTimeField(
         initial=timezone.localtime,
-        help_text='Remove the seconds, round the minutes to nearest 5',
+        help_text="Remove the seconds, round the minutes to nearest 5",
     )
 
     def __init__(self, *args, **kwargs):
-        initial = kwargs.pop('initial', {})
-        initial['start'] = timezone.localtime() - timezone.timedelta(hours=1)
-        if task_last_run := TaskResult.objects.filter(task_name='vidar.tasks.trigger_crontab_scans').first():
-            initial['start'] = task_last_run.date_done + timezone.timedelta(minutes=1)
-        kwargs['initial'] = initial
+        initial = kwargs.pop("initial", {})
+        initial["start"] = timezone.localtime() - timezone.timedelta(hours=1)
+        if task_last_run := TaskResult.objects.filter(task_name="vidar.tasks.trigger_crontab_scans").first():
+            initial["start"] = task_last_run.date_done + timezone.timedelta(minutes=1)
+        kwargs["initial"] = initial
         super().__init__(*args, **kwargs)
 
     def scan(self):
 
-        start_raw = self.cleaned_data['start']
-        end_raw = self.cleaned_data['end']
+        start_raw = self.cleaned_data["start"]
+        end_raw = self.cleaned_data["end"]
 
         def round_to_nearest(x, base=5):
             rounded = base * round(x / base)
@@ -318,9 +318,9 @@ class ChannelGeneralCreateOptionsForm(forms.ModelForm):
     class Meta:
         model = Channel
         fields = [
-            'provider_object_id',
+            "provider_object_id",
             "display_name",
-            'sort_name',
+            "sort_name",
             "quality",
             "allow_library_quality_upgrade",
             "full_archive",
@@ -332,12 +332,12 @@ class ChannelGeneralCreateOptionsForm(forms.ModelForm):
         ]
 
         help_texts = {
-            'provider_object_id': "Supply one url (with YouTube ID) for the channel you wish to subscribe to. "
+            "provider_object_id": "Supply one url (with YouTube ID) for the channel you wish to subscribe to. "
             "URL should look like https://www.youtube.com/channel/UCOix6FvdT2i7TLMbgtcyMKQ<br />"
             "OR you can supply a video url and the channel will be obtained from there.",
         }
         labels = {
-            'provider_object_id': "Channel ID (funny id, not human friendly).",
+            "provider_object_id": "Channel ID (funny id, not human friendly).",
         }
 
     def __init__(self, *args, **kwargs):
@@ -347,13 +347,13 @@ class ChannelGeneralCreateOptionsForm(forms.ModelForm):
         for channel in Channel.objects.exclude(full_archive_after__isnull=True):
             faa.append(f"{channel}: {channel.full_archive_after.date()}")
 
-        self.fields['full_archive_after'].widget.attrs['placeholder'] = ", ".join(faa) or "Full archive after"
+        self.fields["full_archive_after"].widget.attrs["placeholder"] = ", ".join(faa) or "Full archive after"
 
     def clean_provider_object_id(self):
         data = self.cleaned_data.get("provider_object_id")
 
         # Videos are ?v=
-        if '?v=' in data:
+        if "?v=" in data:
 
             raw_id = utils.get_video_id_from_url(data)
 
@@ -361,7 +361,7 @@ class ChannelGeneralCreateOptionsForm(forms.ModelForm):
 
             video_data = YTDLPInteractor.video_details(url)
 
-            channel_id = video_data['channel_id']
+            channel_id = video_data["channel_id"]
 
         else:
             channel_id = utils.get_channel_id_from_url(data)
@@ -376,15 +376,15 @@ class ChannelSubGeneralOptionsForm(forms.ModelForm):
     class Meta:
         model = Channel
         fields = [
-            'scanner_crontab',
+            "scanner_crontab",
             "scan_after_datetime",
             "title_forces",
             "title_skips",
-            'skip_next_downloads',
+            "skip_next_downloads",
             "force_next_downloads",
         ]
         help_texts = {
-            'scanner_crontab': 'minute, hour, day of month, month, day of week. '
+            "scanner_crontab": "minute, hour, day of month, month, day of week. "
             'assign <a href="javascript:;" onclick="assign_crontab(\'hourly\')">hourly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'daily\')">daily</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
@@ -393,14 +393,14 @@ class ChannelSubGeneralOptionsForm(forms.ModelForm):
             'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> ',
         }
         widgets = {
-            'title_forces': forms.Textarea(attrs={'rows': 2}),
-            'title_skips': forms.Textarea(attrs={'rows': 2}),
+            "title_forces": forms.Textarea(attrs={"rows": 2}),
+            "title_skips": forms.Textarea(attrs={"rows": 2}),
         }
 
 
 class ChannelGeneralUpdateOptionsForm(forms.ModelForm):
     class Meta(ChannelGeneralCreateOptionsForm.Meta):
-        exclude = ['provider_object_id']
+        exclude = ["provider_object_id"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -409,33 +409,33 @@ class ChannelGeneralUpdateOptionsForm(forms.ModelForm):
         for channel in Channel.objects.exclude(full_archive_after__isnull=True):
             faa.append(f"{channel}: {channel.full_archive_after.date()}")
 
-        self.fields['full_archive_after'].widget.attrs['placeholder'] = ", ".join(faa) or "Full archive after"
+        self.fields["full_archive_after"].widget.attrs["placeholder"] = ", ".join(faa) or "Full archive after"
 
-        self.fields['display_name'].widget.attrs['placeholder'] = self.instance.name
-        self.fields['sort_name'].widget.attrs['placeholder'] = self.instance.name
+        self.fields["display_name"].widget.attrs["placeholder"] = self.instance.name
+        self.fields["sort_name"].widget.attrs["placeholder"] = self.instance.name
 
 
 class ChannelVideosOptionsForm(forms.ModelForm):
     class Meta:
         model = Channel
         fields = [
-            'index_videos',
-            'download_videos',
-            'scanner_limit',
-            'duration_minimum_videos',
-            'duration_maximum_videos',
-            'download_comments_with_video',
-            'download_comments_during_scan',
-            'swap_index_videos_after',
-            'delete_videos_after_days',
-            'delete_videos_after_watching',
+            "index_videos",
+            "download_videos",
+            "scanner_limit",
+            "duration_minimum_videos",
+            "duration_maximum_videos",
+            "download_comments_with_video",
+            "download_comments_during_scan",
+            "swap_index_videos_after",
+            "delete_videos_after_days",
+            "delete_videos_after_watching",
         ]
         labels = {
-            'index_videos': 'Index',
-            'download_videos': 'Download',
-            'scanner_limit': 'Scanning Index Limit',
-            'duration_minimum_videos': 'Minimum Duration (In Seconds)',
-            'duration_maximum_videos': 'Maximum Duration (In Seconds)',
+            "index_videos": "Index",
+            "download_videos": "Download",
+            "scanner_limit": "Scanning Index Limit",
+            "duration_minimum_videos": "Minimum Duration (In Seconds)",
+            "duration_maximum_videos": "Maximum Duration (In Seconds)",
         }
 
 
@@ -443,18 +443,18 @@ class ChannelShortsOptionsForm(forms.ModelForm):
     class Meta:
         model = Channel
         fields = [
-            'index_shorts',
-            'download_shorts',
-            'scanner_limit_shorts',
-            'fully_indexed_shorts',
-            'swap_index_shorts_after',
-            'delete_shorts_after_days',
-            'delete_shorts_after_watching',
+            "index_shorts",
+            "download_shorts",
+            "scanner_limit_shorts",
+            "fully_indexed_shorts",
+            "swap_index_shorts_after",
+            "delete_shorts_after_days",
+            "delete_shorts_after_watching",
         ]
         labels = {
-            'index_shorts': 'Index',
-            'download_shorts': 'Download',
-            'scanner_limit_shorts': 'Scanning Index Limit',
+            "index_shorts": "Index",
+            "download_shorts": "Download",
+            "scanner_limit_shorts": "Scanning Index Limit",
         }
         help_texts = {
             "fully_indexed_shorts": "Do not change this unless you know what you are doing.",
@@ -465,22 +465,22 @@ class ChannelLivestreamsOptionsForm(forms.ModelForm):
     class Meta:
         model = Channel
         fields = [
-            'index_livestreams',
-            'download_livestreams',
-            'scanner_limit_livestreams',
-            'duration_minimum_livestreams',
-            'duration_maximum_livestreams',
-            'fully_indexed_livestreams',
-            'swap_index_livestreams_after',
-            'delete_livestreams_after_days',
-            'delete_livestreams_after_watching',
+            "index_livestreams",
+            "download_livestreams",
+            "scanner_limit_livestreams",
+            "duration_minimum_livestreams",
+            "duration_maximum_livestreams",
+            "fully_indexed_livestreams",
+            "swap_index_livestreams_after",
+            "delete_livestreams_after_days",
+            "delete_livestreams_after_watching",
         ]
         labels = {
-            'index_livestreams': 'Index',
-            'download_livestreams': 'Download',
-            'scanner_limit_livestreams': 'Scanning Index Limit',
-            'duration_minimum_livestreams': 'Minimum Duration (In Seconds)',
-            'duration_maximum_livestreams': 'Maximum Duration (In Seconds)',
+            "index_livestreams": "Index",
+            "download_livestreams": "Download",
+            "scanner_limit_livestreams": "Scanning Index Limit",
+            "duration_minimum_livestreams": "Minimum Duration (In Seconds)",
+            "duration_maximum_livestreams": "Maximum Duration (In Seconds)",
         }
         help_texts = {
             "fully_indexed_livestreams": "Do not change this unless you know what you are doing.",
@@ -494,17 +494,17 @@ class ChannelMirroringPlaylistsForm(forms.ModelForm):
     class Meta:
         model = Channel
         fields = [
-            'mirror_playlists',
-            'mirror_playlists_hidden',
-            'mirror_playlists_crontab',
+            "mirror_playlists",
+            "mirror_playlists_hidden",
+            "mirror_playlists_crontab",
             "mirror_playlists_restrict",
-            'force_mirror_now',
+            "force_mirror_now",
         ]
 
     def save(self, *args, **kwargs):
         output = super().save(*args, *kwargs)
 
-        if self.cleaned_data['mirror_playlists'] and self.cleaned_data['force_mirror_now']:
+        if self.cleaned_data["mirror_playlists"] and self.cleaned_data["force_mirror_now"]:
             tasks.mirror_live_playlist.delay(self.instance.pk)
 
         return output
@@ -524,14 +524,14 @@ class ChannelPlaybackOptionsForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         user = None
-        if 'user' in kwargs:
-            user = kwargs.pop('user')
+        if "user" in kwargs:
+            user = kwargs.pop("user")
 
         super().__init__(*args, **kwargs)
 
-        if user and hasattr(user, 'vidar_playback_speed'):
-            self.fields['playback_speed'].help_text = (
-                f"Current User Default: {user.vidar_playback_speed} " "Leave blank for user default."
+        if user and hasattr(user, "vidar_playback_speed"):
+            self.fields["playback_speed"].help_text = (
+                f"Current User Default: {user.vidar_playback_speed} Leave blank for user default."
             )
 
 
@@ -541,7 +541,7 @@ class ChannelAdministrativeOptionsForm(forms.ModelForm):
         model = Channel
         fields = [
             "send_download_notification",
-            'fully_indexed',
+            "fully_indexed",
             "store_videos_by_year_separation",
             "store_videos_in_separate_directories",
             "status",
@@ -563,39 +563,39 @@ class ChannelAdministrativeOptionsForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['video_directory_schema'].widget.attrs['placeholder'] = app_settings.VIDEO_DIRECTORY_SCHEMA
-        self.fields['video_filename_schema'].widget.attrs['placeholder'] = app_settings.VIDEO_FILENAME_SCHEMA
-        self.fields['directory_schema'].widget.attrs['placeholder'] = app_settings.CHANNEL_DIRECTORY_SCHEMA
+        self.fields["video_directory_schema"].widget.attrs["placeholder"] = app_settings.VIDEO_DIRECTORY_SCHEMA
+        self.fields["video_filename_schema"].widget.attrs["placeholder"] = app_settings.VIDEO_FILENAME_SCHEMA
+        self.fields["directory_schema"].widget.attrs["placeholder"] = app_settings.CHANNEL_DIRECTORY_SCHEMA
 
 
 class ChannelIndexingForm(forms.ModelForm):
-    limit = forms.IntegerField(required=False, initial='', help_text="How many videos to index? Optional.")
+    limit = forms.IntegerField(required=False, initial="", help_text="How many videos to index? Optional.")
 
     class Meta:
         model = Channel
-        fields = ['limit']
+        fields = ["limit"]
 
 
 class CopyVideoThumbnailAsYearlyCoverForm(forms.Form):
 
     position = forms.ChoiceField(
         choices=(
-            ('first', 'First video of the year'),
-            ('latest', 'Latest/last video of the year'),
-            ('random', 'Random video from the year'),
+            ("first", "First video of the year"),
+            ("latest", "Latest/last video of the year"),
+            ("random", "Random video from the year"),
         )
     )
 
 
 def convert_timeformat_to_seconds(data):
-    if data.count(':') == 2:
-        hours, minutes, seconds = data.split(':')
+    if data.count(":") == 2:
+        hours, minutes, seconds = data.split(":")
         return int(hours) * 3600 + int(minutes) * 60 + int(seconds)
-    elif data.count(':') == 1:
-        minutes, seconds = data.split(':')
+    elif data.count(":") == 1:
+        minutes, seconds = data.split(":")
         return int(minutes) * 60 + int(seconds)
     else:
-        raise forms.ValidationError('Invalid time format')
+        raise forms.ValidationError("Invalid time format")
 
 
 class DurationSkipForm(forms.ModelForm):
@@ -604,10 +604,10 @@ class DurationSkipForm(forms.ModelForm):
 
     class Meta:
         model = DurationSkip
-        fields = ['start', 'end']
+        fields = ["start", "end"]
         help_texts = {
-            'start': 'In seconds',
-            'end': 'In seconds',
+            "start": "In seconds",
+            "end": "In seconds",
         }
 
     def __init__(self, *args, existing_skips, **kwargs):
@@ -616,27 +616,27 @@ class DurationSkipForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        start = int(cleaned_data['start'])
-        end = int(cleaned_data['end'])
+        start = int(cleaned_data["start"])
+        end = int(cleaned_data["end"])
 
         if start is not None and end is not None:
             if start > end:
-                self.add_error('end', 'End must be greater than start time')
+                self.add_error("end", "End must be greater than start time")
 
             if utils.do_new_start_end_points_overlap_existing(start, end, self.existing_skips):
-                self.add_error('start', 'Chosen time range overlaps another skip.')
+                self.add_error("start", "Chosen time range overlaps another skip.")
 
         return cleaned_data
 
     def clean_start(self):
-        data = self.cleaned_data['start']
-        if isinstance(data, str) and ':' in data:
+        data = self.cleaned_data["start"]
+        if isinstance(data, str) and ":" in data:
             return convert_timeformat_to_seconds(data)
         return int(data)
 
     def clean_end(self):
-        data = self.cleaned_data['end']
-        if isinstance(data, str) and ':' in data:
+        data = self.cleaned_data["end"]
+        if isinstance(data, str) and ":" in data:
             return convert_timeformat_to_seconds(data)
         return int(data)
 
@@ -647,21 +647,21 @@ class HighlightForm(forms.ModelForm):
 
     class Meta:
         model = Highlight
-        fields = ['point', 'end_point', 'note']
+        fields = ["point", "end_point", "note"]
         help_texts = {
-            'point': 'Seconds or HH:MM:SS within video',
-            'end_point': 'Seconds or HH:MM:SS within video',
+            "point": "Seconds or HH:MM:SS within video",
+            "end_point": "Seconds or HH:MM:SS within video",
         }
 
     def clean_point(self):
-        data = self.cleaned_data.get('point')
-        if isinstance(data, str) and ':' in data:
+        data = self.cleaned_data.get("point")
+        if isinstance(data, str) and ":" in data:
             return convert_timeformat_to_seconds(data)
         return int(data)
 
     def clean_end_point(self):
-        data = self.cleaned_data.get('end_point')
-        if isinstance(data, str) and ':' in data:
+        data = self.cleaned_data.get("end_point")
+        if isinstance(data, str) and ":" in data:
             return convert_timeformat_to_seconds(data)
         try:
             return int(data)
@@ -670,12 +670,12 @@ class HighlightForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        start_point = cleaned_data.get('point')
-        end_point = cleaned_data.get('end_point')
+        start_point = cleaned_data.get("point")
+        end_point = cleaned_data.get("end_point")
         if start_point and end_point and start_point > end_point:
-            self.add_error('end_point', 'Start cannot be before End')
+            self.add_error("end_point", "Start cannot be before End")
         elif start_point and end_point and start_point == end_point:
-            self.cleaned_data['end_point'] = None
+            self.cleaned_data["end_point"] = None
         return cleaned_data
 
 
@@ -684,14 +684,14 @@ class ChapterForm(forms.ModelForm):
 
     class Meta:
         model = Highlight
-        fields = ['point', 'note']
+        fields = ["point", "note"]
         help_texts = {
-            'point': 'Seconds or HH:MM:SS within video',
+            "point": "Seconds or HH:MM:SS within video",
         }
 
     def clean_point(self):
-        data = self.cleaned_data.get('point')
-        if isinstance(data, str) and ':' in data:
+        data = self.cleaned_data.get("point")
+        if isinstance(data, str) and ":" in data:
             return convert_timeformat_to_seconds(data)
         return int(data)
 
@@ -699,24 +699,24 @@ class ChapterForm(forms.ModelForm):
 class ExtraFileForm(forms.ModelForm):
     class Meta:
         model = ExtraFile
-        fields = ['file', 'note']
+        fields = ["file", "note"]
         widgets = {
-            'note': forms.Textarea(attrs={'rows': 2}),
+            "note": forms.Textarea(attrs={"rows": 2}),
         }
 
 
 class BulkChannelForm(forms.ModelForm):
     class Meta:
         model = Channel
-        fields = ['scanner_crontab']
-        labels = {'scanner_crontab': ''}
+        fields = ["scanner_crontab"]
+        labels = {"scanner_crontab": ""}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         cid = self.instance.pk
 
-        self.fields['scanner_crontab'].help_text = (
+        self.fields["scanner_crontab"].help_text = (
             f'<a href="javascript:;" onclick="assign_crontab(\'hourly\', {cid})">hourly</a> '
             f'or <a href="javascript:;" onclick="assign_crontab(\'daily\', {cid})">daily</a> '
             f'or <a href="javascript:;" onclick="assign_crontab(\'weekly\', {cid})">weekly</a> '
@@ -725,7 +725,7 @@ class BulkChannelForm(forms.ModelForm):
             f'or <a href="javascript:;" onclick="assign_crontab(\'yearly\', {cid})">yearly</a> '
         )
 
-        self.fields['scanner_crontab'].widget.attrs['class'] = f'form-control channel-{cid}'
+        self.fields["scanner_crontab"].widget.attrs["class"] = f"form-control channel-{cid}"
 
 
 BulkChannelModelFormSet = forms.modelformset_factory(model=Channel, form=BulkChannelForm, edit_only=True, extra=0)

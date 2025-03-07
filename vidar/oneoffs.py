@@ -34,9 +34,9 @@ def find_existing_files_with_missing_video_entries():
 
     current_files = []
     for file in glob.glob(f"{app_settings.MEDIA_ROOT}/**/*.*", recursive=True):
-        if not file.endswith(('.mp4', '.webm', '.mkv')):
+        if not file.endswith((".mp4", ".webm", ".mkv")):
             continue
-        current_files.append(file.replace('/', ''))
+        current_files.append(file.replace("/", ""))
 
     for video in Video.objects.archived():
         current_files.remove(video.file.path)
@@ -61,16 +61,16 @@ def find_existing_videos_without_local_file():
 
 def sponsorblocks_testing():
     ydl_opts = {
-        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/" "best[height<=720][ext=mp4]",
+        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]",
         "outtmpl": "%(id)s.%(ext)s",
-        'quiet': False,
-        'keepvideo': True,
+        "quiet": False,
+        "keepvideo": True,
         # 'progress_hooks': [],
         # 'quiet': True,
         # "ratelimit": 10 * 1024,
-        'postprocessors': [
-            {'key': 'SponsorBlock', 'categories': ['sponsor']},
-            {'key': 'ModifyChapters', 'remove_sponsor_segments': ['sponsor']},
+        "postprocessors": [
+            {"key": "SponsorBlock", "categories": ["sponsor"]},
+            {"key": "ModifyChapters", "remove_sponsor_segments": ["sponsor"]},
         ],
     }
 
@@ -84,27 +84,27 @@ def download_progress_hooks_testing():
     v = Video.objects.get(pk=327)
 
     def progress_Check(d):
-        yid = d['info_dict']['id']
+        yid = d["info_dict"]["id"]
         print(
-            '#### inside ####',
-            d['status'],
-            d.get('downloaded_bytes'),
-            d.get('total_bytes_estimate'),
-            d.get('eta'),
-            d.get('speed'),
+            "#### inside ####",
+            d["status"],
+            d.get("downloaded_bytes"),
+            d.get("total_bytes_estimate"),
+            d.get("eta"),
+            d.get("speed"),
             yid,
         )
 
     try:
-        os.unlink('jT1tdfz6HYI.mp4')
+        os.unlink("jT1tdfz6HYI.mp4")
     except FileNotFoundError:
         pass
 
     ydl_opts = {
-        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/" "best[height<=720][ext=mp4]",
+        "format": "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]",
         "outtmpl": "%(id)s.%(ext)s",
         "ratelimit": 800 * 1024,
-        'progress_hooks': [progress_Check],
+        "progress_hooks": [progress_Check],
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(v.url, download=True)
@@ -128,7 +128,7 @@ def list_channel_dirs_that_are_no_longer_subscribed_channels():
 
     dirs = []
 
-    for directory in app_settings.MEDIA_ROOT.glob('*'):
+    for directory in app_settings.MEDIA_ROOT.glob("*"):
         if not directory.is_dir():
             continue
         dirs.append(directory.name)
@@ -146,7 +146,7 @@ def find_video_titles_changed_compared_to_file():
     output = []
 
     for video in Video.objects.archived():
-        ext = video.file.name.rsplit('.', 1)[-1]
+        ext = video.file.name.rsplit(".", 1)[-1]
         valid_name = vidar_storage.get_valid_name(schema_services.video_file_name(video=video, ext=ext))
         expected_file_path = video_helpers.upload_to_file(video, valid_name)
 
@@ -176,52 +176,52 @@ def build_test_fixtures():
     fixtures = {}
 
     ### dlp_formats
-    video = Video.objects.get(provider_object_id='aIxFlD77JBU')
+    video = Video.objects.get(provider_object_id="aIxFlD77JBU")
     dlpf = video.dlp_formats
 
     for d in dlpf:
-        if 'url' in d:
-            d['url'] = ''
-        if 'fragments' in d:
-            d['fragments'] = []
-        if 'http_headers' in d:
-            d['http_headers'] = {}
-        if 'manifest_url' in d:
-            d['manifest_url'] = ''
-        if 'downloader_options' in d:
-            d['downloader_options'] = {}
+        if "url" in d:
+            d["url"] = ""
+        if "fragments" in d:
+            d["fragments"] = []
+        if "http_headers" in d:
+            d["http_headers"] = {}
+        if "manifest_url" in d:
+            d["manifest_url"] = ""
+        if "downloader_options" in d:
+            d["downloader_options"] = {}
 
-    fixtures['dlp_formats'] = dlpf
+    fixtures["dlp_formats"] = dlpf
 
     ### dlp_response
-    video = Video.objects.get(provider_object_id='6CmX4ZmhwPM')
+    video = Video.objects.get(provider_object_id="6CmX4ZmhwPM")
     dlpf = video.raw_dlp_response
 
-    first_thumbnail = copy.copy(dlpf['thumbnails'][0])
+    first_thumbnail = copy.copy(dlpf["thumbnails"][0])
 
-    dlpf['thumbnails'] = [
+    dlpf["thumbnails"] = [
         first_thumbnail,
     ]
 
-    for d in dlpf['formats']:
-        if 'url' in d:
-            d['url'] = ''
-        if 'fragments' in d:
-            d['fragments'] = []
-        if 'http_headers' in d:
-            d['http_headers'] = {}
-        if 'manifest_url' in d:
-            d['manifest_url'] = ''
-        if 'downloader_options' in d:
-            d['downloader_options'] = {}
+    for d in dlpf["formats"]:
+        if "url" in d:
+            d["url"] = ""
+        if "fragments" in d:
+            d["fragments"] = []
+        if "http_headers" in d:
+            d["http_headers"] = {}
+        if "manifest_url" in d:
+            d["manifest_url"] = ""
+        if "downloader_options" in d:
+            d["downloader_options"] = {}
 
-    fixtures['dlp_response'] = dlpf
+    fixtures["dlp_response"] = dlpf
 
-    with open('vidar/tests_fixture.json', 'w') as f:
+    with open("vidar/tests_fixture.json", "w") as f:
         json.dump(fixtures, f)
 
 
-def generate_calendar_from_channel_crontabs(date=None, write_to_file='cal.ics', verbose=False):
+def generate_calendar_from_channel_crontabs(date=None, write_to_file="cal.ics", verbose=False):
     if not icalendar:
         return "pip install icalendar to use this functionality"
     if not date:
@@ -234,8 +234,8 @@ def generate_calendar_from_channel_crontabs(date=None, write_to_file='cal.ics', 
     index = 0
 
     calendar = icalendar.Calendar()
-    calendar.add('prodid', '-//My calendar product//mxm.dk//')
-    calendar.add('version', '2.0')
+    calendar.add("prodid", "-//My calendar product//mxm.dk//")
+    calendar.add("version", "2.0")
 
     original_start = start
     for channel in Channel.objects.actively_scanning():
@@ -247,19 +247,19 @@ def generate_calendar_from_channel_crontabs(date=None, write_to_file='cal.ics', 
             if crontab_services.is_active_now(channel.scanner_crontab, now=start):
                 index += 1
                 if verbose:
-                    print(f'scanning {index=} {channel=} @ {start}')
+                    print(f"scanning {index=} {channel=} @ {start}")
                 event = icalendar.Event()
-                event['dtstart'] = start.strftime('%Y%m%dT%H%M%S')
+                event["dtstart"] = start.strftime("%Y%m%dT%H%M%S")
                 start_end_5_minutes = start + timezone.timedelta(minutes=5)
-                event['dtend'] = start_end_5_minutes.strftime('%Y%m%dT%H%M%S')
-                event['summary'] = f"{channel.name} @ {start:%I:%M}"
+                event["dtend"] = start_end_5_minutes.strftime("%Y%m%dT%H%M%S")
+                event["summary"] = f"{channel.name} @ {start:%I:%M}"
 
                 calendar.add_component(event)
 
             start += delta
 
     if write_to_file:
-        with open(write_to_file, 'wb') as fw:
+        with open(write_to_file, "wb") as fw:
             fw.write(calendar.to_ical())
 
     return calendar
@@ -268,7 +268,7 @@ def generate_calendar_from_channel_crontabs(date=None, write_to_file='cal.ics', 
 def fix_all_video_filepaths(commit=False, remove_empty=False):
     videos_changed = 0
     changes_made = 0
-    for video in Video.objects.archived().order_by('pk'):
+    for video in Video.objects.archived().order_by("pk"):
         if changed := renamers.video_rename_all_files(video, commit=commit, remove_empty=remove_empty):
             videos_changed += 1
             changes_made += len(changed)
@@ -278,15 +278,15 @@ def fix_all_video_filepaths(commit=False, remove_empty=False):
 
 
 def old_youtube_channel_system_safe_name(name):
-    return "".join([c for c in name if c.isalpha() or c.isdigit() or c == ' ']).rstrip()
+    return "".join([c for c in name if c.isalpha() or c.isdigit() or c == " "]).rstrip()
 
 
 def change_channel_safe_name_video_file_names():
     # Old function used when i changed safe_name formatting
 
-    real_name = 'Real Name'
-    old_safe_name = 'Old Safe Name'
-    new_safe_name = 'New Safe Name'
+    real_name = "Real Name"
+    old_safe_name = "Old Safe Name"
+    new_safe_name = "New Safe Name"
 
     print(f"{real_name:<50} {old_safe_name:<50} {new_safe_name:<50}")
 
@@ -296,7 +296,7 @@ def change_channel_safe_name_video_file_names():
         new_safe_name = schema_services.channel_directory_name(channel=channel)
         old_safe_name = old_youtube_channel_system_safe_name(channel.name)
 
-        if new_safe_name == old_safe_name or not channel.videos.exclude(file='').exists():
+        if new_safe_name == old_safe_name or not channel.videos.exclude(file="").exists():
             continue
 
         # print(real_name)
@@ -306,11 +306,11 @@ def change_channel_safe_name_video_file_names():
 
         go = input(f'Have you renamed the folder from "{old_safe_name}" to "{new_safe_name}" ? ')
 
-        if not go.lower().startswith('y'):
-            print('\tSkipping')
+        if not go.lower().startswith("y"):
+            print("\tSkipping")
             continue
 
-        for video in channel.videos.exclude(file=''):
+        for video in channel.videos.exclude(file=""):
             old_path = video.file.name
             new_path = old_path.replace(old_safe_name, new_safe_name)
 
@@ -320,35 +320,35 @@ def change_channel_safe_name_video_file_names():
             video.save()
 
 
-def assign_oldest_thumbnail_to_channel_year_directories(position='first', commit=True):
+def assign_oldest_thumbnail_to_channel_year_directories(position="first", commit=True):
 
     # TODO: Make this work for remote storage systems too.
     if not file_helpers.is_field_using_local_storage(Video.thumbnail.field):
         raise FileStorageBackendHasNoMoveError(
-            'assign_oldest_thumbnail_to_channel_year_directories called while storage backend has no move ability'
+            "assign_oldest_thumbnail_to_channel_year_directories called while storage backend has no move ability"
         )
 
-    log.info('Assigning oldest thumbnail to channel year directories')
+    log.info("Assigning oldest thumbnail to channel year directories")
 
-    oldest_video_year = Video.objects.all().order_by('-upload_date').last().upload_date.year
+    oldest_video_year = Video.objects.all().order_by("-upload_date").last().upload_date.year
     current_year = timezone.now().year
     for channel in Channel.objects.all():
 
         if not channel.store_videos_by_year_separation:
-            log.info(f'Channel {channel=} is not set to store by year separation.')
+            log.info(f"Channel {channel=} is not set to store by year separation.")
             continue
 
         for year in range(oldest_video_year, current_year + 1):
             videos_in_this_year = (
-                channel.videos.filter(upload_date__year=year).exclude(thumbnail='').order_by('-upload_date')
+                channel.videos.filter(upload_date__year=year).exclude(thumbnail="").order_by("-upload_date")
             )
             if not videos_in_this_year.exists():
                 continue
 
-            if position == 'latest':
+            if position == "latest":
                 video = videos_in_this_year.first()
-            elif position == 'random':
-                video = videos_in_this_year.order_by('?').first()
+            elif position == "random":
+                video = videos_in_this_year.order_by("?").first()
             else:
                 video = videos_in_this_year.last()
 
@@ -357,15 +357,15 @@ def assign_oldest_thumbnail_to_channel_year_directories(position='first', commit
             if channel.store_videos_in_separate_directories:
                 year_path = year_path.parent
             if year_path.name != str(year):
-                log.info(f'Invalid year match. {year=} {year_path=}')
+                log.info(f"Invalid year match. {year=} {year_path=}")
 
             cover_filepath = year_path / "cover.jpg"
             if cover_filepath.exists():
-                log.info(f'Cover already exists at {cover_filepath=}')
+                log.info(f"Cover already exists at {cover_filepath=}")
             else:
-                log.info(f'Writing {year=} from {video.upload_date} to {cover_filepath=}')
+                log.info(f"Writing {year=} from {video.upload_date} to {cover_filepath=}")
                 if commit:
-                    with video.thumbnail.open() as fo, cover_filepath.open('wb') as fw:
+                    with video.thumbnail.open() as fo, cover_filepath.open("wb") as fw:
                         fw.write(fo.read())
 
     return True
@@ -389,7 +389,7 @@ def load_sponsorblock_database_into_durationskip(
     skip_negative_votes=True,
     categories=None,
     save_all_extra_sb_fields=False,
-    csv_file_encoding='utf-8',
+    csv_file_encoding="utf-8",
 ):
     """Loads a SponsorBlock database CSV dump file into DurationSkip model.
 
@@ -416,56 +416,56 @@ def load_sponsorblock_database_into_durationskip(
         csv_file_encoding: default utf-8
 
     """
-    queryset = Video.objects.exclude(file='')
+    queryset = Video.objects.exclude(file="")
 
     if not specific_video_youtube_ids:
-        local_video_ids = queryset.values_list('provider_object_id', flat=True)
+        local_video_ids = queryset.values_list("provider_object_id", flat=True)
     else:
         local_video_ids = None
 
     if categories is None:
-        categories = ['sponsor', 'intro', 'outro']
+        categories = ["sponsor", "intro", "outro"]
 
     video_ids_cache = {}
-    for data in queryset.values('provider_object_id', 'id'):
-        video_ids_cache[data['provider_object_id']] = data['id']
+    for data in queryset.values("provider_object_id", "id"):
+        video_ids_cache[data["provider_object_id"]] = data["id"]
 
     skips_seen = set()
 
     found = 0
-    with open(database_csv_file, 'r', encoding=csv_file_encoding) as fo:
+    with open(database_csv_file, "r", encoding=csv_file_encoding) as fo:
         datareader = csv.DictReader(fo)
         for row in datareader:
-            if specific_video_youtube_ids and row['videoID'] not in specific_video_youtube_ids:
+            if specific_video_youtube_ids and row["videoID"] not in specific_video_youtube_ids:
                 continue
-            if local_video_ids and row['videoID'] not in local_video_ids:
+            if local_video_ids and row["videoID"] not in local_video_ids:
                 continue
-            if categories and row['category'] not in categories:
+            if categories and row["category"] not in categories:
                 continue
-            if skip_negative_votes and int(row['votes']) < 0:
+            if skip_negative_votes and int(row["votes"]) < 0:
                 continue
             if not save_all_extra_sb_fields:
                 # These fields don't really matter to us, don't save them. description and userAgent were empty,
                 #   userID is SB's own, hashedVideoID is their own as well.
-                for f in ['userID', 'hashedVideoID', 'userAgent', 'description', 'shadowHidden']:
+                for f in ["userID", "hashedVideoID", "userAgent", "description", "shadowHidden"]:
                     try:
                         del row[f]
                     except KeyError:
                         pass
             found += 1
 
-            if not row['UUID']:
+            if not row["UUID"]:
                 print(row)
-                raise ValueError('row has no UUID value. Is this an SB db csv dump? sponsorTimes.csv is expected.')
+                raise ValueError("row has no UUID value. Is this an SB db csv dump? sponsorTimes.csv is expected.")
 
             ds, created = DurationSkip.objects.get_or_create(
-                video_id=video_ids_cache[row['videoID']],
-                sb_uuid=row['UUID'],
+                video_id=video_ids_cache[row["videoID"]],
+                sb_uuid=row["UUID"],
                 defaults=dict(
-                    start=int(float(row['startTime'])),
-                    end=int(float(row['endTime'])),
-                    sb_category=row['category'],
-                    sb_votes=int(row['votes']),
+                    start=int(float(row["startTime"])),
+                    end=int(float(row["endTime"])),
+                    sb_category=row["category"],
+                    sb_votes=int(row["votes"]),
                     sb_data=row,
                 ),
             )
@@ -478,7 +478,7 @@ def load_sponsorblock_database_into_durationskip(
 
 
 def rebalance_daily_crontab_scans():
-    qs = Channel.objects.filter(scanner_crontab__endswith='* * *')
+    qs = Channel.objects.filter(scanner_crontab__endswith="* * *")
 
     existing_crontabs_and_nums = utils.count_crontab_used()
 
@@ -494,7 +494,7 @@ def rebalance_daily_crontab_scans():
             selected_crontab = crontab_selection.pop()
         print(selected_crontab, channel)
         channel.scanner_crontab = selected_crontab
-        channel.save(update_fields=['scanner_crontab'])
+        channel.save(update_fields=["scanner_crontab"])
 
 
 def rebalance_all_weekly_channels_across_week():
@@ -515,9 +515,9 @@ def rebalance_all_weekly_channels_across_week():
 
     channels_found = 0
 
-    for c in Channel.objects.exclude(scanner_crontab=''):
-        if not c.scanner_crontab.endswith('*'):
-            day_of_week = c.scanner_crontab.split(' ')[-1]
+    for c in Channel.objects.exclude(scanner_crontab=""):
+        if not c.scanner_crontab.endswith("*"):
+            day_of_week = c.scanner_crontab.split(" ")[-1]
             by_day_of_week[day_of_week] += 1
             channels_found += 1
 
@@ -528,9 +528,9 @@ def rebalance_all_weekly_channels_across_week():
     day = 1
     counter = 0
 
-    for c in Channel.objects.exclude(scanner_crontab=''):
-        if not c.scanner_crontab.endswith('*'):
-            ct = c.scanner_crontab.split(' ')
+    for c in Channel.objects.exclude(scanner_crontab=""):
+        if not c.scanner_crontab.endswith("*"):
+            ct = c.scanner_crontab.split(" ")
             day_of_week = int(ct[-1])
 
             print(ct)
@@ -538,7 +538,7 @@ def rebalance_all_weekly_channels_across_week():
                 ct[-1] = str(day)
 
             print(ct)
-            c.scanner_crontab = ' '.join(ct)
+            c.scanner_crontab = " ".join(ct)
             c.save()
 
             counter += 1
@@ -553,17 +553,17 @@ def fix_video_thumbnails_renamed_physically_but_path_not_saved_to_database(commi
         if video.thumbnail.storage.exists(video.thumbnail.name):
             continue
 
-        ext = video.thumbnail.name.rsplit('.', 1)[-1]
+        ext = video.thumbnail.name.rsplit(".", 1)[-1]
         new_full_filepath, new_storage_path = video_services.generate_filepaths_for_storage(
             video=video, ext=ext, upload_to=video_helpers.upload_to_thumbnail
         )
         exists = video.thumbnail.storage.exists(new_storage_path)
         if not exists:
-            print('\tNew doesnt exist')
+            print("\tNew doesnt exist")
             break
         print(video)
-        print('\t', new_storage_path)
-        print('\t', video.thumbnail.name)
+        print("\t", new_storage_path)
+        print("\t", video.thumbnail.name)
         if commit:
             video.thumbnail.name = str(new_storage_path)
-            video.save(update_fields=['thumbnail'])
+            video.save(update_fields=["thumbnail"])

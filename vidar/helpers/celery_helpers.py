@@ -49,39 +49,39 @@ def _celery_task_is_in_system(celery_tasks, search_for_these_tasks: list, value,
     for worker, tasks in celery_tasks.items():
         for task in tasks:
 
-            if 'name' in task:
-                task_name = task['name']
-            elif 'request' in task and 'type' in task['request']:
-                task_name = task['request']['type']
+            if "name" in task:
+                task_name = task["name"]
+            elif "request" in task and "type" in task["request"]:
+                task_name = task["request"]["type"]
             else:
                 log.info(
-                    f'Searching for {kwargs_key=} {value=} with task name {search_for_these_tasks=}, '
-                    f'could not find task name value in {celery_tasks=}'
+                    f"Searching for {kwargs_key=} {value=} with task name {search_for_these_tasks=}, "
+                    f"could not find task name value in {celery_tasks=}"
                 )
                 continue
 
             if task_name in search_for_these_tasks:
 
                 if kwargs_key:
-                    if task and 'kwargs' in task and task['kwargs']:
-                        kwarg_value = task['kwargs'].get(kwargs_key)
+                    if task and "kwargs" in task and task["kwargs"]:
+                        kwarg_value = task["kwargs"].get(kwargs_key)
                         if kwarg_value == value:
                             return True
 
-                    elif 'request' in task and 'kwargs' in task['request'] and task['request']['kwargs']:
-                        kwarg_value = task['request']['kwargs']
+                    elif "request" in task and "kwargs" in task["request"] and task["request"]["kwargs"]:
+                        kwarg_value = task["request"]["kwargs"]
                         if kwarg_value == value:
                             return True
 
-                if task and 'args' in task and task['args']:
-                    first_param = task['args'][0]
+                if task and "args" in task and task["args"]:
+                    first_param = task["args"][0]
 
                     # first param seems to be wrapped in quotes within a string.
                     if value in first_param:
                         return True
 
-                elif 'request' in task and 'args' in task['request'] and task['request']['args']:
-                    first_param = task['request']['args'][0]
+                elif "request" in task and "args" in task["request"] and task["request"]["args"]:
+                    first_param = task["request"]["args"][0]
 
                     # first param seems to be wrapped in quotes within a string.
                     if value in first_param:
@@ -118,9 +118,9 @@ def celery_is_task_active_or_pending(search_for_these_tasks: list, value, kwargs
 def is_video_being_downloaded_now(video):
     # NOTE: Bad. celery doesn't always return the tasks that are actually running, use object_lock below.
 
-    search_for_these_tasks = ['vidar.tasks.download_provider_video']
+    search_for_these_tasks = ["vidar.tasks.download_provider_video"]
     return celery_is_task_active_or_pending(
-        search_for_these_tasks=search_for_these_tasks, value=video.pk, kwargs_key='pk'
+        search_for_these_tasks=search_for_these_tasks, value=video.pk, kwargs_key="pk"
     )
 
 
@@ -128,14 +128,14 @@ def is_video_being_processed_now(video):
     # NOTE: Bad. celery doesn't always return the tasks that are actually running, use object_lock below.
 
     search_for_these_tasks = [
-        'vidar.tasks.post_download_processing',
-        'vidar.tasks.convert_video_to_mp4',
-        'vidar.tasks.convert_video_to_audio',
-        'vidar.tasks.write_file_to_storage',
+        "vidar.tasks.post_download_processing",
+        "vidar.tasks.convert_video_to_mp4",
+        "vidar.tasks.convert_video_to_audio",
+        "vidar.tasks.write_file_to_storage",
     ]
 
     return celery_is_task_active_or_pending(
-        search_for_these_tasks=search_for_these_tasks, value=video.pk, kwargs_key='pk'
+        search_for_these_tasks=search_for_these_tasks, value=video.pk, kwargs_key="pk"
     )
 
 
@@ -221,7 +221,7 @@ def prevent_asynchronous_task_execution(
                 else:
                     if mark_result_failed_on_lock_failure:
                         log.info(f"{fun} {args=} {kwargs=} could not acquire lock; marking result as {states.FAILURE}")
-                        self.update_state(state=states.FAILURE, meta='Task failed to acquire lock.')
+                        self.update_state(state=states.FAILURE, meta="Task failed to acquire lock.")
                         # ignore the task so no other state is recorded
                         raise Ignore()
                     return
@@ -235,7 +235,7 @@ def is_object_locked(obj):
     lock_key = obj.celery_object_lock_key()
     value = cache.get(lock_key)
     if value:
-        log.info(f'{lock_key=} is locked')
+        log.info(f"{lock_key=} is locked")
     return value
 
 

@@ -43,9 +43,9 @@ def watched_percentage_maximum(value):
 
 
 class ChannelStatuses(models.TextChoices):
-    ACTIVE = 'Active'
-    BANNED = 'Banned'
-    DELETED = 'Deleted'
-    NO_LONGER_EXISTS = 'No Longer Exists'
-    REMOVED = 'Removed'
-    TERMINATED = 'Terminated'
+    ACTIVE = "Active"
+    BANNED = "Banned"
+    DELETED = "Deleted"
+    NO_LONGER_EXISTS = "No Longer Exists"
+    REMOVED = "Removed"
+    TERMINATED = "Terminated"

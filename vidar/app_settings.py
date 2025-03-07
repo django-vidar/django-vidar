@@ -92,7 +92,7 @@ class AppSettings(object):
     def COMMENTS_MAX_PARENTS(self):
         return self._setting(
             "COMMENTS_MAX_PARENTS",
-            'all',
+            "all",
         )
 
     @property
@@ -113,7 +113,7 @@ class AppSettings(object):
     def COMMENTS_SORTING(self):
         return self._setting(
             "COMMENTS_SORTING",
-            'top',
+            "top",
         )
 
     @property
@@ -127,7 +127,7 @@ class AppSettings(object):
     def CRON_DEFAULT_SELECTION(self):
         return self._setting(
             "CRON_DEFAULT_SELECTION",
-            '6-22/4 * * *|7-21/4 * * *',
+            "6-22/4 * * *|7-21/4 * * *",
         )
 
     @property
@@ -177,7 +177,7 @@ class AppSettings(object):
 
     @property
     def GOTIFY_TITLE_PREFIX(self):
-        return self._setting("GOTIFY_TITLE_PREFIX", '')
+        return self._setting("GOTIFY_TITLE_PREFIX", "")
 
     @property
     def GOTIFY_TOKEN(self):
@@ -207,27 +207,27 @@ class AppSettings(object):
 
     @property
     def MEDIA_CACHE(self):
-        return self._setting('MEDIA_CACHE', '')
+        return self._setting("MEDIA_CACHE", "")
 
     @property
     def MEDIA_HARDLINK(self):
-        return self._setting('MEDIA_HARDLINK', False)
+        return self._setting("MEDIA_HARDLINK", False)
 
     @property
     def MEDIA_ROOT(self):
-        return self._setting('MEDIA_ROOT', settings.MEDIA_ROOT)
+        return self._setting("MEDIA_ROOT", settings.MEDIA_ROOT)
 
     @property
     def MEDIA_URL(self):
-        return self._setting('MEDIA_URL', settings.MEDIA_URL)
+        return self._setting("MEDIA_URL", settings.MEDIA_URL)
 
     @property
     def MONTHLY_CHANNEL_CRONTAB_BALANCING(self):
-        return self._setting('MONTHLY_CHANNEL_CRONTAB_BALANCING', False)
+        return self._setting("MONTHLY_CHANNEL_CRONTAB_BALANCING", False)
 
     @property
     def MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT(self):
-        return self._setting('MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT', True)
+        return self._setting("MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT", True)
 
     @property
     def NOTIFICATIONS_CHANNEL_STATUS_CHANGED(self):
@@ -454,21 +454,21 @@ class AppSettings(object):
     def VIDEO_DOWNLOAD_FORMAT_BEST(self):
         return self._setting(
             "VIDEO_DOWNLOAD_FORMAT_BEST",
-            'bestvideo[ext=mp4]+bestaudio[ext=mp4]',
+            "bestvideo[ext=mp4]+bestaudio[ext=mp4]",
         )
 
     @property
     def VIDEO_DIRECTORY_SCHEMA(self):
         return self._setting(
             "VIDEO_DIRECTORY_SCHEMA",
-            "{{ video.upload_date|date:\"Y-m-d\" }} - {{ video.system_safe_title }} [{{ video.provider_object_id }}]",
+            '{{ video.upload_date|date:"Y-m-d" }} - {{ video.system_safe_title }} [{{ video.provider_object_id }}]',
         )
 
     @property
     def VIDEO_FILENAME_SCHEMA(self):
         return self._setting(
             "VIDEO_FILENAME_SCHEMA",
-            "{{ video.upload_date|date:\"Y-m-d\" }} - {{ video.system_safe_title }} [{{ video.provider_object_id }}]",
+            '{{ video.upload_date|date:"Y-m-d" }} - {{ video.system_safe_title }} [{{ video.provider_object_id }}]',
         )
 
     @property

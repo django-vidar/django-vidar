@@ -13,9 +13,9 @@ def paginator_helper(
     limit=None,
     params=None,
     request_params=None,
-    page_url_param=getattr(settings, 'PAGINATION_PAGE_PARAM', 'page'),
-    limit_url_param=getattr(settings, 'PAGINATION_LIMIT_PARAM', 'limit'),
-    last_first=getattr(settings, 'PAGINATION_LAST_FIRST', False),
+    page_url_param=getattr(settings, "PAGINATION_PAGE_PARAM", "page"),
+    limit_url_param=getattr(settings, "PAGINATION_LIMIT_PARAM", "limit"),
+    last_first=getattr(settings, "PAGINATION_LAST_FIRST", False),
     context_keys_prefix=None,
     **kwargs,
 ):
@@ -67,7 +67,7 @@ def paginator_helper(
         dict of data to be added to the templates context for pagination purposes.
     """
     if params:
-        warnings.warn('params has been depreciated, use request_params', DeprecationWarning)
+        warnings.warn("params has been depreciated, use request_params", DeprecationWarning)
         request_params = params
 
     if not isinstance(request_params, dict):
@@ -83,7 +83,7 @@ def paginator_helper(
     else:
         requested_page = requested_page or 1
 
-    default_limit = int(getattr(settings, 'PAGINATION_LIMIT', 15))
+    default_limit = int(getattr(settings, "PAGINATION_LIMIT", 15))
 
     paginator = Paginator(object_list=queryset, per_page=limit or default_limit, **kwargs)
 
@@ -101,7 +101,7 @@ def paginator_helper(
 
         page = paginator.page(requested_page)
 
-    base_url = ''
+    base_url = ""
     if request_params and isinstance(request_params, dict):
         request_params = copy.deepcopy(request_params)
         if page_url_param in request_params:
@@ -111,21 +111,21 @@ def paginator_helper(
             base_url = f"{urllib.parse.urlencode(request_params)}&"
 
     final_context_key = context_key
-    final_paginator_key = 'paginator'
-    final_page_obj_key = 'page_obj'
-    final_pagination_base_url_key = 'pagination_base_url'
-    final_is_paginated_key = 'is_paginated'
+    final_paginator_key = "paginator"
+    final_page_obj_key = "page_obj"
+    final_pagination_base_url_key = "pagination_base_url"
+    final_is_paginated_key = "is_paginated"
     if context_keys_prefix:
         final_context_key = f"{context_keys_prefix}{context_key}"
-        final_paginator_key = f'{context_keys_prefix}paginator'
-        final_page_obj_key = f'{context_keys_prefix}page_obj'
-        final_pagination_base_url_key = f'{context_keys_prefix}pagination_base_url'
-        final_is_paginated_key = f'{context_keys_prefix}is_paginated'
+        final_paginator_key = f"{context_keys_prefix}paginator"
+        final_page_obj_key = f"{context_keys_prefix}page_obj"
+        final_pagination_base_url_key = f"{context_keys_prefix}pagination_base_url"
+        final_is_paginated_key = f"{context_keys_prefix}is_paginated"
 
     return {
         final_context_key: page.object_list,
         final_paginator_key: paginator,
         final_page_obj_key: page,
-        final_pagination_base_url_key: f'?{base_url}',
+        final_pagination_base_url_key: f"?{base_url}",
         final_is_paginated_key: paginator.num_pages > 1,
     }

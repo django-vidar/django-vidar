@@ -15,15 +15,15 @@ register = template.Library()
 
 
 @register.simple_tag
-def next_by_playlist(playlist: Playlist, video: Video, view=''):
+def next_by_playlist(playlist: Playlist, video: Video, view=""):
 
     qs = playlist.playlistitem_set.all()
     if view == "audio":
-        qs = playlist.playlistitem_set.exclude(video__audio='')
+        qs = playlist.playlistitem_set.exclude(video__audio="")
 
     qs = playlist.apply_playback_ordering_to_queryset(qs)
 
-    object_ids = list(qs.values_list('video_id', flat=True))
+    object_ids = list(qs.values_list("video_id", flat=True))
     try:
         current_pos = object_ids.index(video.id)
     except ValueError:
@@ -35,15 +35,15 @@ def next_by_playlist(playlist: Playlist, video: Video, view=''):
 
 
 @register.simple_tag
-def previous_by_playlist(playlist: Playlist, video: Video, view=''):
+def previous_by_playlist(playlist: Playlist, video: Video, view=""):
 
     qs = playlist.playlistitem_set.all()
     if view == "audio":
-        qs = playlist.playlistitem_set.exclude(video__audio='')
+        qs = playlist.playlistitem_set.exclude(video__audio="")
 
     qs = playlist.apply_playback_ordering_to_queryset(qs)
 
-    object_ids = list(qs.values_list('video_id', flat=True))
+    object_ids = list(qs.values_list("video_id", flat=True))
 
     try:
         current_pos = object_ids.index(video.id)
@@ -60,19 +60,19 @@ def convert_seconds_to_hh_mm_ss(seconds):
     if seconds is None:
         return ""
     if seconds <= 60:
-        return f'{seconds}s'
+        return f"{seconds}s"
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     seconds = seconds % 60
-    output = ''
+    output = ""
     if hours:
-        output += f'{hours}:'
-    return output + f'{minutes:02d}:{seconds:02d}'
+        output += f"{hours}:"
+    return output + f"{minutes:02d}:{seconds:02d}"
 
 
 @register.simple_tag(takes_context=True)
 def get_lowest_playback_speed(context, video: Video, playlist: Playlist = None):
-    request = context['request']
+    request = context["request"]
 
     speeds = []
 
@@ -86,7 +86,7 @@ def get_lowest_playback_speed(context, video: Video, playlist: Playlist = None):
         speeds.append(float(playlist.playback_speed))
 
     if request.user.is_authenticated:
-        if hasattr(request.user, 'vidar_playback_speed') and request.user.vidar_playback_speed:
+        if hasattr(request.user, "vidar_playback_speed") and request.user.vidar_playback_speed:
             speeds.append(float(request.user.vidar_playback_speed))
 
     if speeds:
@@ -110,7 +110,7 @@ def get_playback_speed(user, video: Video, playlist: Playlist = None, audio=Fals
         if cv := float(video.channel.playback_speed):
             return cv
 
-    if user.is_authenticated and hasattr(user, 'vidar_playback_speed'):
+    if user.is_authenticated and hasattr(user, "vidar_playback_speed"):
         if audio:
             if user.vidar_playback_speed_audio:
                 if uav := float(user.vidar_playback_speed_audio):
@@ -125,7 +125,7 @@ def get_playback_speed(user, video: Video, playlist: Playlist = None, audio=Fals
 
 @register.simple_tag(takes_context=True)
 def get_lowest_playback_volume(context, video: Video, playlist: Playlist = None):
-    request = context['request']
+    request = context["request"]
 
     volumes = []
 
@@ -139,7 +139,7 @@ def get_lowest_playback_volume(context, video: Video, playlist: Playlist = None)
         volumes.append(float(playlist.playback_volume))
 
     if request.user.is_authenticated:
-        if hasattr(request.user, 'vidar_playback_volume') and request.user.vidar_playback_volume:
+        if hasattr(request.user, "vidar_playback_volume") and request.user.vidar_playback_volume:
             volumes.append(float(request.user.vidar_playback_volume))
 
     if volumes:
@@ -150,7 +150,7 @@ def get_lowest_playback_volume(context, video: Video, playlist: Playlist = None)
 
 @register.simple_tag(takes_context=True)
 def get_playback_volume(context, video: Video, playlist: Playlist = None):
-    request = context['request']
+    request = context["request"]
 
     if video.playback_volume:
         if vv := float(video.playback_volume):
@@ -165,7 +165,7 @@ def get_playback_volume(context, video: Video, playlist: Playlist = None):
             return cv
 
     if request.user.is_authenticated:
-        if hasattr(request.user, 'vidar_playback_volume') and request.user.vidar_playback_volume:
+        if hasattr(request.user, "vidar_playback_volume") and request.user.vidar_playback_volume:
             if uav := float(request.user.vidar_playback_volume):
                 return uav
 
@@ -179,7 +179,7 @@ def get_playlist_position(video: Video, playlist: Playlist):
 
     qs = playlist.apply_playback_ordering_to_queryset(qs)
 
-    object_ids = list(qs.values_list('video_id', flat=True))
+    object_ids = list(qs.values_list("video_id", flat=True))
 
     try:
         return object_ids.index(video.id) + 1
@@ -189,11 +189,11 @@ def get_playlist_position(video: Video, playlist: Playlist):
 
 @register.simple_tag(takes_context=True)
 def user_watched_video(context, video: Video):
-    request = context['request']
+    request = context["request"]
 
     if not request.user.is_authenticated:
         return
-    if not hasattr(request.user, 'vidar_playback_completion_percentage'):
+    if not hasattr(request.user, "vidar_playback_completion_percentage"):
         return
 
     return (
@@ -201,55 +201,55 @@ def user_watched_video(context, video: Video):
             user=request.user,
             video=video,
         )
-        .annotate(percentage_of_video=F('video__duration') * float(request.user.vidar_playback_completion_percentage))
-        .filter(seconds__gte=F('percentage_of_video'))
+        .annotate(percentage_of_video=F("video__duration") * float(request.user.vidar_playback_completion_percentage))
+        .filter(seconds__gte=F("percentage_of_video"))
         .first()
     )
 
 
 @register.simple_tag
-def next_by_channel(video: Video, view=''):
+def next_by_channel(video: Video, view=""):
     if not video.channel_id:
         return
     return (
-        video.channel.videos.order_by('sort_ordering')
+        video.channel.videos.order_by("sort_ordering")
         .filter(sort_ordering__lt=video.sort_ordering)
-        .exclude(Q(pk=video.id) | Q(file=''))
+        .exclude(Q(pk=video.id) | Q(file=""))
         .last()
     )
 
 
 @register.simple_tag
-def previous_by_channel(video: Video, view=''):
+def previous_by_channel(video: Video, view=""):
     if not video.channel_id:
         return
     return (
-        video.channel.videos.order_by('sort_ordering')
+        video.channel.videos.order_by("sort_ordering")
         .filter(
             sort_ordering__gt=video.sort_ordering,
         )
-        .exclude(Q(pk=video.id) | Q(file=''))
+        .exclude(Q(pk=video.id) | Q(file=""))
         .first()
     )
 
 
 @register.simple_tag
-def next_by_upload_date(video: Video, view=''):
+def next_by_upload_date(video: Video, view=""):
     if view == "audio":
         return (
             Video.objects.archived()
-            .order_by('-upload_date', '-inserted')
+            .order_by("-upload_date", "-inserted")
             .filter(
                 upload_date__lte=video.upload_date,
                 inserted__lte=video.inserted,
             )
-            .exclude(Q(pk=video.id) | Q(audio=''))
+            .exclude(Q(pk=video.id) | Q(audio=""))
             .first()
         )
 
     return (
         Video.objects.archived()
-        .order_by('-upload_date', '-inserted')
+        .order_by("-upload_date", "-inserted")
         .filter(
             upload_date__lte=video.upload_date,
             inserted__lte=video.inserted,
@@ -260,22 +260,22 @@ def next_by_upload_date(video: Video, view=''):
 
 
 @register.simple_tag
-def previous_by_upload_date(video: Video, view=''):
+def previous_by_upload_date(video: Video, view=""):
     if view == "audio":
         return (
             Video.objects.archived()
-            .order_by('-upload_date', '-inserted')
+            .order_by("-upload_date", "-inserted")
             .filter(
                 upload_date__gte=video.upload_date,
                 inserted__gte=video.inserted,
             )
-            .exclude(Q(pk=video.id) | Q(audio=''))
+            .exclude(Q(pk=video.id) | Q(audio=""))
             .last()
         )
 
     return (
         Video.objects.archived()
-        .order_by('-upload_date', '-inserted')
+        .order_by("-upload_date", "-inserted")
         .filter(
             upload_date__gte=video.upload_date,
             inserted__gte=video.inserted,
@@ -286,21 +286,21 @@ def previous_by_upload_date(video: Video, view=''):
 
 
 @register.simple_tag
-def previous_by_date_downloaded(video: Video, view=''):
+def previous_by_date_downloaded(video: Video, view=""):
     if view == "audio":
         return (
             Video.objects.archived()
-            .order_by('-date_downloaded')
+            .order_by("-date_downloaded")
             .filter(
                 date_downloaded__gte=video.date_downloaded,
             )
-            .exclude(Q(pk=video.id) | Q(audio=''))
+            .exclude(Q(pk=video.id) | Q(audio=""))
             .last()
         )
 
     return (
         Video.objects.archived()
-        .order_by('-date_downloaded')
+        .order_by("-date_downloaded")
         .filter(
             date_downloaded__gte=video.date_downloaded,
         )
@@ -310,21 +310,21 @@ def previous_by_date_downloaded(video: Video, view=''):
 
 
 @register.simple_tag
-def next_by_date_downloaded(video: Video, view=''):
+def next_by_date_downloaded(video: Video, view=""):
     if view == "audio":
         return (
             Video.objects.archived()
-            .order_by('-date_downloaded')
+            .order_by("-date_downloaded")
             .filter(
                 date_downloaded__lte=video.date_downloaded,
             )
-            .exclude(Q(pk=video.id) | Q(audio=''))
+            .exclude(Q(pk=video.id) | Q(audio=""))
             .first()
         )
 
     return (
         Video.objects.archived()
-        .order_by('-date_downloaded')
+        .order_by("-date_downloaded")
         .filter(
             date_downloaded__lte=video.date_downloaded,
         )
@@ -334,21 +334,21 @@ def next_by_date_downloaded(video: Video, view=''):
 
 
 @register.simple_tag
-def previous_by_starred(video: Video, view=''):
+def previous_by_starred(video: Video, view=""):
     if view == "audio":
         return (
             Video.objects.archived()
-            .order_by('-starred')
+            .order_by("-starred")
             .filter(
                 starred__gte=video.starred,
             )
-            .exclude(Q(pk=video.id) | Q(audio=''))
+            .exclude(Q(pk=video.id) | Q(audio=""))
             .last()
         )
 
     return (
         Video.objects.archived()
-        .order_by('-starred')
+        .order_by("-starred")
         .filter(
             starred__gte=video.starred,
         )
@@ -358,21 +358,21 @@ def previous_by_starred(video: Video, view=''):
 
 
 @register.simple_tag
-def next_by_starred(video: Video, view=''):
+def next_by_starred(video: Video, view=""):
     if view == "audio":
         return (
             Video.objects.archived()
-            .order_by('-starred')
+            .order_by("-starred")
             .filter(
                 starred__lte=video.starred,
             )
-            .exclude(Q(pk=video.id) | Q(audio=''))
+            .exclude(Q(pk=video.id) | Q(audio=""))
             .first()
         )
 
     return (
         Video.objects.archived()
-        .order_by('-starred')
+        .order_by("-starred")
         .filter(
             starred__lte=video.starred,
         )
@@ -388,7 +388,7 @@ def link_to_playlist_page(playlist: Playlist, video: Video):
 
     qs = playlist.apply_playback_ordering_to_queryset(qs)
 
-    object_ids = list(qs.values_list('video_id', flat=True))
+    object_ids = list(qs.values_list("video_id", flat=True))
     try:
         current_pos = object_ids.index(video.id)
     except ValueError:
@@ -411,22 +411,22 @@ def description_with_linked_timestamps(video: Video):
 
         for line in video.description.splitlines():
 
-            if ':' in line:
+            if ":" in line:
 
-                for possible_timestamp in line.split(' '):
-                    if ':' not in possible_timestamp:
+                for possible_timestamp in line.split(" "):
+                    if ":" not in possible_timestamp:
                         continue
 
                     possible_timestamp = possible_timestamp.strip()
 
-                    minute, sep, second = possible_timestamp.partition(':')
+                    minute, sep, second = possible_timestamp.partition(":")
                     hour = None
 
                     # 1:03:42 turns into
                     # >>> '1:03:42'.partition(':')
                     # ('1', ':', '03:42')
-                    if ':' in second:
-                        k, sep, v = second.partition(':')
+                    if ":" in second:
+                        k, sep, v = second.partition(":")
                         hour = minute
                         minute = k
                         second = v
@@ -452,9 +452,9 @@ def description_with_linked_timestamps(video: Video):
 
             output.append(line)
 
-        return mark_safe('\n'.join(output))
+        return mark_safe("\n".join(output))
     except (TypeError, ValueError):
-        log.exception('failure to convert video descriptions timestamps')
+        log.exception("failure to convert video descriptions timestamps")
 
     return video.description
 

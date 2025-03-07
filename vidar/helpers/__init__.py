@@ -12,9 +12,9 @@ def convert_to_next_day_of_week(day_of_week):
 
 
 def unauthenticated_allow_view_video(request, video_id):
-    if 'vidar_video_view_permitted' not in request.session:
-        request.session['vidar_video_view_permitted'] = []
-    request.session['vidar_video_view_permitted'].append(video_id)
+    if "vidar_video_view_permitted" not in request.session:
+        request.session["vidar_video_view_permitted"] = []
+    request.session["vidar_video_view_permitted"].append(video_id)
     request.session.modified = True
 
 
@@ -24,8 +24,8 @@ def unauthenticated_check_if_can_view_video(request, video_id):
 
 
 def unauthenticated_permitted_videos(request):
-    if 'vidar_video_view_permitted' in request.session:
-        return request.session['vidar_video_view_permitted']
+    if "vidar_video_view_permitted" in request.session:
+        return request.session["vidar_video_view_permitted"]
     return []
 
 

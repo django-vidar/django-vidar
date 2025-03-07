@@ -30,13 +30,13 @@ def set_thumbnail(channel, url, save=True):
 def set_banner(channel, url, save=True):
     log.debug(f"Setting banner with {url}")
     contents, final_ext = image_services.download_and_convert_to_jpg(url)
-    channel.banner.save('banner.jpg', ContentFile(contents), save=save)
+    channel.banner.save("banner.jpg", ContentFile(contents), save=save)
 
 
 def set_tvart(channel, url, save=True):
     log.debug(f"Setting tvart with {url}")
     contents, final_ext = image_services.download_and_convert_to_jpg(url)
-    channel.tvart.save('tvart.jpg', ContentFile(contents), save=save)
+    channel.tvart.save("tvart.jpg", ContentFile(contents), save=save)
 
 
 def generate_filepaths_for_storage(channel, field, filename, upload_to):
@@ -48,39 +48,39 @@ def generate_filepaths_for_storage(channel, field, filename, upload_to):
 
 def cleanup_storage(channel, dry_run=False):
     # Clean up cover.jpg and extras if exists.
-    log.info(f'Clean up channel storage directory, {channel}')
+    log.info(f"Clean up channel storage directory, {channel}")
 
     try:
         channel_directory_name = schema_services.channel_directory_name(channel=channel).strip()
     except exceptions.DirectorySchemaInvalidError:
-        log.info('Skipping channel directory cleanup, name is invalid')
+        log.info("Skipping channel directory cleanup, name is invalid")
         return
 
     if not channel_directory_name:
-        log.info(f'Skipping channel directory cleanup, name is invalid {channel_directory_name=}')
+        log.info(f"Skipping channel directory cleanup, name is invalid {channel_directory_name=}")
         return
 
-    if channel_directory_name in ('/', '\\'):
-        log.info('Skipping channel directory cleanup, it may remove other data')
+    if channel_directory_name in ("/", "\\"):
+        log.info("Skipping channel directory cleanup, it may remove other data")
         return
 
     channel_directory_path_str = storages.vidar_storage.path(channel_directory_name)
     channel_directory_path = pathlib.Path(channel_directory_path_str)
 
-    log.debug(f'{channel_directory_path_str=}')
-    log.debug(f'{channel_directory_path=}')
+    log.debug(f"{channel_directory_path_str=}")
+    log.debug(f"{channel_directory_path=}")
 
-    if channel_directory_path == storages.vidar_storage.path(''):
-        log.info('Skipping channel directory cleanup, directory path returned same as primary storage path.')
+    if channel_directory_path == storages.vidar_storage.path(""):
+        log.info("Skipping channel directory cleanup, directory path returned same as primary storage path.")
         return
 
-    log.info(f'Cleaning up directory {channel_directory_path=}.')
+    log.info(f"Cleaning up directory {channel_directory_path=}.")
 
     if not channel_directory_path.exists():
-        log.info('Channel directory does not exist')
+        log.info("Channel directory does not exist")
         return
 
-    log.info('Channel directory exists, deleting remaining data.')
+    log.info("Channel directory exists, deleting remaining data.")
 
     if not dry_run:
         shutil.rmtree(channel_directory_path)
@@ -90,17 +90,17 @@ def cleanup_storage(channel, dry_run=False):
 
 def recalculate_video_sort_ordering(channel):
     index = 0
-    for video in channel.videos.order_by('upload_date', 'inserted', 'pk'):
+    for video in channel.videos.order_by("upload_date", "inserted", "pk"):
         index += 1
 
         video.sort_ordering = index
-        video.save(update_fields=['sort_ordering'])
+        video.save(update_fields=["sort_ordering"])
 
 
 def generate_sort_name(name: str):
 
-    if not name or not name.lower().startswith('the ') or len(name) < 4:
-        return ''
+    if not name or not name.lower().startswith("the ") or len(name) < 4:
+        return ""
 
     the_format = name[:4]
     name_without_the = name[4:]
@@ -109,10 +109,10 @@ def generate_sort_name(name: str):
 
 
 def set_channel_details_from_ytdlp(channel, response):
-    channel.name = response['title']
-    channel.description = response['description']
+    channel.name = response["title"]
+    channel.description = response["description"]
     channel.active = True
-    channel.uploader_id = response['uploader_id']
+    channel.uploader_id = response["uploader_id"]
 
     if not channel.sort_name:
         channel.sort_name = generate_sort_name(channel.name)
@@ -120,10 +120,10 @@ def set_channel_details_from_ytdlp(channel, response):
     channel.save()
 
 
-def no_longer_active(channel, status='Banned', commit=True):
+def no_longer_active(channel, status="Banned", commit=True):
     channel.status = status
 
-    channel.scanner_crontab = ''
+    channel.scanner_crontab = ""
     channel.index_videos = False
     channel.index_shorts = False
     channel.index_livestreams = False
@@ -137,7 +137,7 @@ def no_longer_active(channel, status='Banned', commit=True):
     if commit:
         channel.save()
 
-    channel.playlists.exclude(crontab='').update(crontab='')
+    channel.playlists.exclude(crontab="").update(crontab="")
 
 
 def apply_exception_status(channel, exc):
@@ -146,20 +146,20 @@ def apply_exception_status(channel, exc):
     status_changed = False
     old_status = channel.status
 
-    if 'account' in exc_msg and 'terminated' in exc_msg:
+    if "account" in exc_msg and "terminated" in exc_msg:
         no_longer_active(channel=channel, status=channel_helpers.ChannelStatuses.TERMINATED)
         status_changed = True
 
-    elif 'violated' in exc_msg and 'community' in exc_msg:
+    elif "violated" in exc_msg and "community" in exc_msg:
         no_longer_active(channel=channel, status=channel_helpers.ChannelStatuses.REMOVED)
         status_changed = True
 
-    elif 'channel' in exc_msg and 'does not exist' in exc_msg:
+    elif "channel" in exc_msg and "does not exist" in exc_msg:
         no_longer_active(channel=channel, status=channel_helpers.ChannelStatuses.NO_LONGER_EXISTS)
         status_changed = True
 
     if status_changed:
-        log.info(f'Channel status changed from {old_status=} to {channel.status=}')
+        log.info(f"Channel status changed from {old_status=} to {channel.status=}")
         notification_services.channel_status_changed(channel=channel)
         return True
 
@@ -201,10 +201,10 @@ def delete_files(channel):
         try:
             directory.rmdir()
         except (OSError, TypeError) as exc:
-            if 'not empty' not in str(exc):
-                log.exception('Failure to delete channel directory')
+            if "not empty" not in str(exc):
+                log.exception("Failure to delete channel directory")
             else:
-                log.info(f'Failure to delete channel {directory=}')
+                log.info(f"Failure to delete channel {directory=}")
 
 
 class ChannelScraper:
@@ -231,12 +231,12 @@ class ChannelScraper:
         log.info(f"{self.channel_id}: scrape channel data from youtube")
         url = f"https://www.youtube.com/channel/{self.channel_id}/about?hl=en"
         requests_args = {
-            'cookies': {"CONSENT": "YES+xxxxxxxxxxxxxxxxxxxxxxxxxxx"},
+            "cookies": {"CONSENT": "YES+xxxxxxxxxxxxxxxxxxxxxxxxxxx"},
         }
-        if user_agent := getattr(settings, 'REQUESTS_USER_AGENT', None):
-            requests_args['headers'] = {'User-Agent': user_agent}
-        if user_set_proxy := getattr(settings, 'REQUESTS_PROXIES', None):
-            requests_args['proxies'] = user_set_proxy
+        if user_agent := getattr(settings, "REQUESTS_USER_AGENT", None):
+            requests_args["headers"] = {"User-Agent": user_agent}
+        if user_set_proxy := getattr(settings, "REQUESTS_PROXIES", None):
+            requests_args["proxies"] = user_set_proxy
         response = requests.get(url, **requests_args)
         if response.ok:
             channel_page = response.text

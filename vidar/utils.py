@@ -28,7 +28,7 @@ def contains_one_of_many(value, matches, strip_matches=True):
     """
     for skip in matches:
         if not isinstance(skip, str):
-            raise ValueError('matches must contain strings only')
+            raise ValueError("matches must contain strings only")
         if strip_matches:
             skip = skip.strip()
         if not skip:
@@ -81,16 +81,16 @@ def get_video_id_from_url(url, playlist=False):
 
 
 def get_channel_id_from_url(url):
-    channel_id = url.replace('http://www.youtube.com/channel/', '').rsplit('/', 1)[-1]
+    channel_id = url.replace("http://www.youtube.com/channel/", "").rsplit("/", 1)[-1]
 
-    if not channel_id or not channel_id.startswith('U') and 'http' in url:
+    if not channel_id or not channel_id.startswith("U") and "http" in url:
         try:
             req = requests.get(url)
-            soup = BeautifulSoup(req.text, 'html.parser')
-            youtube_url = soup.find('link', {'rel': 'canonical'})['href']
+            soup = BeautifulSoup(req.text, "html.parser")
+            youtube_url = soup.find("link", {"rel": "canonical"})["href"]
             channel_id = get_channel_id_from_url(youtube_url)
         except (requests.exceptions.ConnectionError, KeyError, TypeError):
-            log.exception('Failure to obtain youtube_id from youtube channel')
+            log.exception("Failure to obtain youtube_id from youtube channel")
 
     return channel_id
 
@@ -123,7 +123,7 @@ def get_channel_ordering_by_next_crontab_whens():
 
     channel_ordering = defaultdict(list)
 
-    for channel in Channel.objects.indexing_enabled().exclude(scanner_crontab=''):
+    for channel in Channel.objects.indexing_enabled().exclude(scanner_crontab=""):
         nrt = channel.next_runtime
         ids = int((nrt - now).total_seconds())
         channel_ordering[ids].append(channel.pk)
@@ -140,7 +140,7 @@ def count_crontab_used():
 
     # Base cron pattern WITHOUT minutes. Minutes will be built up.
     # base_crons = ['6-22/12 * * *', '7-21/12 * * *']
-    base_crons = app_settings.CRON_DEFAULT_SELECTION.split('|')
+    base_crons = app_settings.CRON_DEFAULT_SELECTION.split("|")
 
     minutes = {
         0: 0,
@@ -181,7 +181,7 @@ def get_proxy(previous_proxies: list = None, instance=None, attempt: int = None)
         return user_defined_proxies(previous_proxies=previous_proxies, instance=instance, attempt=attempt)
 
     elif isinstance(user_defined_proxies, str):
-        user_defined_proxies = user_defined_proxies.split(',')
+        user_defined_proxies = user_defined_proxies.split(",")
 
     else:
         user_defined_proxies = copy.copy(user_defined_proxies)
@@ -225,11 +225,11 @@ def do_new_start_end_points_overlap_existing(new_start, new_end, existing, allow
 def get_sponsorblock_video_data(video_id, categories=None):
 
     if categories is None:
-        categories = ['sponsor', 'selfpromo', 'outro', 'interaction', 'poi_highlight']
+        categories = ["sponsor", "selfpromo", "outro", "interaction", "poi_highlight"]
 
-    url_extras = ''
+    url_extras = ""
     if categories:
-        url_extras += '&category=' + '&category='.join(categories)
+        url_extras += "&category=" + "&category=".join(categories)
 
     url = f"https://sponsor.ajay.app/api/skipSegments?videoID={video_id}{url_extras}"
     print(url)
@@ -246,18 +246,18 @@ def get_sponsorblock_video_data(video_id, categories=None):
 
 def is_duration_outside_min_max(duration, minimum, maximum):
     if minimum and duration <= minimum:
-        log.info(f'Not permitted due to {duration} <= {minimum}')
+        log.info(f"Not permitted due to {duration} <= {minimum}")
         return True
 
     if maximum and duration >= maximum:
-        log.info(f'Not permitted due to {duration} >= {maximum}')
+        log.info(f"Not permitted due to {duration} >= {maximum}")
         return True
 
 
 def should_halve_download_limit(duration):
     if duration_limit_split_value := app_settings.AUTOMATED_DOWNLOADS_DURATION_LIMIT_SPLIT:
         if duration >= duration_limit_split_value:
-            log.info(f'Halving max automated downloads as {duration=} exceeds range {duration_limit_split_value=}.')
+            log.info(f"Halving max automated downloads as {duration=} exceeds range {duration_limit_split_value=}.")
             return True
 
 

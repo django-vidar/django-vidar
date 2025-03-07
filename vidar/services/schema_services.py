@@ -31,7 +31,7 @@ def channel_directory_name(channel):
         if rendered_value := _render_string_using_object_data(channel.directory_schema, self=channel, channel=channel):
             return rendered_value
 
-        log.critical(f'{channel=} has an invalid directory schema {channel.directory_schema=}. Using system default.')
+        log.critical(f"{channel=} has an invalid directory schema {channel.directory_schema=}. Using system default.")
 
     if rendered_value := _render_string_using_object_data(
         app_settings.CHANNEL_DIRECTORY_SCHEMA, self=channel, channel=channel
@@ -39,7 +39,7 @@ def channel_directory_name(channel):
         return rendered_value
 
     raise exceptions.DirectorySchemaInvalidError(
-        f'VIDAR_CHANNEL_DIRECTORY_SCHEMA has an invalid schema of {app_settings.CHANNEL_DIRECTORY_SCHEMA}.',
+        f"VIDAR_CHANNEL_DIRECTORY_SCHEMA has an invalid schema of {app_settings.CHANNEL_DIRECTORY_SCHEMA}.",
         app_settings.CHANNEL_DIRECTORY_SCHEMA,
     )
 
@@ -68,7 +68,7 @@ def video_directory_name(video):
         return rendered_value
 
     raise exceptions.DirectorySchemaInvalidError(
-        f'VIDAR_VIDEO_DIRECTORY_SCHEMA has an invalid schema of {app_settings.VIDEO_DIRECTORY_SCHEMA}.',
+        f"VIDAR_VIDEO_DIRECTORY_SCHEMA has an invalid schema of {app_settings.VIDEO_DIRECTORY_SCHEMA}.",
         app_settings.VIDEO_DIRECTORY_SCHEMA,
     )
 
@@ -98,7 +98,7 @@ def video_file_name(video, ext):
 
     if not rendered_value:
         raise exceptions.FilenameSchemaInvalidError(
-            f'System VIDAR_VIDEO_FILENAME_SCHEMA has an invalid schema of {app_settings.VIDEO_FILENAME_SCHEMA}.',
+            f"System VIDAR_VIDEO_FILENAME_SCHEMA has an invalid schema of {app_settings.VIDEO_FILENAME_SCHEMA}.",
             app_settings.VIDEO_FILENAME_SCHEMA,
         )
 

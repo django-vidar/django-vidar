@@ -10,13 +10,13 @@ class GeneralAdmin(admin.ModelAdmin):
 
 @admin.register(Video)
 class VideoAdmin(admin.ModelAdmin):
-    list_display = ('channel', 'title')
-    list_display_links = ('title',)
-    search_fields = ('title',)
-    exclude = ['related']
+    list_display = ("channel", "title")
+    list_display_links = ("title",)
+    search_fields = ("title",)
+    exclude = ["related"]
 
 
 @admin.register(VideoHistory)
 class VideoHistoryAdmin(admin.ModelAdmin):
-    raw_id_fields = ('video',)
-    list_display = ['video', 'old_title', 'new_title', 'old_description', 'new_description']
+    raw_id_fields = ("video",)
+    list_display = ["video", "old_title", "new_title", "old_description", "new_description"]
