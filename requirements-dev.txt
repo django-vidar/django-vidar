@@ -4,3 +4,4 @@ tox
 flake8
 flake8-pyproject
 isort
+pre-commit
