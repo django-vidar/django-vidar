@@ -454,6 +454,57 @@ class TemplateTagsVideoToolsTests(TestCase):
         output = video_tools.user_watched_video(context=context, video=video1)
         self.assertIsNone(output, "User is not authenticated, func should return None")
 
+    def test_description_with_linked_timestamps(self):
+        description = """This is my video
+
+        1:05 is section 1
+        4:50 is section 2
+        1:45:50 is final area
+        This line contains a semi colon : that should not be linked"""
+
+        output = video_tools.description_with_linked_timestamps(description)
+
+        expected = """This is my video
+
+        <a href="javascript:;" onclick="setVideoTime(65)">1:05</a> is section 1
+        <a href="javascript:;" onclick="setVideoTime(290)">4:50</a> is section 2
+        <a href="javascript:;" onclick="setVideoTime(6350)">1:45:50</a> is final area
+        This line contains a semi colon : that should not be linked"""
+
+        self.assertEqual(expected, output)
+
+    def test_description_with_linked_timestamps_with_bad_hour(self):
+        description = """This is my video
+
+        1:05 is section 1
+        4:50 is section 2
+        h:45:50 is final area
+        This line contains a semi colon : that should not be linked"""
+
+        output = video_tools.description_with_linked_timestamps(description)
+
+        expected = """This is my video
+
+        <a href="javascript:;" onclick="setVideoTime(65)">1:05</a> is section 1
+        <a href="javascript:;" onclick="setVideoTime(290)">4:50</a> is section 2
+        h:45:50 is final area
+        This line contains a semi colon : that should not be linked"""
+
+        self.assertEqual(expected, output)
+
+    def test_is_on_watch_later(self):
+        user = UserModel.objects.create(username='test')
+        playlist = models.Playlist.get_user_watch_later(user=user)
+
+        v = models.Video.objects.create(title=f"Video 1")
+
+        self.assertFalse(video_tools.is_on_watch_later(video=v, user=user))
+
+        playlist.videos.add(v)
+
+        self.assertTrue(video_tools.is_on_watch_later(video=v, user=user))
+
+
 
 class TemplateTagsVideoToolsWithCustomUserFieldsTests(TestCase):
 

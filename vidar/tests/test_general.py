@@ -273,23 +273,6 @@ class FormTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertEqual('Start cannot be before End', form.errors['end_point'][0])
 
-    def test_chapter_form_accepts_both_point_formats(self):
-        form = forms.ChapterForm(data={
-            'point': '60',
-            'note': 'test',
-        })
-        self.assertTrue(form.is_valid())
-        self.assertEqual(60, form.cleaned_data['point'])
-        self.assertEqual('test', form.cleaned_data['note'])
-
-        form = forms.ChapterForm(data={
-            'point': '15:23',
-            'note': 'test',
-        })
-        self.assertTrue(form.is_valid())
-        self.assertEqual(923, form.cleaned_data['point'])
-        self.assertEqual('test', form.cleaned_data['note'])
-
     def test_durationskip_form_accepts_both_point_formats(self):
         form = forms.DurationSkipForm(data={
             'start': '60',

@@ -116,4 +116,3 @@ def link_to_playlist_page(playlist: Playlist, video: Video):
 
     if current_pos < len(object_ids) - 1:
         return math.ceil((current_pos + 1) / 50)
-
