@@ -59,7 +59,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ('date_joined', models.DateTimeField(default=django.utils.timezone.now, verbose_name='date joined')),
-                ('email', models.EmailField(max_length=254, unique=True, verbose_name='Email Address')),
+                ('email', models.EmailField(blank=True, max_length=254, verbose_name="email address")),
                 (
                     'vidar_playback_completion_percentage',
                     models.CharField(
