@@ -1,3 +1,4 @@
+import math
 import warnings
 
 from django import template
@@ -5,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import F, Q
 from django.db.utils import NotSupportedError
 
-from vidar.models import Playlist, UserPlaybackHistory
+from vidar.models import Playlist, UserPlaybackHistory, Video
 
 
 User = get_user_model()
@@ -98,3 +99,21 @@ def get_next_unwatched_audio_on_playlist(playlist: Playlist, user: User):
         ):
             continue
         return pi
+
+
+@register.simple_tag
+def link_to_playlist_page(playlist: Playlist, video: Video):
+
+    qs = playlist.playlistitem_set.all()
+
+    qs = playlist.apply_playback_ordering_to_queryset(qs)
+
+    object_ids = list(qs.values_list("video_id", flat=True))
+    try:
+        current_pos = object_ids.index(video.id)
+    except ValueError:
+        return
+
+    if current_pos < len(object_ids) - 1:
+        return math.ceil((current_pos + 1) / 50)
+

@@ -1,5 +1,5 @@
 {% extends 'vidar/base.html' %}
-{% load mptt_tags video_tools %}
+{% load mptt_tags video_tools playlist_tools %}
 
 {% block site_title %}{{ video }}{% endblock %}
 
@@ -198,7 +198,7 @@
 
     <div class="row">
         <div class="col">
-            {% description_with_linked_timestamps video as video_description %}
+            {% description_with_linked_timestamps video.description as video_description %}
             {{ video_description|linebreaksbr }}
         </div>
         <div class="col-lg-3 col-sm-12">

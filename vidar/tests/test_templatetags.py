@@ -990,7 +990,7 @@ class TemplateTagsProperPaginationTests(TestCase):
         )
 
 
-class TemplateTagsPlaylistToolsTests(TestCase):
+class TemplateTagsPlaylistToolsWithUserCustomFieldsTests(TestCase):
 
     def setUp(self) -> None:
         # This only works for now as the tests within the class need access to this field.
@@ -1154,3 +1154,34 @@ class TemplateTagsPlaylistToolsTests(TestCase):
         models.UserPlaybackHistory.objects.create(video=video1, user=user, seconds=96)
 
         self.assertEqual(pi3, playlist_tools.get_next_unwatched_audio_on_playlist(playlist=playlist, user=user))
+
+
+class TemplateTagsPlaylistTools(TestCase):
+    def test_link_to_playlist_page(self):
+        playlist = models.Playlist.objects.create(title='test')
+
+        videos = []
+        for x in range(150):
+            v = models.Video.objects.create(title=f"Video {x}")
+            videos.append(v)
+            playlist.videos.add(v)
+
+        v1 = videos[0]
+        self.assertEqual(1, playlist_tools.link_to_playlist_page(playlist, v1))
+
+        v60 = videos[60]
+        self.assertEqual(2, playlist_tools.link_to_playlist_page(playlist, v60))
+
+        v125 = videos[125]
+        self.assertEqual(3, playlist_tools.link_to_playlist_page(playlist, v125))
+
+    def test_link_to_playlist_page_none_video_is_not_on_playlist(self):
+        playlist = models.Playlist.objects.create(title='test')
+        v = models.Video.objects.create(title=f"Video not on playlist")
+        self.assertIsNone(playlist_tools.link_to_playlist_page(playlist, v))
+
+    def test_link_to_playlist_page_returns_none_when_less_than_page_size(self):
+        playlist = models.Playlist.objects.create(title='test')
+        v1 = models.Video.objects.create(title=f"Video 1")
+        playlist.videos.add(v1)
+        self.assertIsNone(playlist_tools.link_to_playlist_page(playlist, v1))

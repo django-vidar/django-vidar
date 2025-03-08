@@ -1834,7 +1834,7 @@ class PlaylistDetailView(PermissionRequiredMixin, DetailView):
                 channel_id=self.object.channel_id
             ).exists()
 
-        # If you change limit, change it in templatetags/video_tools.py def link_to_playlist_page...
+        # If you change limit, change it in templatetags/playlist_tools.py def link_to_playlist_page...
         kwargs.update(
             paginator_helper(
                 context_key="playlist_videos",

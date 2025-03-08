@@ -1,5 +1,4 @@
 import logging
-import math
 
 from django import template
 from django.db.models import F, Q
@@ -382,34 +381,17 @@ def next_by_starred(video: Video, view=""):
 
 
 @register.simple_tag
-def link_to_playlist_page(playlist: Playlist, video: Video):
-
-    qs = playlist.playlistitem_set.all()
-
-    qs = playlist.apply_playback_ordering_to_queryset(qs)
-
-    object_ids = list(qs.values_list("video_id", flat=True))
-    try:
-        current_pos = object_ids.index(video.id)
-    except ValueError:
-        return
-
-    if current_pos < len(object_ids) - 1:
-        return math.ceil((current_pos + 1) / 50)
-
-
-@register.simple_tag
 def is_on_watch_later(video: Video, user):
     playlist = Playlist.get_user_watch_later(user=user)
     return playlist.videos.filter(pk=video.pk).exists()
 
 
 @register.simple_tag
-def description_with_linked_timestamps(video: Video):
+def description_with_linked_timestamps(video_description):
     try:
         output = []
 
-        for line in video.description.splitlines():
+        for line in video_description.splitlines():
 
             if ":" in line:
 
@@ -456,7 +438,7 @@ def description_with_linked_timestamps(video: Video):
     except (TypeError, ValueError):
         log.exception("failure to convert video descriptions timestamps")
 
-    return video.description
+    return video_description
 
 
 @register.simple_tag()
