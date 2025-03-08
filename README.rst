@@ -14,12 +14,13 @@ The purpose? To archive youtube videos from Channels and Playlists based on cron
 Current State? Well, it works with my current django setup. I'm hopeful to get this thing to also run as
 a standalone website using docker. However at this time I have no need for that.
 
-You will need to **use django v5.1.0 or greater** as django-vidar templates make use of the
-`querystring <https://docs.djangoproject.com/en/5.1/ref/templates/builtins/#querystring>`_ templatetag.
-
 Requirements
 ============
-::
+
+You will need to **use django v5.1.0 or greater** as the template files make use of the
+`querystring <https://docs.djangoproject.com/en/5.1/ref/templates/builtins/#querystring>`_ templatetag.
+
+Python::
 
     django>=5.1
     django-bootstrap4
@@ -37,6 +38,16 @@ Requirements
     moviepy
     Pillow>=10.0.0
 
+HTML/JS/CSS::
+
+    htmx
+    jquery
+    jqueryui
+    popper.js
+
+    bootstrap 4
+    pickadate.js - https://amsul.ca/pickadate.js/
+    font-awesome
 
 Installation
 ============
