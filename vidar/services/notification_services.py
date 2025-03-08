@@ -29,6 +29,10 @@ def send_message(message, title=None):
     if not app_settings.NOTIFICATIONS_SEND:
         return
 
+    url_base = app_settings.GOTIFY_URL
+    if not url_base:
+        return
+
     data = {
         "message": message,
         "priority": app_settings.GOTIFY_PRIORITY,
@@ -39,7 +43,6 @@ def send_message(message, title=None):
             title = f"{pt}{title}"
         data["title"] = title
 
-    url_base = app_settings.GOTIFY_URL
     token = app_settings.GOTIFY_TOKEN
     verify = app_settings.GOTIFY_URL_VERIFY
 
