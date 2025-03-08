@@ -67,7 +67,7 @@ class RedisMessaging:
 
     def set_direct_message(self, key, message, expire=True):
         """write new message to redis"""
-        self.conn.execute_command("SET", key, json.dumps(message))
+        output = self.conn.execute_command("SET", key, json.dumps(message))
 
         if expire:
             if isinstance(expire, bool):
@@ -76,9 +76,11 @@ class RedisMessaging:
                 secs = expire
             self.conn.execute_command("EXPIRE", key, secs)
 
+        return output
+
     def set_message(self, key, message, expire=True):
         """write new message to redis"""
-        self.set_direct_message(self.NAME_SPACE + key, message=message, expire=expire)
+        return self.set_direct_message(self.NAME_SPACE + key, message=message, expire=expire)
 
     def get_message(self, key):
         """get message dict from redis"""
@@ -153,8 +155,11 @@ class RedisMessaging:
     def exists_direct(self, key):
         return self.conn.exists(key)
 
+    def flushdb(self):
+        return self.conn.execute_command("FLUSHDB")
 
-def channel_indexing(msg, **kwargs):
+
+def channel_indexing(msg, channel, **kwargs):
 
     if not check_redis_message_allow(app_settings.REDIS_CHANNEL_INDEXING):
         return
@@ -164,15 +169,15 @@ def channel_indexing(msg, **kwargs):
             "status": "message:vidar",
             "level": "info",
             "title": "Processing Channel Index",
-            "message": f"{kwargs['channel']}: {msg}",
-            "url": kwargs["channel"].get_absolute_url(),
+            "message": f"{channel}: {msg}",
+            "url": channel.get_absolute_url(),
             "url_text": "Channel",
         }
-        RedisMessaging().set_message(f'vidar:channel-index:{kwargs["channel"].pk}', mess_dict)
+        RedisMessaging().set_message(f"vidar:channel-index:{channel.pk}", mess_dict)
         return True
 
 
-def playlist_indexing(msg, **kwargs):
+def playlist_indexing(msg, playlist, **kwargs):
 
     if not check_redis_message_allow(app_settings.REDIS_PLAYLIST_INDEXING):
         return
@@ -182,11 +187,11 @@ def playlist_indexing(msg, **kwargs):
             "status": "message:vidar",
             "level": "info",
             "title": "Processing Playlist Index",
-            "message": f"Playlist: {kwargs['playlist']}: {msg}",
-            "url": kwargs["playlist"].get_absolute_url(),
+            "message": f"Playlist: {playlist}: {msg}",
+            "url": playlist.get_absolute_url(),
             "url_text": "Playlist",
         }
-        RedisMessaging().set_message(f'vidar:playlist-index:{kwargs["playlist"].pk}', mess_dict)
+        RedisMessaging().set_message(f"vidar:playlist-index:{playlist.pk}", mess_dict)
         return True
 
 
@@ -231,28 +236,22 @@ def progress_hook_download_status(d, raise_exceptions=False, **kwargs):
     if not check_redis_message_allow("REDIS_VIDEO_DOWNLOADING"):
         return
 
-    try:
-        yid = d.get("info_dict", {}).get("id")
+    yid = d.get("info_dict", {}).get("id")
 
-        if not yid:
-            return
+    if not yid:
+        return
 
-        eta = timezone.timedelta(seconds=d.get("eta") or 0)
-        speed = d.get("_speed_str", "")
+    eta = timezone.timedelta(seconds=d.get("eta") or 0)
+    speed = d.get("_speed_str", "")
 
-        mess_dict = {
-            "status": "message:vidar",
-            "level": "info",
-            "title": "Processing Archives",
-            "message": f"{d['info_dict']['title']}: {d['status']} {d['_percent_str']} @ {speed} - ETA:{eta}",
-            "url": kwargs.get("url"),
-            "url_text": kwargs.get("url_text", "Video"),
-        }
-        RedisMessaging().set_message(f"vidar:{yid}", mess_dict)
+    mess_dict = {
+        "status": "message:vidar",
+        "level": "info",
+        "title": "Processing Archives",
+        "message": f"{d['info_dict']['title']}: {d['status']} {d['_percent_str']} @ {speed} - ETA:{eta}",
+        "url": kwargs.get("url"),
+        "url_text": kwargs.get("url_text", "Video"),
+    }
+    RedisMessaging().set_message(f"vidar:{yid}", mess_dict)
 
-        return True
-
-    except:  # noqa: E722
-        log.exception("Failed to format progress_hook data")
-        if raise_exceptions:
-            raise
+    return True

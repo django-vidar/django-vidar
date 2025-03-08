@@ -96,17 +96,6 @@ WSGI_APPLICATION = 'example.wsgi.application'
 DATABASES = {
     "default": env.db(default=f"sqlite:///{BASE_DIR}/db.sqlite3"),
 }
-if env.str("GITHUB_WORKFLOW", default=None):  # pragma: no cover
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": "github_actions",
-            "USER": "postgres",
-            "PASSWORD": "postgres",
-            "HOST": "127.0.0.1",
-            "PORT": "5432",
-        }
-    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -170,3 +159,48 @@ class MyPBKDF2PasswordHasher(PBKDF2PasswordHasher):
 PASSWORD_HASHERS = [
     "example.settings.MyPBKDF2PasswordHasher",
 ]
+
+CELERY_BEAT_MAX_LOOP_INTERVAL = env.int('CELERY_BEAT_MAX_LOOP_INTERVAL', 10)
+CELERY_BEAT_SCHEDULER = env.str('CELERY_BEAT_SCHEDULER', "django_celery_beat.schedulers:DatabaseScheduler")
+CELERY_BROKER_DB = env.int("CELERY_BROKER_DB", 0)
+CELERY_BROKER_HOSTNAME = env.str("CELERY_BROKER_HOSTNAME", '')
+CELERY_BROKER_PORT = env.int("CELERY_BROKER_PORT", 6379)
+CELERY_BROKER_TYPE = env.str('CELERY_BROKER_TYPE', 'redis')
+if CELERY_BROKER_HOSTNAME:
+    CELERY_BROKER_URL = f"{CELERY_BROKER_TYPE}://{CELERY_BROKER_HOSTNAME}:{CELERY_BROKER_PORT}/{CELERY_BROKER_DB}"
+else:
+    CELERY_BROKER_URL = ""
+if CELERY_VISIBILITY_TIMEOUT := env.int('CELERY_VISIBILITY_TIMEOUT', 2 * 60 * 60):
+    CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": CELERY_VISIBILITY_TIMEOUT}
+CELERY_ENABLE_UTC = env.bool('CELERY_ENABLE_UTC', True)
+CELERY_RESULT_BACKEND = env.str('CELERY_RESULT_BACKEND', "django-db")
+CELERY_RESULT_EXTENDED = env.bool('CELERY_RESULT_EXTENDED', True)
+CELERY_TASK_ALWAYS_EAGER = env.bool('CELERY_TASK_ALWAYS_EAGER', True)
+CELERY_TASK_DEFAULT_QUEUE = env.str('CELERY_TASK_DEFAULT_QUEUE', "queue-vidar")
+CELERY_TIMEZONE = env.str('CELERY_TIMEZONE', "America/New_York")
+CELERY_TRACK_STARTED = env.bool('CELERY_TRACK_STARTED', True)
+CELERY_TASK_TRACK_STARTED = env.bool('CELERY_TASK_TRACK_STARTED', True)
+CELERY_WORKER_PREFETCH_MULTIPLIER = env.int('CELERY_WORKER_PREFETCH_MULTIPLIER', 1)
+
+MEDIA_ROOT = env.str('DJANGO_MEDIA_ROOT', '')
+MEDIA_URL = env.str('DJANGO_MEDIA_URL', '/media/')
+
+VIDAR_REDIS_URL = env.str('VIDAR_REDIS_URL', CELERY_BROKER_URL)
+VIDAR_MEDIA_ROOT = env.str('VIDAR_MEDIA_ROOT', MEDIA_ROOT)
+VIDAR_MEDIA_URL = env.str('VIDAR_MEDIA_URL', MEDIA_URL)
+
+GITHUB_WORKFLOW = env.str("GITHUB_WORKFLOW", default=None)
+if GITHUB_WORKFLOW:  # pragma: no cover
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "github_actions",
+            "USER": "postgres",
+            "PASSWORD": "postgres",
+            "HOST": "127.0.0.1",
+            "PORT": "5432",
+        }
+    }
+
+    CELERY_BROKER_URL = "redis://redis:6379/0"
+    VIDAR_REDIS_URL = CELERY_BROKER_URL

@@ -5,6 +5,7 @@ import pathlib
 
 from unittest.mock import patch
 
+from django.conf import settings
 from django.test import TestCase, SimpleTestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -1810,7 +1811,7 @@ class YtdlpServicesDLPResponseTest(SimpleTestCase):
         self.assertFalse(values, 'qualities returned does not match expected values.')
 
 
-class RedisServicesTests(TestCase):
+class RedisServicesMockedTests(TestCase):
 
     def setUp(self) -> None:
         redis_services._reset_call_counters()
@@ -1925,3 +1926,162 @@ class RedisServicesTests(TestCase):
             self.assertIsNone(redis_services.progress_hook_download_status(data))
 
         mock_redis.assert_not_called()
+
+    @override_settings(VIDAR_REDIS_ENABLED=True)
+    def test_progress_hook_download_status_receives_invalid_value(self):
+        with override_settings(VIDAR_REDIS_VIDEO_DOWNLOADING=True):
+            self.assertIsNone(redis_services.progress_hook_download_status({}))
+
+
+@override_settings(VIDAR_REDIS_ENABLED=True)
+class RedisServicesLiveTests(TestCase):
+
+    def setUp(self) -> None:
+        # github workflow should expect redis services.
+        if not settings.GITHUB_WORKFLOW:  # pre
+            if not settings.VIDAR_REDIS_URL:
+                self.skipTest('Skipping redis live tests as VIDAR_REDIS_URL is not set.')
+
+        self.redis = redis_services.RedisMessaging()
+        self.redis.flushdb()
+
+    def test_channel_indexing_output(self):
+        channel = models.Channel.objects.create(name='test channel')
+        self.assertTrue(redis_services.channel_indexing('[download] msg', channel=channel))
+        output = self.redis.get_all_messages()
+        expected = [{
+            'status': 'message:vidar',
+            'level': 'info',
+            'title': 'Processing Channel Index',
+            'message': f'{channel}: [download] msg',
+            'url': channel.get_absolute_url(),
+            'url_text': 'Channel'
+        }]
+        self.assertEqual(expected, output)
+
+    def test_playlist_indexing_output(self):
+        playlist = models.Playlist.objects.create(title='test playlist')
+        self.assertTrue(redis_services.playlist_indexing('[download] msg', playlist=playlist))
+        output = self.redis.get_all_messages()
+        expected = [{
+            'status': 'message:vidar',
+            'level': 'info',
+            'title': 'Processing Playlist Index',
+            'message': f'Playlist: {playlist}: [download] msg',
+            'url': playlist.get_absolute_url(),
+            'url_text': 'Playlist'
+        }]
+        self.assertEqual(expected, output)
+
+    def test_video_conversion_to_mp4_started_output(self):
+        video = models.Video.objects.create(title='test video')
+
+        ts = timezone.localtime()
+        with patch.object(timezone, 'localtime', return_value=ts):
+            self.assertTrue(redis_services.video_conversion_to_mp4_started(video=video))
+            output = self.redis.get_all_messages()
+            expected = [{
+                "status": "message:vidar",
+                "level": "info",
+                "title": "Processing Video Conversion",
+                "message": f"Video MKV Conversion Started {ts}: {video}",
+                "url": video.get_absolute_url(),
+                "url_text": "Video",
+            }]
+
+        self.assertEqual(expected, output)
+
+    def test_video_conversion_to_mp4_finished_output(self):
+        video = models.Video.objects.create(title='test video')
+
+        ts = timezone.localtime()
+        with patch.object(timezone, 'localtime', return_value=ts):
+            self.assertTrue(redis_services.video_conversion_to_mp4_finished(video=video))
+            output = self.redis.get_all_messages()
+            expected = [{
+                "status": "message:vidar",
+                "level": "info",
+                "title": "Processing Video Conversion",
+                "message": f"Video MKV Conversion Finished {ts}: {video}",
+                "url": video.get_absolute_url(),
+                "url_text": "Video",
+            }]
+
+        self.assertEqual(expected, output)
+
+    def test_video_conversion_to_mp4_started_deleted_by_finished(self):
+        video = models.Video.objects.create(title='test video')
+        self.assertTrue(redis_services.video_conversion_to_mp4_started(video=video))
+
+        ts = timezone.localtime()
+        with patch.object(timezone, 'localtime', return_value=ts):
+            self.assertTrue(redis_services.video_conversion_to_mp4_finished(video=video))
+            output = self.redis.get_all_messages()
+            self.assertEqual(1, len(output), 'Only 1 message should exist.')
+            expected = [{
+                "status": "message:vidar",
+                "level": "info",
+                "title": "Processing Video Conversion",
+                "message": f"Video MKV Conversion Finished {ts}: {video}",
+                "url": video.get_absolute_url(),
+                "url_text": "Video",
+            }]
+
+        self.assertEqual(expected, output)
+
+    def test_progress_hook_download_status_output(self):
+        data = {
+            'info_dict': {
+                'id': 'index dict id',
+                'title': 'info dict title',
+            },
+            'status': 'data status',
+            '_percent_str': 'data percent str',
+            '_speed_str': '50KB/s',
+            'eta': 5,
+        }
+        self.assertTrue(redis_services.progress_hook_download_status(data))
+
+        output = self.redis.get_all_messages()
+
+        expected = [{
+            "status": "message:vidar",
+            "level": "info",
+            "title": "Processing Archives",
+            "message": f"{data['info_dict']['title']}: {data['status']} {data['_percent_str']} @ 50KB/s - ETA:0:00:05",
+            "url": None,
+            "url_text": "Video",
+        }]
+
+        self.assertEqual(expected, output)
+
+    def test_multiple_messages_in_redis(self):
+        channel = models.Channel.objects.create(name='test channel')
+        playlist = models.Playlist.objects.create(title='test playlist')
+
+        self.assertTrue(redis_services.channel_indexing('[download] msg', channel=channel))
+        self.assertTrue(redis_services.playlist_indexing('[download] msg', playlist=playlist))
+
+        output = self.redis.get_all_messages()
+
+        self.assertEqual(2, len(output))
+
+        expected = [
+            {
+                'status': 'message:vidar',
+                'level': 'info',
+                'title': 'Processing Playlist Index',
+                'message': f'Playlist: {playlist}: [download] msg',
+                'url': playlist.get_absolute_url(),
+                'url_text': 'Playlist'
+            },
+            {
+                'status': 'message:vidar',
+                'level': 'info',
+                'title': 'Processing Channel Index',
+                'message': f'{channel}: [download] msg',
+                'url': channel.get_absolute_url(),
+                'url_text': 'Channel'
+            },
+        ]
+        self.assertCountEqual(expected, output)
