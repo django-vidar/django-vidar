@@ -56,8 +56,10 @@ class RedisMessaging:
 
     def __init__(self):
         self.conn = None
-        if hostname := getattr(settings, "VIDAR_REDIS_HOSTNAME", None):
-            self.conn = redis.Redis(host=hostname, port=settings.VIDAR_REDIS_PORT, db=settings.VIDAR_REDIS_DB)
+        if url := getattr(settings, "VIDAR_REDIS_URL", None):
+            self.conn = redis.from_url(url)
+        elif url := getattr(settings, "CELERY_BROKER_URL", None):
+            self.conn = redis.from_url(url)
 
     CHANNELS = [
         "vidar",

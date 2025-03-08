@@ -351,11 +351,14 @@ Configurable Settings
 ``VIDAR_PROXIES_DEFAULT`` (default: ``""``)
     If you use a proxy for yt-dlp, this is the base proxy value to supply in the event all other VIDAR_PROXIES fail
 
-``VIDAR_REDIS_CHANNEL_INDEXING`` (default: ``True``)
-    Update redis messaging when a Channel is being indexed
-
 ``VIDAR_REDIS_ENABLED`` (default: ``True``)
     If False vidar will not send any messages to redis.
+
+``VIDAR_REDIS_URL`` (default: ``None``)
+    URL to connect to redis, will use settings.CELERY_BROKER_URL if it exists
+
+``VIDAR_REDIS_CHANNEL_INDEXING`` (default: ``True``)
+    Update redis messaging when a Channel is being indexed
 
 ``VIDAR_REDIS_PLAYLIST_INDEXING`` (default: ``True``)
     Update redis messaging when a Playlist is being indexed
