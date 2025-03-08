@@ -14,10 +14,29 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf import settings
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import include, path, re_path
+from django.views.static import serve
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('vidar.urls')),
 ]
+
+if settings.DEBUG:
+    media_url = getattr(settings, 'MEDIA_URL', '')
+    if not media_url:
+        media_url = getattr(settings, 'VIDAR_MEDIA_URL', '')
+
+    if media_url.startswith('/'):
+        media_url = media_url[1:]
+
+    media_root = getattr(settings, 'MEDIA_ROOT', None)
+    if not media_root and media_url:
+        media_root = getattr(settings, 'VIDAR_MEDIA_ROOT', None)
+
+    if media_root:
+        urlpatterns.extend([
+            re_path(r"^{}(?P<path>.*)$".format(media_url), serve, {"document_root": media_root}),
+        ])
