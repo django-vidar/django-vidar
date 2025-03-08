@@ -202,5 +202,5 @@ if GITHUB_WORKFLOW:  # pragma: no cover
         }
     }
 
-    CELERY_BROKER_URL = "redis://redis:6379/0"
+    CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
     VIDAR_REDIS_URL = CELERY_BROKER_URL
