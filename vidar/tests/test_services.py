@@ -2084,4 +2084,4 @@ class RedisServicesLiveTests(TestCase):
                 'url_text': 'Channel'
             },
         ]
-        self.assertCountEqual(expected, output)
+        self.assertListEqual(expected, output)
