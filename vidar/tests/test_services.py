@@ -149,6 +149,34 @@ class CrontabServicesTests(SimpleTestCase):
         now = timezone.localtime().replace(year=2024, month=10, day=8, hour=9, minute=10, second=0, microsecond=0)
         self.assertTrue(crontab_services.is_active_now(crontab=crontab, now=now))
 
+    def test_is_active_now_days_of_month(self):
+        crontab = '* * 12-14 * *'
+        for day in range(1, 12):
+            now = timezone.localtime().replace(month=1, day=day, hour=12, minute=10, second=0, microsecond=0)
+            self.assertFalse(crontab_services.is_active_now(crontab=crontab, now=now), f"{day=} should be False")
+
+        now = timezone.localtime().replace(month=1, day=12, hour=12, minute=10, second=0, microsecond=0)
+        self.assertTrue(crontab_services.is_active_now(crontab=crontab, now=now), f"day=12 should be True")
+
+        now = timezone.localtime().replace(month=1, day=13, hour=12, minute=10, second=0, microsecond=0)
+        self.assertTrue(crontab_services.is_active_now(crontab=crontab, now=now), f"day=13 should be True")
+
+        now = timezone.localtime().replace(month=1, day=14, hour=12, minute=10, second=0, microsecond=0)
+        self.assertTrue(crontab_services.is_active_now(crontab=crontab, now=now), f"day=14 should be True")
+
+        for day in range(15, 31):
+            now = timezone.localtime().replace(month=1, day=day, hour=12, minute=10, second=0, microsecond=0)
+            self.assertFalse(crontab_services.is_active_now(crontab=crontab, now=now), f"{day=} should be False")
+
+    def test_is_active_now_month_of_year(self):
+        crontab = '* * * 1-4 *'
+        for month in range(1, 5):
+            now = timezone.localtime().replace(month=month, day=1, hour=12, minute=10, second=0, microsecond=0)
+            self.assertTrue(crontab_services.is_active_now(crontab=crontab, now=now), f"{month=} should be True")
+        for month in range(5, 13):
+            now = timezone.localtime().replace(month=month, day=1, hour=12, minute=10, second=0, microsecond=0)
+            self.assertFalse(crontab_services.is_active_now(crontab=crontab, now=now), f"{month=} should be False")
+
     def test_range_steps_not_enough(self):
         with self.assertRaises(crontab_services.ParseException):
             crontab_services.CrontabParser(24)._range_steps([1])
@@ -240,6 +268,18 @@ class CrontabServicesTests(SimpleTestCase):
         *_, day_of_week = crontab_services.parse('* * * * *')
         self.assertEqual(day_of_week, {0, 1, 2, 3, 4, 5, 6, 7})
 
+    def test_day_of_week_as_text(self):
+        self.assertEqual(crontab_services.CrontabParser(7).parse('mon'), {1})
+        self.assertEqual(crontab_services.CrontabParser(7).parse('monday'), {1})
+        self.assertEqual(crontab_services.CrontabParser(7).parse('tues'), {2})
+        self.assertEqual(crontab_services.CrontabParser(7).parse('mon-fri'), {1, 2, 3, 4, 5})
+        with self.assertRaises(ValueError):
+            crontab_services.CrontabParser(7).parse('invalid')
+
+        m, h, d, month, day_of_week = crontab_services.parse('* * mon-fri * tues-thurs')
+        self.assertEqual(d, {1, 2, 3, 4, 5})
+        self.assertEqual(day_of_week, {2, 3, 4})
+
     def test_weekday_by_name_into_number(self):
         days = 'sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'
         for index, day in zip(range(0, 6, 1), days):
@@ -321,17 +361,76 @@ class CrontabServicesTests(SimpleTestCase):
         output = crontab_services.generate_weekly(minute=10, hour=2, day_of_week=6)
         self.assertEqual('10 2 * * 6', output)
 
+        output = crontab_services.generate_weekly(minute=10, hour=[2, 3], day_of_week=6)
+        self.assertRegex(output, r'10 ([2,3]) \* \* 6')
+
+        output = crontab_services.generate_weekly(minute=10, hour=[2, 3], day_of_week=None)
+        self.assertRegex(output, r'10 ([2,3]) \* \* ([0-7])')
+
     def test_generate_monthly(self):
         output = crontab_services.generate_monthly(minute=10, hour=2, day=4)
         self.assertEqual('10 2 4 * *', output)
+
+        output = crontab_services.generate_monthly(minute=10, hour=[2, 3], day=4)
+        self.assertRegex(output, r'10 ([2,3]) 4 \* \*')
 
     def test_generate_biyearly(self):
         output = crontab_services.generate_biyearly(minute=10, hour=2, day=4)
         self.assertRegex(output, r'10 2 4 (\d+){1,2},(\d+){,2} \*')
 
+        output = crontab_services.generate_biyearly(minute=10, hour=[2, 3], day=4)
+        self.assertRegex(output, r'10 ([2,3]) 4 (\d+){1,2},(\d+){,2} \*')
+
     def test_generate_yearly(self):
         output = crontab_services.generate_yearly(minute=10, hour=2, day=4)
         self.assertRegex(output, r'10 2 4 (\d+){1,2} *')
+
+        output = crontab_services.generate_yearly(minute=10, hour=[2, 3], day=4)
+        self.assertRegex(output, r'10 ([2,3]) 4 (\d+){1,2} *')
+
+    def test_generate_selection_monthly_crontabs(self):
+        output = crontab_services.generate_selection_monthly_crontabs(length=8)
+        self.assertEqual(8, len(output))
+
+        re_days = "|".join(f"{x}" for x in range(32))
+
+        self.assertRegex(output[0], fr'0 5 [{re_days}] * *')
+        self.assertRegex(output[1], fr'10 5 [{re_days}] * *')
+        self.assertRegex(output[2], fr'20 5 [{re_days}] * *')
+        self.assertRegex(output[3], fr'30 5 [{re_days}] * *')
+        self.assertRegex(output[4], fr'40 5 [{re_days}] * *')
+        self.assertRegex(output[5], fr'50 5 [{re_days}] * *')
+        self.assertRegex(output[6], fr'0 6 [{re_days}] * *')
+        self.assertRegex(output[7], fr'10 6 [{re_days}] * *')
+
+    def test_generate_selection_biweekly_crontabs(self):
+        output = crontab_services.generate_selection_biweekly_crontabs(length=8)
+        self.assertEqual(8, len(output))
+
+        re_days_first = "|".join(f"{x}" for x in range(1, 15))
+        re_days_second = "|".join(f"{x}" for x in range(14, 31))
+
+        self.assertRegex(output[0], fr'0 13 [{re_days_first},{re_days_second}] * *')
+        self.assertRegex(output[1], fr'10 13 [{re_days_first},{re_days_second}] * *')
+        self.assertRegex(output[2], fr'20 13 [{re_days_first},{re_days_second}] * *')
+        self.assertRegex(output[3], fr'30 13 [{re_days_first},{re_days_second}] * *')
+        self.assertRegex(output[4], fr'40 13 [{re_days_first},{re_days_second}] * *')
+        self.assertRegex(output[5], fr'50 13 [{re_days_first},{re_days_second}] * *')
+        self.assertRegex(output[6], fr'0 14 [{re_days_first},{re_days_second}] * *')
+        self.assertRegex(output[7], fr'10 14 [{re_days_first},{re_days_second}] * *')
+
+    def test_generate_selection_daily_crontabs(self):
+        output = crontab_services.generate_selection_daily_crontabs(length=8)
+        self.assertEqual(8, len(output))
+
+        self.assertEqual('0 16 * * *', output[0])
+        self.assertEqual('10 16 * * *', output[1])
+        self.assertEqual('20 16 * * *', output[2])
+        self.assertEqual('30 16 * * *', output[3])
+        self.assertEqual('40 16 * * *', output[4])
+        self.assertEqual('50 16 * * *', output[5])
+        self.assertEqual('0 17 * * *', output[6])
+        self.assertEqual('10 17 * * *', output[7])
 
 
 class PlaylistServicesTests(TestCase):

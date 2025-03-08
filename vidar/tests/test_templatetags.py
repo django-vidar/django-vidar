@@ -505,7 +505,6 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertTrue(video_tools.is_on_watch_later(video=v, user=user))
 
 
-
 class TemplateTagsVideoToolsWithCustomUserFieldsTests(TestCase):
 
     def setUp(self) -> None:
