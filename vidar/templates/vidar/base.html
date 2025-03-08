@@ -4,9 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block site_title %}Vidar{% endblock %}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.14.1/jquery-ui.min.js" integrity="sha512-MSOo1aY+3pXCOCdGAYoBZ6YGI0aragoQsg1mKKBHXCYPIWxamwOE7Drh+N5CPgGI5SA9IEKJiPjdfqWFWmZtRA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.11.8/umd/popper.min.js" integrity="sha512-TPh2Oxlg1zp+kz3nFA0C5vVC6leG/6mm1z9+mA81MI5eaUVqasPLO8Cuk4gMF4gUfP5etR73rgU/8PNMsSesoQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.min.js" integrity="sha512-7rusk8kGPFynZWu26OKbTeI+QPoYchtxsmPeBqkHIEXJxeun4yJ4ISYe7C6sz9wdxeE1Gk3VxsIWgCZTc+vX3g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pickadate.js/3.6.4/compressed/picker.js" integrity="sha512-PC6BMUJfhXSSRw6fOnyfn21Yjc/6oRUnAGUboA+uzAUkKX5K2wzUvTHPCEjfwmmfrjCuiSnf23iX8JYVlJTXmA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pickadate.js/3.6.4/compressed/picker.date.js" integrity="sha512-sWV6NfLhYF/5QK1RdK4rp0uwxn/eTKOuqf73dU7APGW3KVfCTblF1/9a+4pyXLQcSS25dxOkXWe7Mv7hYYft7g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pickadate.js/3.6.4/compressed/picker.time.js" integrity="sha512-wsTBGzc0ra42jNgXre39rdHpXqAkkaSN+bRrXZ3hpOvqxOtLNZns3OseDZRfGCWSs00N9HuXyKHZEzKAWCl3SA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/2.0.4/htmx.min.js" integrity="sha512-2kIcAizYXhIn8TzUvqzEDZNuDZ+aW7yE/+f1HJHXFjQcGNfv1kqzJSTBRBSlOgp6B/KZsz1K0a3ZTqP9dnxioQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/css/bootstrap.min.css" integrity="sha512-rt/SrQ4UNIaGfDyEXZtNcyWvQeOq0QLygHluFQcSjaGB04IxWhal71tKuzP6K8eYXYB6vJV4pHkXcmFGGQ1/0w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pickadate.js/3.6.4/compressed/themes/default.css" integrity="sha512-CIn19F6Q/91ayiK+V1qCXZf5SB96gnFh89uEvEUWTlYnKua5D2r8W3Vb7ghBsTzVjmWv/VZgQyK8RrK0JKQYXg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pickadate.js/3.6.4/compressed/themes/default.date.css" integrity="sha512-KUP5BIvEUWCw+9FbI4LJz+0J6tG6+V+ZY2Lzpzx48YtPitTypKSy1U+yzcOBymRv2isdItYcYCTgLDtHw0Z3rA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pickadate.js/3.6.4/compressed/themes/default.time.css" integrity="sha512-ljVMhdjlFdMSA6RXtEXoYfWOr6mNlC9ki0z0wvRT4f6WHedNlgnBllsQk953H72xmWLZbfnlb+EU4ZlnoSNzVA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     {% block header %}{% endblock %}
+
+    <style>
+        .hidden {
+            display: none !important;
+        }
+    </style>
+
 </head>
 <body>
     <main>
@@ -14,8 +40,62 @@
             {% block content %}{% endblock %}
         </div>
     </main>
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct" crossorigin="anonymous"></script>
+
+    <script type="application/javascript">
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip();
+        })
+        document.body.addEventListener('htmx:configRequest', (event) => {
+            event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+        })
+
+        function htmlDecode(input) {
+            var doc = new DOMParser().parseFromString(input, "text/html");
+            return doc.documentElement.textContent;
+        }
+
+        function toggle_localstorage_boolean_key(key, callback, opposite_key_to_flip) {
+            let new_status = null;
+            let orig_item_value = localStorage.getItem(key)
+            if (orig_item_value === null || orig_item_value === "false") {
+                console.debug('toggle_localstorage_boolean_key had original value of "' + orig_item_value + '", setting to "true"');
+                localStorage.setItem(key, "true");
+                new_status = true;
+                if (typeof opposite_key_to_flip !== "undefined" && orig_item_value === "false") {
+                    console.log("Flipping opposite key", opposite_key_to_flip, "to false");
+                    localStorage.setItem(opposite_key_to_flip, "false");
+                }
+            } else {
+                console.debug('toggle_localstorage_boolean_key had original value of "' + orig_item_value + '", setting to "false"');
+                localStorage.setItem(key, "false");
+                new_status = false;
+            }
+            if (typeof callback !== "undefined") {
+                console.debug('toggle_localstorage_boolean_key calling callback', callback);
+                return callback(key, new_status);
+            }
+            return new_status;
+        }
+
+        function set_enable_disable_buttons_details(key, truthy='btn-success', truthy_str='Enable', falsy='btn-outline-success', falsy_str='Disable') {
+            let elem = document.getElementById(key);
+
+            if (elem !== null) {
+                elem.classList.remove(falsy, truthy);
+                if (localStorage.getItem(key) === "true") {
+                    console.debug('set_enable_disable_buttons_details localStorage.getItem', key, 'is true, adding', truthy, 'to class, replacing', falsy_str, 'with', truthy_str);
+                    elem.classList.add(truthy);
+                    elem.innerText = elem.innerText.replace(falsy_str, truthy_str);
+                } else {
+                    console.debug('set_enable_disable_buttons_details localStorage.getItem', key, 'is false, adding', falsy, 'to class, replacing', truthy_str, 'with', falsy_str);
+                    elem.classList.add(falsy);
+                    elem.innerText = elem.innerText.replace(truthy_str, falsy_str);
+                }
+            } else {
+                console.debug('set_enable_disable_buttons_details did not find element with id', key);
+            }
+        }
+    </script>
 
     {% block footer %}{% endblock %}
 </body>

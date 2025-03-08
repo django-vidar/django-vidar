@@ -60,8 +60,8 @@
                 <tbody>
                     {% if playlist.crontab %}
                     <tr>
-                        <td>Crontab ({{ playlist.crontab }})</td>
-                        <td><a href="{{ playlist.crontab|crontab_link_to_crontab_guru }}" target="_blank">{{ playlist.next_runtime }}</a></td>
+                        <td>Crontab (<a href="{{ playlist.crontab|crontab_link_to_crontab_guru }}" target="_blank">{{ playlist.crontab }}</a>)</td>
+                        <td>{{ playlist.next_runtime }}</td>
                     </tr>
                     {% endif %}
                     {% if playlist.provider_object_id %}
