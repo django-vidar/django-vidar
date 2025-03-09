@@ -48,53 +48,6 @@
         document.body.addEventListener('htmx:configRequest', (event) => {
             event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
         })
-
-        function htmlDecode(input) {
-            var doc = new DOMParser().parseFromString(input, "text/html");
-            return doc.documentElement.textContent;
-        }
-
-        function toggle_localstorage_boolean_key(key, callback, opposite_key_to_flip) {
-            let new_status = null;
-            let orig_item_value = localStorage.getItem(key)
-            if (orig_item_value === null || orig_item_value === "false") {
-                console.debug('toggle_localstorage_boolean_key had original value of "' + orig_item_value + '", setting to "true"');
-                localStorage.setItem(key, "true");
-                new_status = true;
-                if (typeof opposite_key_to_flip !== "undefined" && orig_item_value === "false") {
-                    console.log("Flipping opposite key", opposite_key_to_flip, "to false");
-                    localStorage.setItem(opposite_key_to_flip, "false");
-                }
-            } else {
-                console.debug('toggle_localstorage_boolean_key had original value of "' + orig_item_value + '", setting to "false"');
-                localStorage.setItem(key, "false");
-                new_status = false;
-            }
-            if (typeof callback !== "undefined") {
-                console.debug('toggle_localstorage_boolean_key calling callback', callback);
-                return callback(key, new_status);
-            }
-            return new_status;
-        }
-
-        function set_enable_disable_buttons_details(key, truthy='btn-success', truthy_str='Enable', falsy='btn-outline-success', falsy_str='Disable') {
-            let elem = document.getElementById(key);
-
-            if (elem !== null) {
-                elem.classList.remove(falsy, truthy);
-                if (localStorage.getItem(key) === "true") {
-                    console.debug('set_enable_disable_buttons_details localStorage.getItem', key, 'is true, adding', truthy, 'to class, replacing', falsy_str, 'with', truthy_str);
-                    elem.classList.add(truthy);
-                    elem.innerText = elem.innerText.replace(falsy_str, truthy_str);
-                } else {
-                    console.debug('set_enable_disable_buttons_details localStorage.getItem', key, 'is false, adding', falsy, 'to class, replacing', truthy_str, 'with', falsy_str);
-                    elem.classList.add(falsy);
-                    elem.innerText = elem.innerText.replace(truthy_str, falsy_str);
-                }
-            } else {
-                console.debug('set_enable_disable_buttons_details did not find element with id', key);
-            }
-        }
     </script>
 
     {% block footer %}{% endblock %}

@@ -34,11 +34,11 @@
 
     <div class="row mb-2">
         <div class="col text-center">
-            <a href="javascript:;" onclick="toggle_localstorage_boolean_key('vidar-autoplay', trigger_autoplay_buttons_status)" id="vidar-autoplay" class="btn btn-sm">Autoplay</a>
-            <a href="javascript:;" onclick="toggle_localstorage_boolean_key('vidar-autoplay-previous', trigger_autoplay_buttons_status, 'vidar-autoplay-next')" id="vidar-autoplay-previous" class="btn btn-sm">Autoplay Prev</a>
-            <a href="javascript:;" onclick="toggle_localstorage_boolean_key('vidar-autoplay-next', trigger_autoplay_buttons_status, 'vidar-autoplay-previous')" id="vidar-autoplay-next" class="btn btn-sm">Autoplay Next</a>
-            <a href="javascript:;" onclick="toggle_localstorage_boolean_key('vidar-skips', trigger_autoplay_buttons_status)" id="vidar-skips" class="btn btn-sm"><span class="skips-count"></span> Skips</a>
-            <a href="javascript:;" onclick="toggle_localstorage_boolean_key('vidar-watch-history', trigger_autoplay_buttons_status)" id="vidar-watch-history" class="btn btn-sm">Watch History</a>
+            <a href="javascript:;" onclick="vidar_toggle_localstorage_boolean_key('vidar-autoplay', vidar_trigger_autoplay_buttons_status)" id="vidar-autoplay" class="btn btn-sm">Autoplay</a>
+            <a href="javascript:;" onclick="vidar_toggle_localstorage_boolean_key('vidar-autoplay-previous', vidar_trigger_autoplay_buttons_status, 'vidar-autoplay-next')" id="vidar-autoplay-previous" class="btn btn-sm">Autoplay Prev</a>
+            <a href="javascript:;" onclick="vidar_toggle_localstorage_boolean_key('vidar-autoplay-next', vidar_trigger_autoplay_buttons_status, 'vidar-autoplay-previous')" id="vidar-autoplay-next" class="btn btn-sm">Autoplay Next</a>
+            <a href="javascript:;" onclick="vidar_toggle_localstorage_boolean_key('vidar-skips', vidar_trigger_autoplay_buttons_status)" id="vidar-skips" class="btn btn-sm"><span class="skips-count"></span> Skips</a>
+            <a href="javascript:;" onclick="vidar_toggle_localstorage_boolean_key('vidar-watch-history', vidar_trigger_autoplay_buttons_status)" id="vidar-watch-history" class="btn btn-sm">Watch History</a>
             <a href="javascript:;" onclick="toggle_loop_key()" id="vidar-loop" class="btn btn-sm">Loop</a>
 
             {% if perms.vidar.add_highlight %}
@@ -592,17 +592,59 @@
         send_watch_time(parseInt(player.currentTime), 'mark_as_watched');
     }
 
-    function trigger_autoplay_buttons_status() {
-        set_enable_disable_buttons_details('vidar-watch-history');
-        set_enable_disable_buttons_details('vidar-autoplay-next');
-        set_enable_disable_buttons_details('vidar-autoplay-previous');
-        set_enable_disable_buttons_details('vidar-autoplay');
-        set_enable_disable_buttons_details('vidar-skips');
+    function vidar_toggle_localstorage_boolean_key(key, callback, opposite_key_to_flip) {
+        let new_status = null;
+        let orig_item_value = localStorage.getItem(key)
+        if (orig_item_value === null || orig_item_value === "false") {
+            console.debug('vidar_toggle_localstorage_boolean_key had original value of "' + orig_item_value + '", setting to "true"');
+            localStorage.setItem(key, "true");
+            new_status = true;
+            if (typeof opposite_key_to_flip !== "undefined" && orig_item_value === "false") {
+                console.log("Flipping opposite key", opposite_key_to_flip, "to false");
+                localStorage.setItem(opposite_key_to_flip, "false");
+            }
+        } else {
+            console.debug('vidar_toggle_localstorage_boolean_key had original value of "' + orig_item_value + '", setting to "false"');
+            localStorage.setItem(key, "false");
+            new_status = false;
+        }
+        if (typeof callback !== "undefined") {
+            console.debug('vidar_toggle_localstorage_boolean_key calling callback', callback);
+            return callback(key, new_status);
+        }
+        return new_status;
     }
-    trigger_autoplay_buttons_status();
+
+    function vidar_set_enable_disable_buttons_details(key, truthy='btn-success', truthy_str='Enable', falsy='btn-outline-success', falsy_str='Disable') {
+        let elem = document.getElementById(key);
+
+        if (elem !== null) {
+            elem.classList.remove(falsy, truthy);
+            if (localStorage.getItem(key) === "true") {
+                console.debug('vidar_set_enable_disable_buttons_details localStorage.getItem', key, 'is true, adding', truthy, 'to class, replacing', falsy_str, 'with', truthy_str);
+                elem.classList.add(truthy);
+                elem.innerText = elem.innerText.replace(falsy_str, truthy_str);
+            } else {
+                console.debug('vidar_set_enable_disable_buttons_details localStorage.getItem', key, 'is false, adding', falsy, 'to class, replacing', truthy_str, 'with', falsy_str);
+                elem.classList.add(falsy);
+                elem.innerText = elem.innerText.replace(truthy_str, falsy_str);
+            }
+        } else {
+            console.debug('vidar_set_enable_disable_buttons_details did not find element with id', key);
+        }
+    }
+
+    function vidar_trigger_autoplay_buttons_status() {
+        vidar_set_enable_disable_buttons_details('vidar-watch-history');
+        vidar_set_enable_disable_buttons_details('vidar-autoplay-next');
+        vidar_set_enable_disable_buttons_details('vidar-autoplay-previous');
+        vidar_set_enable_disable_buttons_details('vidar-autoplay');
+        vidar_set_enable_disable_buttons_details('vidar-skips');
+    }
+    vidar_trigger_autoplay_buttons_status();
 
     window.addEventListener("storage", (event) => {
-        trigger_autoplay_buttons_status();
+        vidar_trigger_autoplay_buttons_status();
     });
 
     function set_loop_button_styling() {
@@ -734,6 +776,11 @@
         return url + "?" + url_params.toString()
     }
 
+    function vidarHtmlDecode(input) {
+        var doc = new DOMParser().parseFromString(input, "text/html");
+        return doc.documentElement.textContent;
+    }
+
     function build_next_prev_bar_a(element_id, rurl, rname) {
         if (rurl !== "" && rname !== "") {
             document.querySelector('#next_prev_bar').classList.remove('hidden');
@@ -745,8 +792,8 @@
             next_div.parentElement.classList.remove('hidden');
         }
     }
-    build_next_prev_bar_a("#play-next", redirect_next_url, htmlDecode(redirect_next_name))
-    build_next_prev_bar_a("#play-prev", redirect_prev_url, htmlDecode(redirect_prev_name))
+    build_next_prev_bar_a("#play-next", redirect_next_url, vidarHtmlDecode(redirect_next_name))
+    build_next_prev_bar_a("#play-prev", redirect_prev_url, vidarHtmlDecode(redirect_prev_name))
 
     if ("mediaSession" in navigator) {
         const actionHandlers = [
