@@ -137,10 +137,11 @@ def channel_rename_all_files(channel, commit=True, remove_empty=True, rename_vid
 
         if remove_empty and pre_exising_file_path:
             pathway = pathlib.Path(pre_exising_file_path).parent
-            try:
-                vidar_storage.delete(str(pathway))
-            except OSError:
-                log.exception(f"Failure to delete potentially empty directory {pathway=}")
+            if pathway != pathlib.Path():
+                try:
+                    vidar_storage.delete(str(pathway))
+                except OSError:
+                    log.exception(f"Failure to delete potentially empty directory {pathway=}")
 
     return changed
 

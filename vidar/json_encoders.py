@@ -6,7 +6,7 @@ class JSONSetToListEncoder(json.JSONEncoder):
 
     >>> data = {'test': set()}
     >>> json.dumps(data, cls=JSONSetToListEncoder)
-    '{"here": []}'
+    '{"test": []}'
 
     """
 
@@ -15,4 +15,4 @@ class JSONSetToListEncoder(json.JSONEncoder):
             return str(obj)
         if isinstance(obj, set):
             return list(obj)
-        return super().default(obj)
+        return super().default(obj)  # pragma: no cover

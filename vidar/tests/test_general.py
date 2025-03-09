@@ -1,16 +1,17 @@
 # flake8: noqa
+import json
 import pathlib
 
 from unittest.mock import patch, call
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.shortcuts import reverse
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission, Group
 from django.utils import timezone
 
-from vidar import models, forms, renamers
-from vidar.helpers import video_helpers
+from vidar import models, forms, renamers, json_encoders, exceptions
+from vidar.helpers import channel_helpers, video_helpers
 
 UserModel = get_user_model()
 
@@ -324,10 +325,26 @@ class FormTests(TestCase):
         self.assertEqual('End must be greater than start time', form.errors['end'][0])
 
 
-@patch('vidar.storages.vidar_storage.delete')
-@patch('vidar.storages.vidar_storage.move')
-@patch('vidar.services.video_services.generate_filepaths_for_storage')
+class JsonEncoderTests(SimpleTestCase):
+    def test_basics(self):
+        def test_func(): pass
+        test_func_str = str(test_func)
+        data = {
+            'str': '',
+            'tuple': tuple(),
+            'set': set(),
+            'dict': dict(),
+            'func': test_func,
+        }
+        output = json.dumps(data, cls=json_encoders.JSONSetToListEncoder)
+        expected = f'{{"str": "", "tuple": [], "set": [], "dict": {{}}, "func": "{test_func_str}"}}'
+        self.assertEqual(expected, output)
+
+
 class RenamerTests(TestCase):
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    @patch('vidar.services.video_services.generate_filepaths_for_storage')
     def test_video_rename_all_files_works(self, mock_generator, mock_move, mock_delete):
         mock_generator.return_value = 'static value'
         mock_generator.side_effect = [
@@ -346,7 +363,7 @@ class RenamerTests(TestCase):
             provider_object_id='test vidar id',
         )
         output = renamers.video_rename_all_files(video=video, commit=True)
-        self.assertTrue(output)
+        self.assertListEqual(['file', 'info_json', 'thumbnail'], output)
         mock_move.assert_has_calls((
             call(pathlib.PurePosixPath('video.mp4'), pathlib.PurePosixPath('video 2.mp4')),
             call(pathlib.PurePosixPath('info.json'), pathlib.PurePosixPath('info 2.json')),
@@ -369,6 +386,61 @@ class RenamerTests(TestCase):
         self.assertEqual('info 2.json', video.info_json.name)
         self.assertEqual('thumbnail 2.jpg', video.thumbnail.name)
 
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    @patch('vidar.services.video_services.generate_filepaths_for_storage')
+    def test_video_rename_all_files_storage_already_exists(self, mock_generator, mock_move, mock_delete):
+        mock_generator.return_value = 'static value'
+        mock_generator.side_effect = [
+            ('', pathlib.PurePosixPath('video.mp4')),
+            ('', pathlib.PurePosixPath('info.json')),
+            ('', pathlib.PurePosixPath('thumbnail.jpg')),
+        ]
+        mock_move.return_value = 'here in mock 2'
+        channel = models.Channel.objects.create(name='Test Channel')
+        video = models.Video.objects.create(
+            channel=channel,
+            title='Test Video',
+            file='video.mp4',
+            thumbnail='thumbnail.jpg',
+            info_json='info.json',
+            provider_object_id='test vidar id',
+        )
+
+        with self.assertLogs('vidar.renamers') as logger:
+            output = renamers.video_rename_all_files(video=video, commit=True)
+            self.assertListEqual([], output)
+
+        expected_logs = [
+            f"INFO:vidar.renamers:Checking video files are named correctly. commit=True {video=}",
+            f"INFO:vidar.renamers:{video.pk=} storage paths already match, video.mp4 does not need renaming.",
+            f"INFO:vidar.renamers:{video.pk=} storage paths already match, info.json does not need renaming.",
+            f"INFO:vidar.renamers:{video.pk=} storage paths already match, thumbnail.jpg does not need renaming."
+        ]
+        self.maxDiff = None
+        self.assertCountEqual(expected_logs, logger.output)
+
+        mock_move.assert_not_called()
+        mock_generator.assert_has_calls((
+            call(video=video, ext='mp4'),
+            call(video=video, ext='info.json', upload_to=video_helpers.upload_to_infojson),
+            call(video=video, ext='jpg', upload_to=video_helpers.upload_to_thumbnail),
+        ))
+        mock_delete.assert_not_called()
+
+        self.assertEqual('video.mp4', video.file.name)
+        self.assertEqual('info.json', video.info_json.name)
+        self.assertEqual('thumbnail.jpg', video.thumbnail.name)
+
+        video.refresh_from_db()
+
+        self.assertEqual('video.mp4', video.file.name)
+        self.assertEqual('info.json', video.info_json.name)
+        self.assertEqual('thumbnail.jpg', video.thumbnail.name)
+
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    @patch('vidar.services.video_services.generate_filepaths_for_storage')
     def test_changing_dir_calls_delete(self, mock_generator, mock_move, mock_delete):
         mock_generator.return_value = ('', pathlib.PurePosixPath('dir 2/video.mp4'))
         mock_move.return_value = 'here in mock 2'
@@ -387,6 +459,9 @@ class RenamerTests(TestCase):
 
         self.assertEqual('dir 2/video.mp4', video.file.name)
 
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    @patch('vidar.services.video_services.generate_filepaths_for_storage')
     def test_call_on_video_with_no_files_does_nothing(self, mock_generator, mock_move, mock_delete):
         channel = models.Channel.objects.create(name='Test Channel')
         video = models.Video.objects.create(
@@ -403,3 +478,147 @@ class RenamerTests(TestCase):
         mock_delete.assert_not_called()
         mock_move.assert_not_called()
         mock_generator.assert_not_called()
+
+    @patch('vidar.helpers.file_helpers.can_file_be_moved')
+    def test_storage_has_no_ability_to_move_files(self, mock_move):
+        mock_move.return_value = False
+
+        video = models.Video.objects.create(title='Test Video')
+        with self.assertRaises(exceptions.FileStorageBackendHasNoMoveError):
+            renamers.video_rename_all_files(video=video, commit=True)
+
+        channel = models.Channel.objects.create(name='Test Channel')
+        with self.assertRaises(exceptions.FileStorageBackendHasNoMoveError):
+            renamers.channel_rename_all_files(channel=channel)
+
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    @patch('vidar.services.channel_services.generate_filepaths_for_storage')
+    def test_channel_rename_all_files_works(self, mock_generator, mock_move, mock_delete):
+        mock_generator.return_value = 'static value'
+        mock_generator.side_effect = [
+            ('', pathlib.PurePosixPath('thumbnail 2.jpg')),
+            ('', pathlib.PurePosixPath('tvart 2.jpg')),
+            ('', pathlib.PurePosixPath('banner 2.jpg')),
+        ]
+        mock_move.return_value = 'here in mock 2'
+
+        channel = models.Channel.objects.create(
+            name='Test Channel',
+            thumbnail='thumbnail.jpg',
+            tvart='tvart.jpg',
+            banner='banner.jpg',
+        )
+
+        output = renamers.channel_rename_all_files(channel=channel, commit=True)
+        self.assertListEqual(['thumbnail', 'tvart', 'banner'], output)
+        mock_move.assert_has_calls((
+            call(pathlib.PurePosixPath('thumbnail.jpg'), pathlib.PurePosixPath('thumbnail 2.jpg')),
+            call(pathlib.PurePosixPath('tvart.jpg'), pathlib.PurePosixPath('tvart 2.jpg')),
+            call(pathlib.PurePosixPath('banner.jpg'), pathlib.PurePosixPath('banner 2.jpg')),
+        ))
+        mock_generator.assert_has_calls((
+            call(channel=channel, field=channel.thumbnail, filename=f'{channel.name}.jpg', upload_to=channel_helpers.upload_to_thumbnail),
+            call(channel=channel, field=channel.tvart, filename='tvart.jpg', upload_to=channel_helpers.upload_to_tvart),
+            call(channel=channel, field=channel.banner, filename='banner.jpg', upload_to=channel_helpers.upload_to_banner),
+        ))
+        mock_delete.assert_not_called()
+
+        self.assertEqual('thumbnail 2.jpg', channel.thumbnail.name)
+        self.assertEqual('tvart 2.jpg', channel.tvart.name)
+        self.assertEqual('banner 2.jpg', channel.banner.name)
+
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    @patch('vidar.services.channel_services.generate_filepaths_for_storage')
+    def test_channel_rename_all_files_storage_already_exists(self, mock_generator, mock_move, mock_delete):
+        mock_generator.return_value = 'static value'
+        mock_generator.side_effect = [
+            ('', pathlib.PurePosixPath('thumbnail.jpg')),
+            ('', pathlib.PurePosixPath('tvart.jpg')),
+            ('', pathlib.PurePosixPath('banner.jpg')),
+        ]
+        mock_move.return_value = 'here in mock 2'
+        channel = models.Channel.objects.create(
+            name='Test Channel',
+            thumbnail='thumbnail.jpg',
+            tvart='tvart.jpg',
+            banner='banner.jpg',
+        )
+
+        with self.assertLogs('vidar.renamers') as logger:
+            output = renamers.channel_rename_all_files(channel=channel, commit=True)
+            self.assertListEqual([], output)
+
+        expected_logs = [
+            f"INFO:vidar.renamers:Checking channel files are named correctly. commit=True {channel=}",
+            f"INFO:vidar.renamers:{channel.pk=} storage paths already match, thumbnail.jpg does not need renaming.",
+            f"INFO:vidar.renamers:{channel.pk=} storage paths already match, tvart.jpg does not need renaming.",
+            f"INFO:vidar.renamers:{channel.pk=} storage paths already match, banner.jpg does not need renaming."
+        ]
+        self.maxDiff = None
+        self.assertCountEqual(expected_logs, logger.output)
+
+        mock_move.assert_not_called()
+        mock_generator.assert_has_calls((
+            call(channel=channel, field=channel.thumbnail, filename=f'{channel.name}.jpg', upload_to=channel_helpers.upload_to_thumbnail),
+            call(channel=channel, field=channel.tvart, filename='tvart.jpg', upload_to=channel_helpers.upload_to_tvart),
+            call(channel=channel, field=channel.banner, filename='banner.jpg', upload_to=channel_helpers.upload_to_banner),
+        ))
+        mock_delete.assert_not_called()
+
+        self.assertEqual('thumbnail.jpg', channel.thumbnail.name)
+        self.assertEqual('tvart.jpg', channel.tvart.name)
+        self.assertEqual('banner.jpg', channel.banner.name)
+
+        channel.refresh_from_db()
+
+        self.assertEqual('thumbnail.jpg', channel.thumbnail.name)
+        self.assertEqual('tvart.jpg', channel.tvart.name)
+        self.assertEqual('banner.jpg', channel.banner.name)
+
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    @patch('vidar.services.video_services.generate_filepaths_for_storage')
+    def test_call_on_channel_with_no_files_does_nothing(self, mock_generator, mock_move, mock_delete):
+        channel = models.Channel.objects.create(name='Test Channel')
+
+        output = renamers.channel_rename_all_files(channel=channel, commit=True)
+        self.assertEqual([], output)
+        self.assertIsNone(channel.thumbnail.name)
+        self.assertIsNone(channel.tvart.name)
+        self.assertIsNone(channel.banner.name)
+
+        mock_delete.assert_not_called()
+        mock_move.assert_not_called()
+        mock_generator.assert_not_called()
+
+    @patch('vidar.renamers.video_rename_all_files')
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    def test_channel_rename_all_videos_with_files(self, mock_move, mock_delete, mock_video_renamer):
+        mock_video_renamer.return_value = ['file']
+        channel = models.Channel.objects.create(name='Test Channel')
+        models.Video.objects.create(title='test video 1', channel=channel, file='test 1.mp4')
+
+        output = renamers.channel_rename_all_files(channel=channel, rename_videos=True)
+        self.assertEqual(['1 videos'], output)
+
+        mock_video_renamer.assert_called_once()
+        mock_delete.assert_not_called()
+        mock_move.assert_not_called()
+
+    @patch('vidar.renamers.video_rename_all_files')
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    def test_channel_rename_all_videos_without_files(self, mock_move, mock_delete, mock_video_renamer):
+        mock_video_renamer.return_value = ['file']
+        channel = models.Channel.objects.create(name='Test Channel')
+        models.Video.objects.create(title='test video 1', channel=channel)
+
+        output = renamers.channel_rename_all_files(channel=channel, rename_videos=True)
+        self.assertEqual([], output)
+
+        mock_video_renamer.assert_not_called()
+        mock_delete.assert_not_called()
+        mock_move.assert_not_called()
