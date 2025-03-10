@@ -319,7 +319,9 @@ Configurable Settings
 
 ``VIDAR_MEDIA_URL`` (default: ``settings.MEDIA_URL``)
 
-``VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING`` (default: ``True``)
+``VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS`` (default: ``True``)
+
+``VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING`` (default: ``False``)
 
 ``VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT`` (default: ``True``)
 

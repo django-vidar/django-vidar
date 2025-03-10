@@ -66,11 +66,6 @@ class Command(BaseCommand):
                 "cron": "14 7 * * *",
             },
             {
-                "name": "vidar: update channel banners",
-                "task": "vidar.tasks.trigger_update_channel_banners",
-                "cron": "0 11 1 * *",
-            },
-            {
                 "name": "vidar: daily update video details",
                 "task": "vidar.tasks.update_video_statuses_and_details",
                 "cron": "3,13,23,33,43,53 6-21 * * *",

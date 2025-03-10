@@ -41,15 +41,6 @@ from vidar.services import (
 log = logging.getLogger(__name__)
 
 
-@shared_task(queue="queue-vidar")
-def trigger_update_channel_banners():
-    yt_ratelimit = app_settings.CHANNEL_BANNER_RATE_LIMIT
-    countdown = 0
-    for channel in Channel.objects.indexing_enabled():
-        update_channel_banners.apply_async(args=[channel.id], countdown=countdown)
-        countdown += yt_ratelimit
-
-
 @shared_task(
     bind=True,
     autoretry_for=(requests.exceptions.ConnectionError, KeyError, AttributeError),
@@ -1467,6 +1458,13 @@ def monthly_maintenances(self):
     log.info("Running monthly maintenances")
 
     signals.pre_monthly_maintenance.send(sender=self.__class__, instance=self)
+
+    if app_settings.MONTHLY_CHANNEL_UPDATE_BANNERS:
+        yt_ratelimit = app_settings.CHANNEL_BANNER_RATE_LIMIT
+        countdown = 0
+        for channel in Channel.objects.indexing_enabled():
+            update_channel_banners.apply_async(args=[channel.pk], countdown=countdown)
+            countdown += yt_ratelimit
 
     if app_settings.MONTHLY_CHANNEL_CRONTAB_BALANCING:
         log.info("Balancing long-term channel scans based on upload schedule seen")

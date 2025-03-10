@@ -221,6 +221,10 @@ class AppSettings(object):
         return self._setting("MEDIA_URL", settings.MEDIA_URL)
 
     @property
+    def MONTHLY_CHANNEL_UPDATE_BANNERS(self):
+        return self._setting("MONTHLY_CHANNEL_UPDATE_BANNERS", False)
+
+    @property
     def MONTHLY_CHANNEL_CRONTAB_BALANCING(self):
         return self._setting("MONTHLY_CHANNEL_CRONTAB_BALANCING", False)
 
