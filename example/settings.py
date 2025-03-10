@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
-
+from django.utils import timezone
 from pathlib import Path
 import environ
 
@@ -126,7 +126,7 @@ AUTHENTICATION_BACKENDS = (
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = env.str('DJANGO_TIME_ZONE', 'UTC')
 
 USE_I18N = True
 
@@ -177,9 +177,9 @@ if CELERY_VISIBILITY_TIMEOUT := env.int('CELERY_VISIBILITY_TIMEOUT', 2 * 60 * 60
 CELERY_ENABLE_UTC = env.bool('CELERY_ENABLE_UTC', True)
 CELERY_RESULT_BACKEND = env.str('CELERY_RESULT_BACKEND', "django-db")
 CELERY_RESULT_EXTENDED = env.bool('CELERY_RESULT_EXTENDED', True)
-CELERY_TASK_ALWAYS_EAGER = env.bool('CELERY_TASK_ALWAYS_EAGER', True)
+CELERY_TASK_ALWAYS_EAGER = env.bool('CELERY_TASK_ALWAYS_EAGER', False)
 CELERY_TASK_DEFAULT_QUEUE = env.str('CELERY_TASK_DEFAULT_QUEUE', "queue-vidar")
-CELERY_TIMEZONE = env.str('CELERY_TIMEZONE', "America/New_York")
+CELERY_TIMEZONE = env.str('CELERY_TIMEZONE', TIME_ZONE)
 CELERY_TRACK_STARTED = env.bool('CELERY_TRACK_STARTED', True)
 CELERY_TASK_TRACK_STARTED = env.bool('CELERY_TASK_TRACK_STARTED', True)
 CELERY_WORKER_PREFETCH_MULTIPLIER = env.int('CELERY_WORKER_PREFETCH_MULTIPLIER', 1)

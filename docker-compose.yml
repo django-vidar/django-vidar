@@ -79,7 +79,7 @@ services:
   celery-worker-main:
     restart: no
     image: ghcr.io/django-vidar/django-vidar:demo
-    command: celery -A example worker -Q celery,django-vidar -O fair --loglevel=INFO  --prefetch-multiplier 1
+    command: celery -A example worker -Q celery,queue-vidar -O fair --loglevel=INFO  --prefetch-multiplier 1
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - DATABASE_URL=postgres://postgres:vidar@db:5432/vidar
