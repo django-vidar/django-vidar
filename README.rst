@@ -86,11 +86,16 @@ To run the demo:
 1. ``git clone https://github.com/django-vidar/django-vidar.git``
 2. The first time you ever run this, you need to run ``docker compose up db redis web`` and wait for the console to show ``web-1 | [2025-03-09 23:59:10 +0000] [1] [INFO] Listening at: http://0.0.0.0:8000 (1)``
 3. ``CTRL+C`` to stop the current containers.
-4. From here on out you can just use ``docker compose up``
+4. On the web service change INIT_VIDAR_DATA=True to False.
+5. From here on out you can just use ``docker compose up``
 
 You can login at ``http://127.0.0.1:8000`` using username ``vidar`` and password ``vidar``.
 
 Any media downloaded in the demo will be stored within ``./cache/media/`` of the repo directory.
+
+If for some reason you don't want to use the celery images, remove them from docker-compose.yml
+and change ``CELERY_TASK_ALWAYS_EAGER=False`` to True. The celery based tasks will run within the
+confines of the web request, your page view will stall while things happen.
 
 Celery
 ======
