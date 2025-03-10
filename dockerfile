@@ -1,6 +1,11 @@
 # pull official base image
 FROM python:3.12-slim-bookworm
 
+RUN apt update -y && \
+    apt install -y --no-install-recommends ffmpeg && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -9,11 +14,9 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 LABEL org.opencontainers.image.source https://github.com/django-vidar/django-vidar
 
 # install dependencies
-RUN python -m pip install --upgrade pip
+RUN python -m pip install psycopg2-binary gunicorn whitenoise
 COPY ./requirements.txt .
 RUN --mount=type=cache,target=/root/.cache pip install -r requirements.txt
-COPY ./requirements-docker.txt .
-RUN --mount=type=cache,target=/root/.cache pip install -r requirements-docker.txt
 
 # set work directory
 WORKDIR /usr/src/app
