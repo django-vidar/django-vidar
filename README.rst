@@ -93,7 +93,7 @@ See `docker`_ below for example commands.
 For simplicity sake I will include the bare minimum changes necessary to make celery work with a django project.
 You will need to replace **myproj** with whatever your project is called.
 
-``mypro/__init__.py``::
+``myproj/__init__.py``::
 
     from __future__ import absolute_import, unicode_literals
 
@@ -148,8 +148,12 @@ Jellyfin
 
 I use Jellyfin with a `plugin called YouTubeMetadata <https://github.com/ankenyr/jellyfin-youtube-metadata-plugin>`_
 
-The default configuration options related to SCHEMA and info json are required as-is for the plugin to work.
+The following configurations and their default values are required for the plugin to work.
 
+- VIDAR_CHANNEL_DIRECTORY_SCHEMA
+- VIDAR_SAVE_INFO_JSON_FILE
+- VIDAR_VIDEO_DIRECTORY_SCHEMA
+- VIDAR_VIDEO_FILENAME_SCHEMA
 
 redis messaging
 ===============
