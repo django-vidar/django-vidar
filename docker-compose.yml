@@ -1,0 +1,102 @@
+services:
+
+  db:
+    restart: no
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=vidar
+      - POSTGRES_USER=postgres
+      - PGUSER=postgres
+      - POSTGRES_PASSWORD=vidar
+    expose:
+      - 5432
+    volumes:
+      - "${DOCKER_DB_ROOT:-./cache/postgres/}:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "db_prod"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+
+  redis:
+    restart: no
+    image: redis:7-alpine
+    expose:
+      - 6379
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+
+  flower:
+    image: mher/flower
+    command: celery flower --persistent=True
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - FLOWER_UNAUTHENTICATED_API=true
+    ports:
+      - "${DOCKER_FLOWER_PORT:-5555}:5555"
+    depends_on:
+      - redis
+
+  web:
+    restart: no
+    image: ghcr.io/django-vidar/django-vidar:demo
+    command: gunicorn example.wsgi:application --bind 0.0.0.0:8000
+    # command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - DATABASE_URL=postgres://postgres:vidar@db:5432/vidar
+      - DJANGO_ALLOWED_HOSTS=127.0.0.1
+      - HEALTH_CHECK_DATABASE=postgres
+      - HEALTH_CHECK_BROKER=redis
+      - DJANGO_SUPERUSER_USERNAME=vidar
+      - DJANGO_SUPERUSER_PASSWORD=vidar
+      - DJANGO_SUPERUSER_EMAIL=test@example.com
+      - INIT_VIDAR_DATA=True
+    ports:
+      - "8000:8000"
+    volumes:
+      # My machine path : Containers internal path
+      - "${DOCKER_MEDIA_ROOT:-./cache/media/}:/media/"
+    depends_on:
+      - db
+      - redis
+
+  celery-beat:
+    restart: no
+    image: ghcr.io/django-vidar/django-vidar:demo
+    command: celery -A example beat --loglevel=INFO
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - DATABASE_URL=postgres://postgres:vidar@db:5432/vidar
+    depends_on:
+      - db
+      - redis
+
+  celery-worker-main:
+    restart: no
+    image: ghcr.io/django-vidar/django-vidar:demo
+    command: celery -A example worker -Q celery,django-vidar -O fair --loglevel=INFO  --prefetch-multiplier 1
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - DATABASE_URL=postgres://postgres:vidar@db:5432/vidar
+    volumes:
+      # My machine path : Containers internal path
+      - "${DOCKER_MEDIA_ROOT:-./cache/media/}:/media/"
+    depends_on:
+      - db
+      - redis
+
+  celery-worker-processor:
+    restart: no
+    image: ghcr.io/django-vidar/django-vidar:demo
+    command: celery -A example worker -Q django-vidar-processor --loglevel=INFO  --concurrency 1
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - DATABASE_URL=postgres://postgres:vidar@db:5432/vidar
+    volumes:
+      # My machine path : Containers internal path
+      - "${DOCKER_MEDIA_ROOT:-./cache/media/}:/media/"
+    depends_on:
+      - db
+      - redis

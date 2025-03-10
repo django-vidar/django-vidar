@@ -11,8 +11,8 @@ Welcome to django-vidar
 
 The purpose? To archive youtube videos from Channels and Playlists based on cron-like scheduling.
 
-Current State? Well, it works with my current django setup. I'm hopeful to get this thing to also run as
-a standalone website using docker. However at this time I have no need for that.
+Current State? Well, it works with my current django setup.
+There is a demo available using the Docker Demo section below.
 
 Requirements
 ============
@@ -72,6 +72,25 @@ Add the following to your settings INSTALLED_APPS::
         'mptt',
         ...
     ]
+
+Demo
+====
+
+In the repo you will find a docker-compose.yml you can test Vidar with.
+
+I primarily work on Windows based machines and the current compose file has worked on Windows 10 and 11
+using Docker Desktop.
+
+To run the demo:
+
+1. ``git clone https://github.com/django-vidar/django-vidar.git``
+2. The first time you ever run this, you need to run ``docker compose up db redis web`` and wait for the console to show ``web-1 | [2025-03-09 23:59:10 +0000] [1] [INFO] Listening at: http://0.0.0.0:8000 (1)``
+3. ``CTRL+C`` to stop the current containers.
+4. From here on out you can just use ``docker compose up``
+
+You can login at ``http://127.0.0.1:8000`` using username ``vidar`` and password ``vidar``.
+
+Any media downloaded in the demo will be stored within ``./cache/media/`` of the repo directory.
 
 Celery
 ======
@@ -181,7 +200,6 @@ your project settings::
 and within one of your template files add the following::
 
     {% include 'vidar/messages-redis.html' %}
-
 
 Configurable Settings
 =====================
