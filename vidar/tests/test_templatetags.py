@@ -841,7 +841,7 @@ class PaginationHelperTests(TestCase):
         output = pagination.paginator_helper(
             context_key='objects',
             queryset=models.Video.objects.all().order_by('id'),
-            params={'page': 1, 'limit': 2, 'search': 'search text'},
+            request_params={'page': 1, 'limit': 2, 'search': 'search text'},
         )
 
         self.assertEqual('?limit=2&search=search+text&', output['pagination_base_url'])
@@ -880,7 +880,7 @@ class PaginationHelperTests(TestCase):
             queryset=models.Video.objects.all().order_by('id'),
             limit=2,
             limit_url_param='limiter',
-            params={'limiter': 15},
+            request_params={'limiter': 15},
         )
         self.assertEqual(7, output['paginator'].num_pages)
 
@@ -889,7 +889,7 @@ class PaginationHelperTests(TestCase):
             queryset=models.Video.objects.all().order_by('id'),
             limit=2,
             limit_url_param='limiter',
-            params={'limiter': 30},
+            request_params={'limiter': 30},
         )
         self.assertEqual(4, output['paginator'].num_pages)
 
@@ -900,7 +900,7 @@ class PaginationHelperTests(TestCase):
             queryset=models.Video.objects.all().order_by('id'),
             page_url_param='page_id',
             limit=3,
-            params={'page_id': 15},
+            request_params={'page_id': 15},
         )
         self.assertEqual(15, output['page_obj'].number)
 
@@ -909,7 +909,7 @@ class PaginationHelperTests(TestCase):
             queryset=models.Video.objects.all().order_by('id'),
             page_url_param='page_id',
             limit=2,
-            params={'page_id': 15},
+            request_params={'page_id': 15},
         )
         self.assertEqual(15, output['page_obj'].number)
 

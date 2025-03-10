@@ -317,7 +317,7 @@ class ChannelDetailView(PermissionRequiredMixin, UseProviderObjectIdMatchingMixi
             paginator_helper(
                 context_key="channel_videos",
                 queryset=qs,
-                params=self.request.GET,
+                request_params=self.request.GET,
                 limit=10,
             )
         )
@@ -870,7 +870,7 @@ class VideoListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin,
                 context_key="object_list",
                 queryset=self.get_queryset(),
                 limit=self.paginate_by,
-                params=self.request.GET,
+                request_params=self.request.GET,
             )
         )
         return kwargs
@@ -1470,7 +1470,7 @@ class VideoRelatedVideosView(PermissionRequiredMixin, RequestBasedCustomQueryset
             paginator_helper(
                 context_key="object_list",
                 queryset=qs,
-                params=self.request.GET,
+                request_params=self.request.GET,
                 limit=10,
             )
         )
@@ -1783,7 +1783,7 @@ class PlaylistListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMix
             paginator_helper(
                 context_key="object_list",
                 queryset=self.object_list,
-                params=self.request.GET,
+                request_params=self.request.GET,
                 limit=limit,
             )
         )
@@ -1839,7 +1839,7 @@ class PlaylistDetailView(PermissionRequiredMixin, DetailView):
             paginator_helper(
                 context_key="playlist_videos",
                 queryset=qs,
-                params=self.request.GET,
+                request_params=self.request.GET,
                 limit=50,
             )
         )
@@ -2006,7 +2006,7 @@ class VideoHistoryListView(PermissionRequiredMixin, ListView):
             paginator_helper(
                 context_key="object_list",
                 queryset=self.get_queryset(),
-                params=self.request.GET,
+                request_params=self.request.GET,
                 limit=self.paginate_by,
             )
         )
@@ -2041,7 +2041,7 @@ class HighlightListView(PermissionRequiredMixin, ListView):
             paginator_helper(
                 context_key="object_list",
                 queryset=self.get_queryset(),
-                params=self.request.GET,
+                request_params=self.request.GET,
                 limit=self.paginate_by,
             )
         )
@@ -2195,7 +2195,7 @@ def update_video_details_queue(request):
     context = paginator_helper(
         context_key="videos",
         queryset=videos_needing_an_update,
-        params=request.GET,
+        request_params=request.GET,
     )
     context["total_checkable_videos"] = videos_that_are_checkable.count()
 
@@ -2384,7 +2384,7 @@ class ScheduleHistoryView(PermissionRequiredMixin, ListView):
             paginator_helper(
                 context_key="object_list",
                 queryset=self.get_queryset(),
-                params=self.request.GET,
+                request_params=self.request.GET,
                 limit=self.paginate_by,
             )
         )
@@ -2403,7 +2403,7 @@ class VideoBlockedListView(PermissionRequiredMixin, RequestBasedQuerysetFilterin
             paginator_helper(
                 context_key="object_list",
                 queryset=self.get_queryset(),
-                params=self.request.GET,
+                request_params=self.request.GET,
             )
         )
         return kwargs
