@@ -35,7 +35,7 @@
         <div class="col-justify-right">
             <p>
                 Bookmark this link to quickly download a video:
-                <a href="javascript:void(window.open('{{ settings.BASE_DOMAIN }}{% url 'vidar:video-create' %}?url='+encodeURIComponent(document.location.href)));">Download Video</a>
+                <a href="javascript:void(window.open('{{ request.build_absolute_uri }}?url='+encodeURIComponent(document.location.href)));">Download Video</a>
             </p>
         </div>
     </div>

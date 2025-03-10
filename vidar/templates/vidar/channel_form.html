@@ -28,7 +28,7 @@
         <div class="col-justify-right">
             <p>
                 Bookmark this link to quickly subscribe to a channel:
-                <a href="javascript:void(window.open('{{ settings.BASE_DOMAIN }}{% url 'vidar:channel-create' %}?url='+encodeURIComponent(document.location.href)));">Subscribe To Channel</a>
+                <a href="javascript:void(window.open('{{ request.build_absolute_uri }}?url='+encodeURIComponent(document.location.href)));">Subscribe To Channel</a>
             </p>
         </div>
     </div>
