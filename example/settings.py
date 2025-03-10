@@ -61,6 +61,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -162,14 +163,15 @@ PASSWORD_HASHERS = [
 
 CELERY_BEAT_MAX_LOOP_INTERVAL = env.int('CELERY_BEAT_MAX_LOOP_INTERVAL', 10)
 CELERY_BEAT_SCHEDULER = env.str('CELERY_BEAT_SCHEDULER', "django_celery_beat.schedulers:DatabaseScheduler")
-CELERY_BROKER_DB = env.int("CELERY_BROKER_DB", 0)
-CELERY_BROKER_HOSTNAME = env.str("CELERY_BROKER_HOSTNAME", '')
-CELERY_BROKER_PORT = env.int("CELERY_BROKER_PORT", 6379)
-CELERY_BROKER_TYPE = env.str('CELERY_BROKER_TYPE', 'redis')
-if CELERY_BROKER_HOSTNAME:
+
+CELERY_BROKER_URL = env.str('CELERY_BROKER_URL', "")
+if not CELERY_BROKER_URL:
+    CELERY_BROKER_TYPE = env.str('CELERY_BROKER_TYPE', 'redis')
+    CELERY_BROKER_HOSTNAME = env.str("CELERY_BROKER_HOSTNAME", '')
+    CELERY_BROKER_PORT = env.int("CELERY_BROKER_PORT", 6379)
+    CELERY_BROKER_DB = env.int("CELERY_BROKER_DB", 0)
     CELERY_BROKER_URL = f"{CELERY_BROKER_TYPE}://{CELERY_BROKER_HOSTNAME}:{CELERY_BROKER_PORT}/{CELERY_BROKER_DB}"
-else:
-    CELERY_BROKER_URL = ""
+
 if CELERY_VISIBILITY_TIMEOUT := env.int('CELERY_VISIBILITY_TIMEOUT', 2 * 60 * 60):
     CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": CELERY_VISIBILITY_TIMEOUT}
 CELERY_ENABLE_UTC = env.bool('CELERY_ENABLE_UTC', True)
