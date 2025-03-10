@@ -45,6 +45,7 @@ services:
     # command: python manage.py runserver 0.0.0.0:8000
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_TASK_ALWAYS_EAGER=False
       - DATABASE_URL=postgres://postgres:vidar@db:5432/vidar
       - DJANGO_ALLOWED_HOSTS=127.0.0.1
       - HEALTH_CHECK_DATABASE=postgres
@@ -69,6 +70,8 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - DATABASE_URL=postgres://postgres:vidar@db:5432/vidar
+      - HEALTH_CHECK_DATABASE=postgres
+      - HEALTH_CHECK_BROKER=redis
     depends_on:
       - db
       - redis
@@ -80,6 +83,8 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - DATABASE_URL=postgres://postgres:vidar@db:5432/vidar
+      - HEALTH_CHECK_DATABASE=postgres
+      - HEALTH_CHECK_BROKER=redis
     volumes:
       # My machine path : Containers internal path
       - "${DOCKER_MEDIA_ROOT:-./cache/media/}:/media/"
@@ -94,6 +99,8 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - DATABASE_URL=postgres://postgres:vidar@db:5432/vidar
+      - HEALTH_CHECK_DATABASE=postgres
+      - HEALTH_CHECK_BROKER=redis
     volumes:
       # My machine path : Containers internal path
       - "${DOCKER_MEDIA_ROOT:-./cache/media/}:/media/"
