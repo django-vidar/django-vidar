@@ -561,8 +561,8 @@ class Channel(models.Model):
 
         for i in Video.objects.distinct("privacy_status").order_by("privacy_status").values_list("privacy_status"):
             i = i[0]
-            base_qs = self.videos.filter(privacy_status=i)
-            videos_counter = base_qs.exclude(file="").aggregate(sumd=models.Sum("file_size"))["sumd"] or 0
+            base_qs = self.videos.filter(privacy_status=i).exclude(file="")
+            videos_counter = base_qs.aggregate(sumd=models.Sum("file_size"))["sumd"] or 0
             if videos_counter:
                 statuses[i] = base_qs.count(), videos_counter
 
@@ -900,6 +900,9 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             if data.get("was_live"):
                 self.is_livestream = True
 
+        if not self.is_video and not self.is_short and not self.is_livestream:
+            self.is_video = True
+
     def duration_as_timedelta(self):
         return datetime.timedelta(seconds=self.duration)
 
@@ -934,6 +937,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
                 shorts_downloaded=F("shorts_downloaded") + int(self.is_short),
                 livestreams_downloaded=F("livestreams_downloaded") + int(self.is_livestream),
             )
+            return True
         except ScanHistory.DoesNotExist:
             pass
 
@@ -1250,15 +1254,28 @@ class VideoHistory(models.Model):
         return self.old_privacy_status != self.new_privacy_status
 
     def diff(self):
+        line_diffs = []
+        titles = []
         if self.title_changed():
-            diff = difflib.Differ().compare(self.old_title.split("\n"), self.new_title.split("\n"))
-            return "\n".join([line for line in diff if not line.startswith(" ")])
+            titles.append("<h3>Title</h3>\n")
+            diff = difflib.Differ().compare(self.old_title.splitlines(), self.new_title.splitlines())
+            line_diffs.append("\n".join([line for line in diff if not line.startswith(" ")]))
         if self.description_changed():
-            diff = difflib.Differ().compare(self.old_description.split("\n"), self.new_description.split("\n"))
-            return "\n".join([line for line in diff if not line.startswith(" ")])
+            titles.append("<h3>Description</h3>\n")
+            diff = difflib.Differ().compare(self.old_description.splitlines(), self.new_description.splitlines())
+            line_diffs.append("\n".join([line for line in diff if not line.startswith(" ")]))
         if self.privacy_status_changed():
-            diff = difflib.Differ().compare(self.old_privacy_status.split("\n"), self.new_privacy_status.split("\n"))
-            return "\n".join([line for line in diff if not line.startswith(" ")])
+            titles.append("<h3>Status</h3>\n")
+            diff = difflib.Differ().compare(self.old_privacy_status.splitlines(), self.new_privacy_status.splitlines())
+            line_diffs.append("\n".join([line for line in diff if not line.startswith(" ")]))
+
+        if len(line_diffs) > 1:
+            output = []
+            for t, l in zip(titles, line_diffs):
+                output.append(t + l)
+            return "\n".join(output)
+
+        return "\n".join(line_diffs)
 
 
 class Playlist(models.Model):
@@ -1621,7 +1638,7 @@ class UserPlaybackHistory(models.Model):
     def considered_fully_played(self):
         if not hasattr(self.user, "vidar_playback_completion_percentage"):
             return False
-        return self.completion_percentage() > (float(self.user.vidar_playback_completion_percentage) * 100)
+        return self.completion_percentage() >= (float(self.user.vidar_playback_completion_percentage) * 100)
 
 
 class DurationSkip(models.Model):
