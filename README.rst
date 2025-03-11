@@ -450,3 +450,20 @@ Configurable Settings
 
 ``VIDAR_VIDEO_LIVE_DOWNLOAD_RETRY_HOURS`` (default: ``6``)
     How many hours to wait before checking if a Live (premiering) video can be downloaded.
+
+``VIDAR_YTDLP_INITIALIZER`` (default: ``None``)
+    Lets you handle the creation of the yt_dlp.YoutubeDL instance.
+
+    If you plan to use a proxy, you will need to assign it yourself.
+    ::
+
+        def my_ytdlp_instance(kwargs):
+            kwargs["proxy"] = "..."
+            kwargs["cookiefile"] = "/home/user/cookies.txt"
+            return yt_dlp.YoutubeDL(kwargs)
+
+        VIDAR_YOUTUBEDL_INITIALIZER = my_ytdlp_instance
+
+        # or put it in a file such as myproj/ytdlp.py and then
+
+        VIDAR_YOUTUBEDL_INITIALIZER = 'myproj.ytdlp.my_ytdlp_instance'

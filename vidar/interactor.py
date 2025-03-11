@@ -2,16 +2,31 @@ import logging
 import time
 from functools import partial
 
+from django.utils.module_loading import import_string
+
 import yt_dlp
 
-from vidar import utils
+from vidar import app_settings, utils
 from vidar.services import redis_services, ytdlp_services
 
 
 log = logging.getLogger(__name__)
 
 
+def _import_callable(path_or_callable):
+    if not hasattr(path_or_callable, "__call__"):
+        ret = import_string(path_or_callable)
+    else:
+        ret = path_or_callable
+    return ret
+
+
 def get_ytdlp(kwargs):
+
+    if user_initializer := app_settings.YTDLP_INITIALIZER:
+        user_initializer_func = _import_callable(user_initializer)
+        return user_initializer_func(kwargs)
+
     if "proxy" not in kwargs:
         if proxy := utils.get_proxy():
             log.info(f"get_ytdlp: Setting kwargs.setdefault proxy to {proxy}")

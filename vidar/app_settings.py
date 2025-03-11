@@ -484,6 +484,9 @@ class AppSettings(object):
             6,
         )
 
+    def YTDLP_INITIALIZER(self):
+        return self._setting("YTDLP_INITIALIZER", None)
+
 
 _app_settings = AppSettings("VIDAR_")
 
