@@ -100,6 +100,7 @@ extend_ignore = [
 ]  # "E501"
 exclude = [
 	"*migrations*",
+	"*tests*",
 ]
 per_file_ignores = [
 	"vidar/urls.py:E501"
