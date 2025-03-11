@@ -684,7 +684,7 @@ class ChannelLivePlaylistsView(PermissionRequiredMixin, UseProviderObjectIdMatch
 
     def dispatch(self, request, *args, **kwargs):
         self.object = self.get_object()
-        self.live_playlists = YTDLPInteractor.channel_playlists(self.object.provider_object_id)
+        self.live_playlists = YTDLPInteractor.channel_playlists(self.object.provider_object_id, instance=self.object)
         if not self.live_playlists:
             messages.error(request, "Channel has no playlists")
             return redirect(self.object)
@@ -1281,7 +1281,7 @@ def video_sub_to_channel(request, pk):
     video = get_object_or_404(Video, pk=pk)
     channel_provider_object_id = video.channel_provider_object_id
     if not channel_provider_object_id:
-        data = YTDLPInteractor.video_details(url=video.url)
+        data = YTDLPInteractor.video_details(url=video.url, instance=video)
         video.channel_provider_object_id = data["channel_id"]
         video.save()
     url = reverse_lazy("vidar:channel-create")
@@ -1716,7 +1716,7 @@ class VideoManageView(PermissionRequiredMixin, DetailView):
         if "block" in request.POST:
             video_services.block(video=self.object)
         if "refresh_thumbnail" in request.POST:
-            dlp_output = YTDLPInteractor.video_details(self.object.url, quiet=True)
+            dlp_output = YTDLPInteractor.video_details(self.object.url, quiet=True, instance=self.object)
             video_services.load_thumbnail_from_info_json(video=self.object, info_json_data=dlp_output)
         return HttpResponseRedirect(reverse("vidar:video-manage", args=[pk]) + f"#{url_anchor}")
 

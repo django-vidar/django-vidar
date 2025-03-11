@@ -454,10 +454,21 @@ Configurable Settings
 ``VIDAR_YTDLP_INITIALIZER`` (default: ``None``)
     Lets you handle the creation of the yt_dlp.YoutubeDL instance.
 
-    If you plan to use a proxy, you will need to assign it yourself.
+    Function must accept ``action`` and ``instance``.
+
+    - ``action`` is str and will be one of the following
+        - ``playlist_details``
+        - ``video_download``
+        - ``video_details``
+        - ``channel_details``
+        - ``channel_videos``
+        - ``channel_playlists``
+    - ``instance`` could be an object of type ``Video``, ``Channel``, ``Playlist``, or not given at all.
+        Be sure to assign a default as seen below.
+
     ::
 
-        def my_ytdlp_instance(kwargs):
+        def my_ytdlp_instance(action, instance=None, **kwargs):
             kwargs["proxy"] = "..."
             kwargs["cookiefile"] = "/home/user/cookies.txt"
             return yt_dlp.YoutubeDL(kwargs)

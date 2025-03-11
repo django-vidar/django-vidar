@@ -21,18 +21,32 @@ def _import_callable(path_or_callable):
     return ret
 
 
+def _clean_kwargs(kwargs):
+    # These are passed for the user_initializer, otherwise they need to be stripped.
+    if 'instance' in kwargs:
+        kwargs.pop('instance')
+    if 'action' in kwargs:
+        kwargs.pop('action')
+
+
 def get_ytdlp(kwargs):
 
     if user_initializer := app_settings.YTDLP_INITIALIZER:
         user_initializer_func = _import_callable(user_initializer)
-        return user_initializer_func(kwargs)
+        ret = user_initializer_func(**kwargs)
+        _clean_kwargs(kwargs)
 
-    if "proxy" not in kwargs:
-        if proxy := utils.get_proxy():
-            log.info(f"get_ytdlp: Setting kwargs.setdefault proxy to {proxy}")
-            kwargs.setdefault("proxy", proxy)
+    else:
+        _clean_kwargs(kwargs)
+
+        if "proxy" not in kwargs:
+            if proxy := utils.get_proxy():
+                log.info(f"get_ytdlp: Setting kwargs.setdefault proxy to {proxy}")
+                kwargs.setdefault("proxy", proxy)
+
+        ret = yt_dlp.YoutubeDL(kwargs)
     log.debug(kwargs)
-    return yt_dlp.YoutubeDL(kwargs)
+    return ret
 
 
 class YTDLPInteractor:
@@ -47,7 +61,7 @@ class YTDLPInteractor:
         kwargs.setdefault("ignoreerrors", ignore_errors)
         kwargs.setdefault("noplaylist", True)
         kwargs.setdefault("check_formats", "none")
-
+        kwargs['action'] = 'playlist_details'
         with get_ytdlp(kwargs) as ydl:
             return ydl.extract_info(url, download=False)
 
@@ -71,6 +85,8 @@ class YTDLPInteractor:
         #     }
         # ])
 
+        kwargs['actions'] = "video_download"
+
         with get_ytdlp(kwargs) as ydl:
             return ydl.extract_info(url, download=True), kwargs
 
@@ -80,7 +96,7 @@ class YTDLPInteractor:
         kwargs.setdefault("quiet", False)
         kwargs.setdefault("skip_download", True)
         kwargs.setdefault("extract_flat", True)
-
+        kwargs['action'] = "video_details"
         with get_ytdlp(kwargs) as ydl:
             return ydl.extract_info(url)
 
@@ -111,7 +127,7 @@ class YTDLPInteractor:
             )
 
             kwargs.update(extractor_args)
-
+        kwargs['action'] = "video_comments"
         with get_ytdlp(kwargs) as ydl:
             return ydl.extract_info(url, download=False)
 
@@ -122,7 +138,7 @@ class YTDLPInteractor:
         kwargs.setdefault("skip_download", True)
         # kwargs.setdefault('extract_flat', True)
         kwargs.setdefault("playlist_items", "1,0")
-
+        kwargs['action'] = "channel_details"
         with get_ytdlp(kwargs) as ydl:
             return ydl.extract_info(url, download=False)
 
@@ -134,6 +150,7 @@ class YTDLPInteractor:
         kwargs.setdefault("extract_flat", False)
         kwargs.setdefault("ignoreerrors", True)
         # kwargs.setdefault('sleep_interval_requests', 2)
+        kwargs['action'] = "channel_videos"
 
         if limit:
             kwargs["playlistend"] = limit
@@ -147,7 +164,7 @@ class YTDLPInteractor:
         kwargs.setdefault("skip_download", True)
         kwargs.setdefault("extract_flat", True)
         kwargs.setdefault("ignoreerrors", True)
-
+        kwargs['action'] = "channel_playlists"
         with get_ytdlp(kwargs) as ydl:
             return ydl.extract_info(
                 f"https://www.youtube.com/channel/{youtube_id}" f"/playlists?view=1&sort=dd&shelf_id=0", download=False
