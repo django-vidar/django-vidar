@@ -69,6 +69,7 @@ services:
     command: celery -A example beat --loglevel=INFO
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_TASK_ALWAYS_EAGER=False
       - DATABASE_URL=postgres://postgres:vidar@db:5432/vidar
       - HEALTH_CHECK_DATABASE=postgres
       - HEALTH_CHECK_BROKER=redis
@@ -76,12 +77,13 @@ services:
       - db
       - redis
 
-  celery-worker-main:
+  celery-worker:
     restart: no
     image: ghcr.io/django-vidar/django-vidar:demo
     command: celery -A example worker -Q celery,queue-vidar -O fair --loglevel=INFO  --prefetch-multiplier 1
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_TASK_ALWAYS_EAGER=False
       - DATABASE_URL=postgres://postgres:vidar@db:5432/vidar
       - HEALTH_CHECK_DATABASE=postgres
       - HEALTH_CHECK_BROKER=redis
@@ -98,6 +100,7 @@ services:
     command: celery -A example worker -Q django-vidar-processor --loglevel=INFO  --concurrency 1
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_TASK_ALWAYS_EAGER=False
       - DATABASE_URL=postgres://postgres:vidar@db:5432/vidar
       - HEALTH_CHECK_DATABASE=postgres
       - HEALTH_CHECK_BROKER=redis
