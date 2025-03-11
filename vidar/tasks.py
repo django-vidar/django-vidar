@@ -808,18 +808,14 @@ def download_provider_video(
 
         celery_helpers.object_lock_release(obj=video)
 
-        if "downloads" not in video.system_notes:
-            video.system_notes["downloads"] = []
-
-        video.system_notes["downloads"].append(
-            {
-                "dl_kwargs": dl_kwargs,
-                "status": "failure",
-                "traceback": traceback.format_exc(),
-                "timestamp": timezone.now().isoformat(),
-            }
+        video.set_latest_download_stats(
+            dl_kwargs=dl_kwargs,
+            status="failure",
+            traceback=traceback.format_exc(),
+            timestamp=timezone.now(),
+            commit=False,
         )
-        video.save_system_notes(dl_kwargs)
+        video.save_system_notes(dl_kwargs, commit=False)
         video.save()
 
         if ytdlp_services.exception_is_live_event(exc):
@@ -905,44 +901,37 @@ def download_provider_video(
     if "downloads" not in video.system_notes:
         video.system_notes["downloads"] = []
 
-    video.system_notes["downloads"].append(
-        {
-            "status": "success",
-            "quality": video.quality,
-            "selected_quality": selected_quality,
-            "at_max_quality": video.at_max_quality,
-            "timestamp": timezone.now().isoformat(),
-            "dl_kwargs": dl_kwargs,
-            "used_dl_kwargs": used_dl_kwargs,
-            "raw_file_path": str(filepath),
-            "download_started": download_started.isoformat(),
-            "download_finished": timezone.now().isoformat(),
-        }
+    video.set_latest_download_stats(
+        status="success",
+        quality=video.quality,
+        selected_quality=selected_quality,
+        at_max_quality=video.at_max_quality,
+        dl_kwargs=dl_kwargs,
+        used_dl_kwargs=used_dl_kwargs,
+        raw_file_path=str(filepath),
+        download_started=download_started,
+        download_finished=timezone.now(),
+        task_source=task_source,
     )
-    video.save()
 
     post_download_processing.apply_async(
         kwargs=dict(
             pk=video.pk,
             filepath=str(filepath),
-            download_started=download_started.isoformat(),
-            download_finished=timezone.now().isoformat(),
-            task_source=task_source,
         ),
         countdown=1,
     )
 
 
 @shared_task(bind=True, queue="queue-vidar")
-def post_download_processing(self, pk, filepath, **kwargs):
+def post_download_processing(self, pk, filepath):
     # NOTE: update celery_helpers if you change this task name
 
     filepath = pathlib.Path(filepath)
 
     with transaction.atomic():
         video = Video.objects.select_for_update().get(pk=pk)
-        video.system_notes["processing_started"] = timezone.now().isoformat()
-        video.save()
+        video.append_to_latest_download_stats(processing_started=timezone.now())
 
     c = chain()
 
@@ -965,7 +954,7 @@ def post_download_processing(self, pk, filepath, **kwargs):
         c |= write_file_to_storage.si(pk=pk, filepath=str(filepath), field_name="file")
         c |= delete_cached_file.s()
 
-    c |= video_downloaded_successfully.si(pk=pk, processing_started=timezone.now().isoformat(), **kwargs)
+    c |= video_downloaded_successfully.si(pk=pk)
 
     c()
     return True
@@ -1069,7 +1058,7 @@ def load_video_thumbnail(pk, url):
 
 
 @shared_task(bind=True, queue="queue-vidar")
-def video_downloaded_successfully(self, pk, **kwargs):
+def video_downloaded_successfully(self, pk):
 
     video = Video.objects.get(pk=pk)
 
@@ -1097,12 +1086,11 @@ def video_downloaded_successfully(self, pk, **kwargs):
         instance=video,
     )
 
-    notification_services.video_downloaded(video=video, processing_finished=timezone.now(), **kwargs)
-
     with transaction.atomic():
         video = Video.objects.select_for_update().get(pk=pk)
-        video.system_notes["processing_finished"] = timezone.now().isoformat()
-        video.save()
+        video.append_to_latest_download_stats(processing_finished=timezone.now())
+
+    notification_services.video_downloaded(video=video)
 
     if video_services.should_download_comments(video=video):
         download_provider_video_comments.delay(pk=pk)

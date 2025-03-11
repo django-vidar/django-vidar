@@ -1705,14 +1705,11 @@ class VideoManageView(PermissionRequiredMixin, DetailView):
             messages.success(request, "Extra File Deleted")
             url_anchor = "extrafiles"
         if "retry-processing" in request.POST:
-            download_data = self.object.system_notes["downloads"][-1]
+            download_data = self.object.get_latest_download_stats()
 
             tasks.post_download_processing.delay(
                 pk=self.object.pk,
                 filepath=download_data["raw_file_path"],
-                download_started=download_data["download_started"],
-                download_finished=download_data["download_finished"],
-                task_source="Manual video retry",
             )
         if "unblock" in request.POST:
             video_services.unblock(self.object.provider_object_id)

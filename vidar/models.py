@@ -953,14 +953,15 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
         self.download_kwargs = kwargs
         self.save()
 
-    def save_system_notes(self, kwargs):
+    def save_system_notes(self, kwargs, commit=True):
 
         if "proxy" in kwargs:
             proxies_attempted = self.system_notes.get("proxies_attempted", [])
             proxies_attempted.append(kwargs["proxy"])
             self.system_notes["proxies_attempted"] = proxies_attempted
 
-            self.save()
+            if commit:
+                self.save()
 
     def at_max_download_errors_for_period(self, period=None):
         if period is None:
@@ -1114,6 +1115,43 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
         video.save()
 
         return video, created
+
+    def set_latest_download_stats(self, commit=True, **kwargs):
+        if "downloads" not in self.system_notes:
+            self.system_notes["downloads"] = []
+
+        # auto convert datetime into isoformat
+        for k, v in kwargs.items():
+            if hasattr(v, "isoformat"):
+                kwargs[k] = v.isoformat()
+
+        self.system_notes["downloads"].append(kwargs)
+        if commit:
+            self.save()
+
+        return kwargs
+
+    def get_latest_download_stats(self) -> dict:
+        if not self.system_notes.get("downloads"):
+            return {}
+        return self.system_notes["downloads"][-1]
+
+    def append_to_latest_download_stats(self, commit=True, **kwargs):
+        latest = self.get_latest_download_stats()
+
+        # auto convert datetime into isoformat
+        for k, v in kwargs.items():
+            if hasattr(v, "isoformat"):
+                kwargs[k] = v.isoformat()
+
+        if latest:
+            latest.update(kwargs)
+            if commit:
+                self.save()
+        else:
+            return self.set_latest_download_stats(commit=commit, **kwargs)
+
+        return latest
 
 
 class VideoBlocked(models.Model):

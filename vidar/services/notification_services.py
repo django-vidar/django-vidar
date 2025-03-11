@@ -52,13 +52,17 @@ def send_message(message, title=None):
         log.exception("Failed to send gotify notification")
 
 
-def video_downloaded(video, task_source, download_started, download_finished, processing_started, processing_finished):
+def video_downloaded(video):
 
     if not app_settings.NOTIFICATIONS_VIDEO_DOWNLOADED:
         return
 
     if video.channel and not video.channel.send_download_notification:
         return
+
+    latest_download = video.get_latest_download_stats()
+
+    task_source = latest_download.get("task_source")
 
     quality = "C"
     if video.quality == 0:
@@ -80,26 +84,33 @@ def video_downloaded(video, task_source, download_started, download_finished, pr
             return value
         return timezone.datetime.fromisoformat(value)
 
-    download_started = isoformat_or_now(download_started)
-    download_finished = isoformat_or_now(download_finished)
-    processing_started = isoformat_or_now(processing_started)
-    processing_finished = isoformat_or_now(processing_finished)
+    def calculate_timer(started, finished):
+        timer = None
+        if started and finished:
+            started = isoformat_or_now(started)
+            finished = isoformat_or_now(finished)
+            timer = finished - started
+        return started, finished, timer
 
-    convert_to_audio_started = video.system_notes.get("convert_video_to_audio_started")
-    convert_to_audio_finished = video.system_notes.get("convert_video_to_audio_finished")
-    convert_to_audio_timer = None
-    if convert_to_audio_started and convert_to_audio_finished:
-        convert_to_audio_started = isoformat_or_now(convert_to_audio_started)
-        convert_to_audio_finished = isoformat_or_now(convert_to_audio_finished)
-        convert_to_audio_timer = convert_to_audio_finished - convert_to_audio_started
+    convert_to_audio_started, convert_to_audio_finished, convert_to_audio_timer = calculate_timer(
+        started=latest_download.get("convert_video_to_audio_started"),
+        finished=latest_download.get("convert_video_to_audio_finished"),
+    )
 
-    convert_to_mp4_started = video.system_notes.get("convert_video_to_mp4_started")
-    convert_to_mp4_finished = video.system_notes.get("convert_video_to_mp4_finished")
-    convert_to_mp4_timer = None
-    if convert_to_mp4_started and convert_to_mp4_finished:
-        convert_to_mp4_started = isoformat_or_now(convert_to_mp4_started)
-        convert_to_mp4_finished = isoformat_or_now(convert_to_mp4_finished)
-        convert_to_mp4_timer = convert_to_mp4_finished - convert_to_mp4_started
+    convert_to_mp4_started, convert_to_mp4_finished, convert_to_mp4_timer = calculate_timer(
+        started=latest_download.get("convert_video_to_mp4_started"),
+        finished=latest_download.get("convert_video_to_mp4_finished"),
+    )
+
+    processing_started, processing_finished, processing_timer = calculate_timer(
+        started=latest_download.get("processing_started"),
+        finished=latest_download.get("processing_finished"),
+    )
+
+    download_started, download_finished, download_timer = calculate_timer(
+        started=latest_download.get("download_started"),
+        finished=latest_download.get("download_finished"),
+    )
 
     try:
         video_duration = video.duration_as_timedelta()
@@ -109,7 +120,7 @@ def video_downloaded(video, task_source, download_started, download_finished, pr
     msg_output = [
         f"{video.upload_date:%Y-%m-%d} - {video}\n{video_duration}",
         f"Filesize: {file_size}",
-        f"Download Timer: {download_finished - download_started}",
+        f"Download Timer: {download_timer}",
     ]
 
     if convert_to_audio_timer:
