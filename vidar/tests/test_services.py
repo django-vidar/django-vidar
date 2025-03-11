@@ -1770,12 +1770,11 @@ class SchemaServicesTests(TestCase):
 class YtdlpServicesDLPFormatsTest(SimpleTestCase):
 
     def setUp(self) -> None:
-        with open('vidar/tests/tests_fixture.json', 'r') as f:
-            self.fixture_data = json.load(f)
-        self.dlp_formats = self.fixture_data['dlp_formats']
+        with open('vidar/tests/dlp_formats.json', 'r') as f:
+            self.dlp_formats = json.load(f)["formats"]
 
     def test_get_highest_quality_from_video_dlp_formats(self):
-        self.assertEqual(1080, ytdlp_services.get_highest_quality_from_video_dlp_formats(self.dlp_formats))
+        self.assertEqual(2160, ytdlp_services.get_highest_quality_from_video_dlp_formats(self.dlp_formats))
 
     def test_is_quality_at_higher_quality_than_possible_from_dlp_formats(self):
         self.assertFalse(ytdlp_services.is_quality_at_higher_quality_than_possible_from_dlp_formats(self.dlp_formats, 144))
@@ -1784,7 +1783,7 @@ class YtdlpServicesDLPFormatsTest(SimpleTestCase):
         self.assertFalse(ytdlp_services.is_quality_at_higher_quality_than_possible_from_dlp_formats(self.dlp_formats, 480))
         self.assertFalse(ytdlp_services.is_quality_at_higher_quality_than_possible_from_dlp_formats(self.dlp_formats, 720))
         self.assertFalse(ytdlp_services.is_quality_at_higher_quality_than_possible_from_dlp_formats(self.dlp_formats, 1080))
-        self.assertTrue(ytdlp_services.is_quality_at_higher_quality_than_possible_from_dlp_formats(self.dlp_formats, 2048))
+        self.assertFalse(ytdlp_services.is_quality_at_higher_quality_than_possible_from_dlp_formats(self.dlp_formats, 2048))
         self.assertTrue(ytdlp_services.is_quality_at_higher_quality_than_possible_from_dlp_formats(self.dlp_formats, 4096))
 
     def test_is_quality_at_highest_quality_from_dlp_formats(self):
@@ -1793,20 +1792,22 @@ class YtdlpServicesDLPFormatsTest(SimpleTestCase):
         self.assertFalse(ytdlp_services.is_quality_at_highest_quality_from_dlp_formats(self.dlp_formats, 360))
         self.assertFalse(ytdlp_services.is_quality_at_highest_quality_from_dlp_formats(self.dlp_formats, 480))
         self.assertFalse(ytdlp_services.is_quality_at_highest_quality_from_dlp_formats(self.dlp_formats, 720))
-        self.assertTrue(ytdlp_services.is_quality_at_highest_quality_from_dlp_formats(self.dlp_formats, 1080))
-        self.assertTrue(ytdlp_services.is_quality_at_highest_quality_from_dlp_formats(self.dlp_formats, 2048))
+        self.assertFalse(ytdlp_services.is_quality_at_highest_quality_from_dlp_formats(self.dlp_formats, 1080))
+        self.assertFalse(ytdlp_services.is_quality_at_highest_quality_from_dlp_formats(self.dlp_formats, 2048))
         self.assertTrue(ytdlp_services.is_quality_at_highest_quality_from_dlp_formats(self.dlp_formats, 4096))
 
     def test_get_higher_qualities_from_video_dlp_formats(self):
-        self.assertEqual({240, 360, 480, 720, 1080}, ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 144))
-        self.assertEqual({360, 480, 720, 1080}, ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 240))
-        self.assertEqual({480, 720, 1080}, ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 360))
-        self.assertEqual({720, 1080}, ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 480))
-        self.assertEqual({1080}, ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 720))
-        self.assertEqual(set(), ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 1080))
+        self.assertEqual({240, 360, 480, 720, 1080, 1440, 2160}, ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 144))
+        self.assertEqual({360, 480, 720, 1080, 1440, 2160}, ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 240))
+        self.assertEqual({480, 720, 1080, 1440, 2160}, ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 360))
+        self.assertEqual({720, 1080, 1440, 2160}, ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 480))
+        self.assertEqual({1080, 1440, 2160}, ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 720))
+        self.assertEqual({1440, 2160}, ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 1080))
+        self.assertEqual({2160}, ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 1440))
+        self.assertEqual(set(), ytdlp_services.get_higher_qualities_from_video_dlp_formats(self.dlp_formats, 2160))
 
     def test_get_possible_qualities_from_dlp_formats(self):
-        expected_values = [144, 240, 360, 480, 720, 1080]
+        expected_values = [144, 240, 360, 480, 720, 1080, 1440, 2160]
         values = ytdlp_services.get_possible_qualities_from_dlp_formats(self.dlp_formats)
 
         for ev in expected_values:
@@ -1835,9 +1836,13 @@ class YtdlpServicesDLPFormatsTest(SimpleTestCase):
 class YtdlpServicesDLPResponseTest(SimpleTestCase):
 
     def get_fixture_data(self):
-        with open('vidar/tests/tests_fixture.json', 'r') as f:
-            self.fixture_data = json.load(f)
-        self.dlp_response = self.fixture_data['dlp_response']
+        # yt-dlp https://www.youtube.com/watch?v=6CmX4ZmhwPM --format wv --write-info-json
+        # open json, del heatmap, write dlp_formats, del formats, write response.
+        with open('vidar/tests/dlp_response.json', 'r') as f:
+            self.dlp_response = json.load(f)
+        with open('vidar/tests/dlp_formats.json', 'r') as f:
+            self.dlp_response["formats"] = json.load(f)["formats"]
+
         return self.dlp_response
 
     def test_fixture_is_video_at_highest_quality_from_dlp_response(self):
@@ -1857,7 +1862,7 @@ class YtdlpServicesDLPResponseTest(SimpleTestCase):
 
     def test_fixture_get_higher_qualities_from_video_dlp_response(self):
         dlp_response = self.get_fixture_data()
-        self.assertEqual({1080, 1440, 2160}, ytdlp_services.get_higher_qualities_from_video_dlp_response(dlp_response))
+        self.assertEqual({240, 360, 480, 720, 1080, 1440, 2160}, ytdlp_services.get_higher_qualities_from_video_dlp_response(dlp_response))
         self.assertEqual({240, 360, 480, 720, 1080, 1440, 2160}, ytdlp_services.get_higher_qualities_from_video_dlp_response(dlp_response, 144))
         self.assertEqual({360, 480, 720, 1080, 1440, 2160}, ytdlp_services.get_higher_qualities_from_video_dlp_response(dlp_response, 240))
         self.assertEqual({480, 720, 1080, 1440, 2160}, ytdlp_services.get_higher_qualities_from_video_dlp_response(dlp_response, 360))
@@ -1869,7 +1874,7 @@ class YtdlpServicesDLPResponseTest(SimpleTestCase):
 
     def test_fixture_get_video_downloaded_quality_from_dlp_response(self):
         dlp_response = self.get_fixture_data()
-        self.assertEqual(720, ytdlp_services.get_video_downloaded_quality_from_dlp_response(dlp_response))
+        self.assertEqual(144, ytdlp_services.get_video_downloaded_quality_from_dlp_response(dlp_response))
 
     def test_is_video_at_highest_quality_from_dlp_response(self):
         highest_quality_response = {
