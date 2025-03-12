@@ -21,6 +21,7 @@ from django.views.static import serve
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path("tests/", include("exampleapp.urls")),
     path('', include('vidar.urls')),
 ]
 

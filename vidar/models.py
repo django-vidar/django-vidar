@@ -337,7 +337,7 @@ class Channel(models.Model):
         ordering = ["name"]
 
     def __str__(self):
-        return self.display_name or self.name
+        return self.display_name or self.name or str(self.pk)
 
     def get_absolute_url(self):
         return reverse("vidar:channel-details", args=[self.slug or self.pk])

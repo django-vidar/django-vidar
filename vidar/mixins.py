@@ -54,6 +54,8 @@ class RequestBasedCustomQuerysetFilteringMixin:
             if not q:
                 return qs
 
+            comparator = self.RequestBaseFilteringDefaultSearchComparator
+
             if self.RequestBaseFilteringSearchValueSeparator in q:
 
                 field, q = q.split(self.RequestBaseFilteringSearchValueSeparator, 1)
@@ -62,11 +64,13 @@ class RequestBasedCustomQuerysetFilteringMixin:
 
                 if q.lower() in ["true", "false"]:
                     q = q.lower() == "true"
+                    comparator = ""
                 elif q.lower() == "none":
                     q = None
+                    comparator = ""
 
                 if "__" not in field:
-                    field = f"{field}{self.RequestBaseFilteringDefaultSearchComparator}"
+                    field = f"{field}{comparator}"
 
                 try:
                     qs = qs.filter(**{field: q})

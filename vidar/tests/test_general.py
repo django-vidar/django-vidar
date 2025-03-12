@@ -9,6 +9,7 @@ from django.shortcuts import reverse
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission, Group
 from django.utils import timezone
+from django.db.models import Case
 
 from example import settings
 from vidar import models, forms, renamers, json_encoders, exceptions, app_settings, interactor, utils
@@ -853,3 +854,37 @@ class UtilsTests(TestCase):
 
         output = utils.get_proxy(previous_proxies=['passed into utils.get_proxy'], attempt=100)
         self.assertEqual(dict(previous_proxies=["passed into utils.get_proxy"], instance=None, attempt=100), output)
+
+    def test_get_channel_ordering_by_next_crontab_whens(self):
+        ts = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
+        channel1 = models.Channel.objects.create(scanner_crontab='10 9 * * *', index_videos=True)
+        channel2 = models.Channel.objects.create(scanner_crontab='20 9 * * *', index_videos=True)
+        channel3 = models.Channel.objects.create(scanner_crontab='30 9 * * *', index_videos=True)
+
+        whens = utils.get_channel_ordering_by_next_crontab_whens()
+        channels = (
+            models.Channel.objects.all()
+                .annotate(channel_next_based_order=Case(*whens, default=10000))
+                .order_by("channel_next_based_order", "name")
+        )
+
+        self.assertEqual(channel1, channels[0])
+        self.assertEqual(channel2, channels[1])
+        self.assertEqual(channel3, channels[2])
+
+    def test_get_channel_ordering_by_next_crontab_whens_odd_order(self):
+        ts = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
+        channel1 = models.Channel.objects.create(scanner_crontab='10 9 * * *', index_videos=True)
+        channel2 = models.Channel.objects.create(scanner_crontab='30 9 * * *', index_videos=True)
+        channel3 = models.Channel.objects.create(scanner_crontab='20 9 * * *', index_videos=True)
+
+        whens = utils.get_channel_ordering_by_next_crontab_whens()
+        channels = (
+            models.Channel.objects.all()
+                .annotate(channel_next_based_order=Case(*whens, default=10000))
+                .order_by("channel_next_based_order", "name")
+        )
+
+        self.assertEqual(channel1, channels[0])
+        self.assertEqual(channel3, channels[1])
+        self.assertEqual(channel2, channels[2])

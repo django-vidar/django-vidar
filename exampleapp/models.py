@@ -33,3 +33,14 @@ class User(AbstractUser):
         choices=PlaybackVolume.choices,
         verbose_name="Vidar - Default Volume",
     )
+
+
+class TestModel(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+
+    search_field = models.TextField(blank=True)
+
+    boolean_field = models.BooleanField(null=True, blank=True)
+
+    def get_absolute_url(self):
+        return "TestModelURL"
