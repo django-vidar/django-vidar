@@ -24,7 +24,6 @@ from django_celery_results.models import TaskResult
 from vidar import app_settings, helpers, interactor, oneoffs, renamers, signals, utils
 from vidar.exceptions import FileStorageBackendHasNoMoveError
 from vidar.helpers import celery_helpers, channel_helpers, file_helpers, statistics_helpers
-from vidar.interactor import OutputCapturer, interactor_channel_videos_with_retry
 from vidar.models import Channel, Comment, Playlist, PlaylistItem, Video
 from vidar.services import (
     channel_services,
@@ -281,14 +280,10 @@ def fully_index_channel(self, pk, limit=None):
         log.info("No targets for full indexing")
         return
 
-    msg_logger = partial(OutputCapturer, callback_func=redis_services.channel_indexing, channel=channel)
+    msg_logger = partial(utils.OutputCapturer, callback_func=redis_services.channel_indexing, channel=channel)
 
     for target_name, target_data in targets.items():
-        chan = interactor_channel_videos_with_retry(
-            url=target_data["url"],
-            limit=limit,
-            logger=msg_logger(),
-        )
+        chan = interactor.func_with_retry(url=target_data["url"], limit=limit, logger=msg_logger())
 
         if not chan:
             continue
@@ -345,10 +340,10 @@ def scan_channel_for_new_content(
 
     dl_kwargs = {}
 
-    msg_logger = partial(OutputCapturer, callback_func=redis_services.channel_indexing, channel=channel)
+    msg_logger = partial(utils.OutputCapturer, callback_func=redis_services.channel_indexing, channel=channel)
 
     try:
-        chan = interactor_channel_videos_with_retry(
+        chan = interactor.func_with_retry(
             url=url, limit=limit or channel.scanner_limit, logger=msg_logger(), **dl_kwargs
         )
     except yt_dlp.DownloadError as exc:
@@ -1262,7 +1257,7 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
 
     playlist = Playlist.objects.get(pk=pk)
 
-    msg_logger = partial(OutputCapturer, callback_func=redis_services.playlist_indexing, playlist=playlist)
+    msg_logger = partial(utils.OutputCapturer, callback_func=redis_services.playlist_indexing, playlist=playlist)
 
     output = interactor.playlist_details(
         playlist.url,

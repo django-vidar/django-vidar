@@ -262,6 +262,46 @@ def should_halve_download_limit(duration):
             return True
 
 
+class OutputCapturer:
+    """
+    from functools import partial
+
+    def print_messages(msg, **kwargs):
+        # kwargs will contain at a minimum the following keys:
+        #   _type: 'info', 'debug', 'error', or 'warning'
+        #   any parameters passed to the partial callback initialization
+
+        print(msg, kwargs)
+
+    interactor_capture = partial(OutputCapturer, callback_func=print_messages)
+
+    ytdlp_kwargs = {
+        'logger': interactor_capture(),
+    }
+
+    """
+
+    def __init__(self, callback_func=None, **kwargs):
+        self.callback_func = callback_func
+        self.kwargs = kwargs or {}
+
+    def msg_received(self, msg, _type):
+        if callable(self.callback_func):
+            self.callback_func(msg, _type=_type, **self.kwargs)
+
+    def info(self, msg):
+        self.msg_received(msg, "info")
+
+    def debug(self, msg):
+        self.msg_received(msg, "debug")
+
+    def error(self, msg):
+        self.msg_received(msg, "error")
+
+    def warning(self, msg):
+        self.msg_received(msg, "warning")
+
+
 # def get_next_best_crontab(base_crons=None):
 #     if not base_crons:
 #         base_crons = ['6-20/2 * * *', '7-21/2 * * *']

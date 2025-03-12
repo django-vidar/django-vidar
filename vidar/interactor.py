@@ -156,11 +156,11 @@ def channel_playlists(youtube_id, **kwargs):
         )
 
 
-def interactor_channel_videos_with_retry(url, sleep=5, **dl_kwargs):
+def func_with_retry(url, sleep=5, func=channel_videos, **dl_kwargs):
 
     for x in range(2):
 
-        chan = channel_videos(url=url, **dl_kwargs)
+        chan = func(url=url, **dl_kwargs)
 
         if not chan or not chan["entries"]:
             time.sleep(sleep)
@@ -169,46 +169,6 @@ def interactor_channel_videos_with_retry(url, sleep=5, **dl_kwargs):
         return chan
 
     else:
-        log.info(f"interactor_channel_videos_with_retry failed for {url}")
+        log.info(f"func_with_retry {func=} failed for {url}")
 
     return
-
-
-class OutputCapturer:
-    """
-    from functools import partial
-
-    def print_messages(msg, **kwargs):
-        # kwargs will contain at a minimum the following keys:
-        #   _type: 'info', 'debug', 'error', or 'warning'
-        #   any parameters passed to the partial callback initialization
-
-        print(msg, kwargs)
-
-    interactor_capture = partial(OutputCapturer, callback_func=print_messages)
-
-    ytdlp_kwargs = {
-        'logger': interactor_capture(),
-    }
-
-    """
-
-    def __init__(self, callback_func=None, **kwargs):
-        self.callback_func = callback_func
-        self.kwargs = kwargs or {}
-
-    def msg_received(self, msg, _type):
-        if callable(self.callback_func):
-            self.callback_func(msg, _type=_type, **self.kwargs)
-
-    def info(self, msg):
-        self.msg_received(msg, "info")
-
-    def debug(self, msg):
-        self.msg_received(msg, "debug")
-
-    def error(self, msg):
-        self.msg_received(msg, "error")
-
-    def warning(self, msg):
-        self.msg_received(msg, "warning")

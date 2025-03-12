@@ -666,11 +666,11 @@ class InteractorTests(SimpleTestCase):
     @patch('yt_dlp.YoutubeDL')
     @patch('vidar.interactor.channel_videos')
     @patch('time.sleep')
-    def test_interactor_channel_videos_with_retry_fails(self, mock_sleep, mock_interactor, mock_ytdlp):
+    def test_func_with_retry_fails(self, mock_sleep, mock_interactor, mock_ytdlp):
         mock_ytdlp.side_effect = ValueError('yt_dlp.YoutubeDL should NOT be called while testing. Patching failed.')
         mock_interactor.return_value = ""
 
-        output = interactor.interactor_channel_videos_with_retry(url="url", extra='data')
+        output = interactor.func_with_retry(url="url", func=interactor.channel_videos, extra='data')
 
         self.assertIsNone(output)
         mock_interactor.assert_has_calls([
@@ -682,12 +682,12 @@ class InteractorTests(SimpleTestCase):
     @patch('yt_dlp.YoutubeDL')
     @patch('vidar.interactor.channel_videos')
     @patch('time.sleep')
-    def test_interactor_channel_videos_with_retry_worked(self, mock_sleep, mock_interactor, mock_ytdlp):
+    def test_func_with_retry_worked(self, mock_sleep, mock_interactor, mock_ytdlp):
         mock_ytdlp.side_effect = ValueError('yt_dlp.YoutubeDL should NOT be called while testing. Patching failed.')
         expected = {"entries": ["entry1", "entry2"]}
         mock_interactor.return_value = expected
 
-        output = interactor.interactor_channel_videos_with_retry(url="url", sleep=0, extra='data')
+        output = interactor.func_with_retry(url="url", sleep=0, func=interactor.channel_videos, extra='data')
         self.assertEqual(expected, output)
         mock_sleep.assert_not_called()
 
