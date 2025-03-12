@@ -1211,19 +1211,21 @@ class TemplateTagsPlaylistTools(TestCase):
         playlist = models.Playlist.objects.create(title='test')
 
         videos = []
-        for x in range(150):
+        for x in range(10):
             v = models.Video.objects.create(title=f"Video {x}")
             videos.append(v)
             playlist.videos.add(v)
 
-        v1 = videos[0]
-        self.assertEqual(1, playlist_tools.link_to_playlist_page(playlist, v1))
-
-        v60 = videos[60]
-        self.assertEqual(2, playlist_tools.link_to_playlist_page(playlist, v60))
-
-        v125 = videos[125]
-        self.assertEqual(3, playlist_tools.link_to_playlist_page(playlist, v125))
+        self.assertEqual(1, playlist_tools.link_to_playlist_page(playlist, videos[0], num_per_page=3))
+        self.assertEqual(1, playlist_tools.link_to_playlist_page(playlist, videos[1], num_per_page=3))
+        self.assertEqual(1, playlist_tools.link_to_playlist_page(playlist, videos[2], num_per_page=3))
+        self.assertEqual(2, playlist_tools.link_to_playlist_page(playlist, videos[3], num_per_page=3))
+        self.assertEqual(2, playlist_tools.link_to_playlist_page(playlist, videos[4], num_per_page=3))
+        self.assertEqual(2, playlist_tools.link_to_playlist_page(playlist, videos[5], num_per_page=3))
+        self.assertEqual(3, playlist_tools.link_to_playlist_page(playlist, videos[6], num_per_page=3))
+        self.assertEqual(3, playlist_tools.link_to_playlist_page(playlist, videos[7], num_per_page=3))
+        self.assertEqual(3, playlist_tools.link_to_playlist_page(playlist, videos[8], num_per_page=3))
+        self.assertEqual(4, playlist_tools.link_to_playlist_page(playlist, videos[9], num_per_page=3))
 
     def test_link_to_playlist_page_none_video_is_not_on_playlist(self):
         playlist = models.Playlist.objects.create(title='test')

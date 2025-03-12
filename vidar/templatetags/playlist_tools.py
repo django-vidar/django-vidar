@@ -102,7 +102,7 @@ def get_next_unwatched_audio_on_playlist(playlist: Playlist, user: User):
 
 
 @register.simple_tag
-def link_to_playlist_page(playlist: Playlist, video: Video):
+def link_to_playlist_page(playlist: Playlist, video: Video, num_per_page=50):
 
     qs = playlist.playlistitem_set.all()
 
@@ -114,5 +114,6 @@ def link_to_playlist_page(playlist: Playlist, video: Video):
     except ValueError:
         return
 
-    if current_pos < len(object_ids) - 1:
-        return math.ceil((current_pos + 1) / 50)
+    max_possible_pages = int(math.ceil(len(object_ids) / num_per_page))
+    if max_possible_pages > 1:
+        return math.ceil((current_pos + 1) / num_per_page)
