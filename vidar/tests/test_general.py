@@ -622,3 +622,17 @@ class RenamerTests(TestCase):
         mock_video_renamer.assert_not_called()
         mock_delete.assert_not_called()
         mock_move.assert_not_called()
+
+
+class InteractorTests(SimpleTestCase):
+
+    @patch('yt_dlp.YoutubeDL')
+    def test_is_ytdlp_interactor_from_settings(self, mock_ytdlp):
+        mock_ytdlp.side_effect = ValueError('yt_dlp.YoutubeDL should NOT be called while testing. Patching failed.')
+        user_func = app_settings.YTDLP_INITIALIZER
+
+        self.assertEqual(settings.my_ytdlp_initializer, user_func)
+
+        output = user_func(action="testing")
+        expected = "Successfully called example.settings.my_ytdlp_initializer"
+        self.assertEqual(expected, output)

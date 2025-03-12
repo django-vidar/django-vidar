@@ -484,8 +484,11 @@ class AppSettings(object):
             6,
         )
 
+    @property
     def YTDLP_INITIALIZER(self):
-        return self._setting("YTDLP_INITIALIZER", None)
+        if user_initializer := self._setting("YTDLP_INITIALIZER", None):
+            user_initializer_func = import_callable(user_initializer)
+            return user_initializer_func
 
 
 _app_settings = AppSettings("VIDAR_")
