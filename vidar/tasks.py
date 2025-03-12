@@ -21,10 +21,10 @@ from celery import chain, shared_task, states
 from celery.exceptions import Ignore
 from django_celery_results.models import TaskResult
 
-from vidar import app_settings, helpers, oneoffs, renamers, signals, utils
+from vidar import app_settings, helpers, interactor, oneoffs, renamers, signals, utils
 from vidar.exceptions import FileStorageBackendHasNoMoveError
 from vidar.helpers import celery_helpers, channel_helpers, file_helpers, statistics_helpers
-from vidar.interactor import OutputCapturer, YTDLPInteractor, interactor_channel_videos_with_retry
+from vidar.interactor import OutputCapturer, interactor_channel_videos_with_retry
 from vidar.models import Channel, Comment, Playlist, PlaylistItem, Video
 from vidar.services import (
     channel_services,
@@ -54,7 +54,7 @@ def update_channel_banners(self, pk):
     log.info(f"Getting channel banners for {channel=}")
 
     try:
-        output = YTDLPInteractor.channel_details(url=f"{channel.base_url}/about", instance=channel)
+        output = interactor.channel_details(url=f"{channel.base_url}/about", instance=channel)
     except yt_dlp.DownloadError as exc:
         if channel_services.apply_exception_status(channel=channel, exc=exc):
             self.update_state(state=states.FAILURE, meta=f"Channel status changed to {channel.status=}")
@@ -801,7 +801,7 @@ def download_provider_video(
     video.save_download_kwargs(dl_kwargs)
 
     try:
-        info, used_dl_kwargs = YTDLPInteractor.video_download(
+        info, used_dl_kwargs = interactor.video_download(
             url=video.url, local_url=video.get_absolute_url(), instance=video, **dl_kwargs
         )
     except yt_dlp.DownloadError as exc:
@@ -1122,7 +1122,7 @@ def download_provider_video_comments(self, pk, all_comments=False):
     )
 
     try:
-        info = YTDLPInteractor.video_comments(url=video.url, all_comments=all_comments, instance=video, **dl_kwargs)
+        info = interactor.video_comments(url=video.url, all_comments=all_comments, instance=video, **dl_kwargs)
     except yt_dlp.DownloadError as exc:
 
         if "proxy" in dl_kwargs:
@@ -1192,7 +1192,7 @@ def subscribe_to_channel(self, channel_id):
 
     obj = Channel.objects.get(provider_object_id=channel_id)
 
-    output = YTDLPInteractor.channel_details(f"{obj.base_url}/about", instance=obj)
+    output = interactor.channel_details(f"{obj.base_url}/about", instance=obj)
 
     channel_services.set_channel_details_from_ytdlp(
         channel=obj,
@@ -1264,7 +1264,7 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
 
     msg_logger = partial(OutputCapturer, callback_func=redis_services.playlist_indexing, playlist=playlist)
 
-    output = YTDLPInteractor.playlist_details(
+    output = interactor.playlist_details(
         playlist.url,
         logger=msg_logger(),
         detailed_video_data=detailed_video_data,
@@ -1637,7 +1637,7 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode="m
 
     if not dlp_output:
         try:
-            dlp_output = YTDLPInteractor.video_details(video.url, quiet=True, instance=video, **dl_kwargs)
+            dlp_output = interactor.video_details(video.url, quiet=True, instance=video, **dl_kwargs)
         except yt_dlp.DownloadError as exc:
             # TODO: If video is blocked in country and we have other proxies, try those somehow?
             if video.apply_privacy_status_based_on_dlp_exception_message(exc):
@@ -1794,7 +1794,7 @@ def daily_maintenances(self):
         privacy_status__in=Video.VideoPrivacyStatuses_Publicly_Visible,
     ):
         try:
-            data = YTDLPInteractor.video_details(video.url)
+            data = interactor.video_details(video.url)
             if url := data.get("thumbnail"):
                 log.info(f"Setting thumbnail on {video=}")
                 video_services.set_thumbnail(video=video, url=url)
@@ -2185,7 +2185,7 @@ def trigger_mirror_live_playlists():
 def mirror_live_playlist(self, channel_id):
     channel = Channel.objects.get(pk=channel_id)
 
-    output = YTDLPInteractor.channel_playlists(channel.provider_object_id, instance=channel)
+    output = interactor.channel_playlists(channel.provider_object_id, instance=channel)
 
     try:
         live_playlists = output["entries"]

@@ -38,133 +38,129 @@ def get_ytdlp(kwargs):
     return ret
 
 
-class YTDLPInteractor:
+def playlist_details(url, ignore_errors=True, detailed_video_data=False, **kwargs):
+    kwargs.setdefault("default_search", "ytsearch")
+    kwargs.setdefault("quiet", False)
+    kwargs.setdefault("skip_download", True)
+    kwargs.setdefault("extract_flat", not detailed_video_data)
+    kwargs.setdefault("ignoreerrors", ignore_errors)
+    kwargs.setdefault("noplaylist", True)
+    kwargs.setdefault("check_formats", "none")
+    kwargs["action"] = "playlist_details"
+    with get_ytdlp(kwargs) as ydl:
+        return ydl.extract_info(url, download=False)
 
-    @staticmethod
-    def playlist_details(url, ignore_errors=True, detailed_video_data=False, **kwargs):
 
-        kwargs.setdefault("default_search", "ytsearch")
-        kwargs.setdefault("quiet", False)
-        kwargs.setdefault("skip_download", True)
-        kwargs.setdefault("extract_flat", not detailed_video_data)
-        kwargs.setdefault("ignoreerrors", ignore_errors)
-        kwargs.setdefault("noplaylist", True)
-        kwargs.setdefault("check_formats", "none")
-        kwargs["action"] = "playlist_details"
-        with get_ytdlp(kwargs) as ydl:
-            return ydl.extract_info(url, download=False)
+def video_download(url, **kwargs):
 
-    @staticmethod
-    def video_download(url, **kwargs):
+    local_url = kwargs.pop("local_url", None)
+    hook_partial = partial(redis_services.progress_hook_download_status, url=local_url)
 
-        local_url = kwargs.pop("local_url", None)
-        hook_partial = partial(redis_services.progress_hook_download_status, url=local_url)
+    kwargs.setdefault("progress_hooks", [hook_partial])
+    kwargs.setdefault("quiet", True)
 
-        kwargs.setdefault("progress_hooks", [hook_partial])
-        kwargs.setdefault("quiet", True)
+    # kwargs.setdefault('postprocessors', [
+    #     {
+    #         'key': 'SponsorBlock',
+    #         'categories': ['all']
+    #     },
+    #     {
+    #         'key': 'ModifyChapters',
+    #         'remove_sponsor_segments': ['all']
+    #     }
+    # ])
 
-        # kwargs.setdefault('postprocessors', [
-        #     {
-        #         'key': 'SponsorBlock',
-        #         'categories': ['all']
-        #     },
-        #     {
-        #         'key': 'ModifyChapters',
-        #         'remove_sponsor_segments': ['all']
-        #     }
-        # ])
+    kwargs["action"] = "video_download"
 
-        kwargs["action"] = "video_download"
+    with get_ytdlp(kwargs) as ydl:
+        return ydl.extract_info(url, download=True), kwargs
 
-        with get_ytdlp(kwargs) as ydl:
-            return ydl.extract_info(url, download=True), kwargs
 
-    @staticmethod
-    def video_details(url, **kwargs):
-        kwargs.setdefault("default_search", "ytsearch")
-        kwargs.setdefault("quiet", False)
-        kwargs.setdefault("skip_download", True)
-        kwargs.setdefault("extract_flat", True)
-        kwargs["action"] = "video_details"
-        with get_ytdlp(kwargs) as ydl:
-            return ydl.extract_info(url)
+def video_details(url, **kwargs):
+    kwargs.setdefault("default_search", "ytsearch")
+    kwargs.setdefault("quiet", False)
+    kwargs.setdefault("skip_download", True)
+    kwargs.setdefault("extract_flat", True)
+    kwargs["action"] = "video_details"
+    with get_ytdlp(kwargs) as ydl:
+        return ydl.extract_info(url)
 
-    @staticmethod
-    def video_comments(
-        url,
-        all_comments=False,
-        total_max_comments=None,
-        max_parents=None,
-        max_replies=None,
-        max_replies_per_thread=None,
-        sorting=None,
-        **kwargs,
-    ):
 
-        kwargs.setdefault("download", False)
-        kwargs.setdefault("getcomments", True)
-        kwargs.setdefault("skip_download", False)
+def video_comments(
+    url,
+    all_comments=False,
+    total_max_comments=None,
+    max_parents=None,
+    max_replies=None,
+    max_replies_per_thread=None,
+    sorting=None,
+    **kwargs,
+):
 
-        if not all_comments and not kwargs.get("extractor_args"):
+    kwargs.setdefault("download", False)
+    kwargs.setdefault("getcomments", True)
+    kwargs.setdefault("skip_download", False)
 
-            extractor_args = ytdlp_services.get_comment_downloader_extractor_args(
-                total_max_comments=total_max_comments,
-                max_parents=max_parents,
-                max_replies=max_replies,
-                max_replies_per_thread=max_replies_per_thread,
-                sorting=sorting,
-            )
+    if not all_comments and not kwargs.get("extractor_args"):
 
-            kwargs.update(extractor_args)
-        kwargs["action"] = "video_comments"
-        with get_ytdlp(kwargs) as ydl:
-            return ydl.extract_info(url, download=False)
+        extractor_args = ytdlp_services.get_comment_downloader_extractor_args(
+            total_max_comments=total_max_comments,
+            max_parents=max_parents,
+            max_replies=max_replies,
+            max_replies_per_thread=max_replies_per_thread,
+            sorting=sorting,
+        )
 
-    @staticmethod
-    def channel_details(url, **kwargs):
-        kwargs.setdefault("default_search", "ytsearch")
-        kwargs.setdefault("quiet", False)
-        kwargs.setdefault("skip_download", True)
-        # kwargs.setdefault('extract_flat', True)
-        kwargs.setdefault("playlist_items", "1,0")
-        kwargs["action"] = "channel_details"
-        with get_ytdlp(kwargs) as ydl:
-            return ydl.extract_info(url, download=False)
+        kwargs.update(extractor_args)
+    kwargs["action"] = "video_comments"
+    with get_ytdlp(kwargs) as ydl:
+        return ydl.extract_info(url, download=False)
 
-    @staticmethod
-    def channel_videos(url, limit=None, **kwargs):
-        kwargs.setdefault("default_search", "ytsearch")
-        kwargs.setdefault("quiet", False)
-        kwargs.setdefault("skip_download", True)
-        kwargs.setdefault("extract_flat", False)
-        kwargs.setdefault("ignoreerrors", True)
-        # kwargs.setdefault('sleep_interval_requests', 2)
-        kwargs["action"] = "channel_videos"
 
-        if limit:
-            kwargs["playlistend"] = limit
+def channel_details(url, **kwargs):
+    kwargs.setdefault("default_search", "ytsearch")
+    kwargs.setdefault("quiet", False)
+    kwargs.setdefault("skip_download", True)
+    # kwargs.setdefault('extract_flat', True)
+    kwargs.setdefault("playlist_items", "1,0")
+    kwargs["action"] = "channel_details"
+    with get_ytdlp(kwargs) as ydl:
+        return ydl.extract_info(url, download=False)
 
-        with get_ytdlp(kwargs) as ydl:
-            return ydl.extract_info(url, download=False)
 
-    @staticmethod
-    def channel_playlists(youtube_id, **kwargs):
-        kwargs.setdefault("quiet", False)
-        kwargs.setdefault("skip_download", True)
-        kwargs.setdefault("extract_flat", True)
-        kwargs.setdefault("ignoreerrors", True)
-        kwargs["action"] = "channel_playlists"
-        with get_ytdlp(kwargs) as ydl:
-            return ydl.extract_info(
-                f"https://www.youtube.com/channel/{youtube_id}" f"/playlists?view=1&sort=dd&shelf_id=0", download=False
-            )
+def channel_videos(url, limit=None, **kwargs):
+    kwargs.setdefault("default_search", "ytsearch")
+    kwargs.setdefault("quiet", False)
+    kwargs.setdefault("skip_download", True)
+    kwargs.setdefault("extract_flat", False)
+    kwargs.setdefault("ignoreerrors", True)
+    # kwargs.setdefault('sleep_interval_requests', 2)
+    kwargs["action"] = "channel_videos"
+
+    if limit:
+        kwargs["playlistend"] = limit
+
+    with get_ytdlp(kwargs) as ydl:
+        return ydl.extract_info(url, download=False)
+
+
+def channel_playlists(youtube_id, **kwargs):
+    kwargs.setdefault("quiet", False)
+    kwargs.setdefault("skip_download", True)
+    kwargs.setdefault("extract_flat", True)
+    kwargs.setdefault("ignoreerrors", True)
+    kwargs["action"] = "channel_playlists"
+    with get_ytdlp(kwargs) as ydl:
+        return ydl.extract_info(
+            f"https://www.youtube.com/channel/{youtube_id}" f"/playlists?view=1&sort=dd&shelf_id=0", download=False
+        )
 
 
 def interactor_channel_videos_with_retry(url, sleep=5, **dl_kwargs):
 
     for x in range(2):
 
-        chan = YTDLPInteractor.channel_videos(url=url, **dl_kwargs)
+        chan = channel_videos(url=url, **dl_kwargs)
 
         if not chan or not chan["entries"]:
             time.sleep(sleep)

@@ -664,7 +664,7 @@ class InteractorTests(SimpleTestCase):
         mock_proxy.assert_called_once()
 
     @patch('yt_dlp.YoutubeDL')
-    @patch('vidar.interactor.YTDLPInteractor.channel_videos')
+    @patch('vidar.interactor.channel_videos')
     @patch('time.sleep')
     def test_interactor_channel_videos_with_retry_fails(self, mock_sleep, mock_interactor, mock_ytdlp):
         mock_ytdlp.side_effect = ValueError('yt_dlp.YoutubeDL should NOT be called while testing. Patching failed.')
@@ -680,7 +680,7 @@ class InteractorTests(SimpleTestCase):
         mock_sleep.assert_called()
 
     @patch('yt_dlp.YoutubeDL')
-    @patch('vidar.interactor.YTDLPInteractor.channel_videos')
+    @patch('vidar.interactor.channel_videos')
     @patch('time.sleep')
     def test_interactor_channel_videos_with_retry_worked(self, mock_sleep, mock_interactor, mock_ytdlp):
         mock_ytdlp.side_effect = ValueError('yt_dlp.YoutubeDL should NOT be called while testing. Patching failed.')
@@ -697,7 +697,7 @@ class InteractorTests(SimpleTestCase):
     def test_interactor_playlist_details_passes_action(self, mock_cleaner, mock_ytdlp):
         mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
 
-        output = interactor.YTDLPInteractor.playlist_details(url="url")
+        output = interactor.playlist_details(url="url")
         self.assertEqual("extract_info test", output)
         mock_ytdlp.assert_called_once()
         mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
@@ -714,7 +714,7 @@ class InteractorTests(SimpleTestCase):
     def test_interactor_video_download_passes_action(self, mock_cleaner, mock_ytdlp):
         mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
 
-        output, _ = interactor.YTDLPInteractor.video_download(url="url")
+        output, _ = interactor.video_download(url="url")
         self.assertEqual("extract_info test", output)
         mock_ytdlp.assert_called_once()
         mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
@@ -730,7 +730,7 @@ class InteractorTests(SimpleTestCase):
     def test_interactor_video_details_passes_action(self, mock_cleaner, mock_ytdlp):
         mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
 
-        output = interactor.YTDLPInteractor.video_details(url="url")
+        output = interactor.video_details(url="url")
         self.assertEqual("extract_info test", output)
         mock_ytdlp.assert_called_once()
         mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
@@ -746,7 +746,7 @@ class InteractorTests(SimpleTestCase):
     def test_interactor_video_comments_passes_action(self, mock_cleaner, mock_ytdlp):
         mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
 
-        output = interactor.YTDLPInteractor.video_comments(url="url")
+        output = interactor.video_comments(url="url")
         self.assertEqual("extract_info test", output)
         mock_ytdlp.assert_called_once()
         mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
@@ -763,7 +763,7 @@ class InteractorTests(SimpleTestCase):
     def test_interactor_channel_details_passes_action(self, mock_cleaner, mock_ytdlp):
         mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
 
-        output = interactor.YTDLPInteractor.channel_details(url="url")
+        output = interactor.channel_details(url="url")
         self.assertEqual("extract_info test", output)
         mock_ytdlp.assert_called_once()
         mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
@@ -779,7 +779,7 @@ class InteractorTests(SimpleTestCase):
     def test_interactor_channel_videos_passes_action(self, mock_cleaner, mock_ytdlp):
         mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
 
-        output = interactor.YTDLPInteractor.channel_videos(url="url", limit=2)
+        output = interactor.channel_videos(url="url", limit=2)
         self.assertEqual("extract_info test", output)
         mock_ytdlp.assert_called_once()
         mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
@@ -797,7 +797,7 @@ class InteractorTests(SimpleTestCase):
     def test_interactor_channel_playlists_passes_action(self, mock_cleaner, mock_ytdlp):
         mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
 
-        output = interactor.YTDLPInteractor.channel_playlists("url")
+        output = interactor.channel_playlists("url")
         self.assertEqual("extract_info test", output)
         mock_ytdlp.assert_called_once()
         mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()

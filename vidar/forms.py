@@ -4,9 +4,8 @@ from django.utils import timezone
 
 from django_celery_results.models import TaskResult
 
-from vidar import app_settings, tasks, utils
+from vidar import app_settings, interactor, tasks, utils
 from vidar.helpers import video_helpers
-from vidar.interactor import YTDLPInteractor
 from vidar.models import Channel, DurationSkip, ExtraFile, Highlight, Playlist, PossibleQualities, Video
 
 
@@ -359,7 +358,7 @@ class ChannelGeneralCreateOptionsForm(forms.ModelForm):
 
             url = f"https://www.youtube.com/watch?v={raw_id}"
 
-            video_data = YTDLPInteractor.video_details(url)
+            video_data = interactor.video_details(url)
 
             channel_id = video_data["channel_id"]
 
