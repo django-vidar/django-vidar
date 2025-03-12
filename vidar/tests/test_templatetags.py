@@ -806,7 +806,9 @@ class TemplateTagsVideoToolsWithCustomUserFieldsTests(TestCase):
 
 
 class PaginationHelperTests(TestCase):
-    def setUp(self) -> None:
+
+    @classmethod
+    def setUpTestData(cls):
         for x in range(100):
             models.Video.objects.create(title=x)
 
@@ -958,7 +960,9 @@ class PaginationHelperTests(TestCase):
 
 
 class TemplateTagsProperPaginationTests(TestCase):
-    def setUp(self) -> None:
+
+    @classmethod
+    def setUpTestData(cls):
         for x in range(100):
             models.Video.objects.create(title=x)
 

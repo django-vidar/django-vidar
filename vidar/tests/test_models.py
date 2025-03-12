@@ -14,6 +14,19 @@ UserModel = get_user_model()
 
 
 class ChannelTests(TestCase):
+
+    def test_system_safe_name(self):
+        channel = models.Channel.objects.create(name="The Myth Busting & Associates")
+
+        expected = 'The Myth Busting and Associates'
+        self.assertEqual(expected, channel.system_safe_name)
+
+    def test_system_safe_name_the(self):
+        channel = models.Channel.objects.create(name="tHe Myth Busting & Associates")
+
+        expected = 'Myth Busting and Associates, tHe'
+        self.assertEqual(expected, channel.system_safe_name_the)
+
     def test_videos_at_max_quality(self):
         channel = models.Channel.objects.create()
         channel.videos.create(at_max_quality=True, file='test.mp4')
@@ -143,7 +156,23 @@ class ChannelTests(TestCase):
         self.assertEqual((1, 100), output[models.Video.VideoPrivacyStatuses.BLOCKED])
 
 
-class VideoMethodTests(TestCase):
+class VideoTests(TestCase):
+
+    def test_system_safe_title(self):
+        video = models.Video.objects.create(
+            title="The Myth Busting / Saving a Machinist's A $ $ - Professional TIG Welding Career Advice"
+        )
+
+        expected = 'The Myth Busting Saving a Machinists A Professional TIG Welding Career Advice'
+        self.assertEqual(expected, video.system_safe_title)
+
+    def test_system_safe_title_the(self):
+        video = models.Video.objects.create(
+            title="The Myth Busting / Saving a Machinist's A $ $ - Professional TIG Welding Career Advice"
+        )
+
+        expected = 'Myth Busting Saving a Machinists A Professional TIG Welding Career Advice, The'
+        self.assertEqual(expected, video.system_safe_title_the)
 
     def test_set_and_get_latest_download_stats(self):
         video = models.Video.objects.create(title="test video")
@@ -164,7 +193,7 @@ class VideoMethodTests(TestCase):
         except TypeError:
             self.fail("JSONSetToListEncoder was changed to accept django models, why did this fail?")
 
-    def test_get_latest_download_stats_returns_dict_on_no_attmpt(self):
+    def test_get_latest_download_stats_returns_dict_on_no_attempt(self):
         video = models.Video.objects.create(title="test video")
         self.assertEqual({}, video.get_latest_download_stats())
 
