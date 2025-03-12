@@ -169,9 +169,6 @@ def convert_timestamp_to_datetime(timestamp, tz=datetime.timezone.utc):
 
 
 def get_proxy(previous_proxies: list = None, instance=None, attempt: int = None):
-    if isinstance(attempt, int):
-        if attempt >= 2:
-            return app_settings.PROXIES_DEFAULT
 
     user_defined_proxies = app_settings.PROXIES
     if not previous_proxies:
@@ -180,7 +177,11 @@ def get_proxy(previous_proxies: list = None, instance=None, attempt: int = None)
     if callable(user_defined_proxies):
         return user_defined_proxies(previous_proxies=previous_proxies, instance=instance, attempt=attempt)
 
-    elif isinstance(user_defined_proxies, str):
+    if isinstance(attempt, int):
+        if attempt >= 2:
+            return app_settings.PROXIES_DEFAULT
+
+    if isinstance(user_defined_proxies, str):
         user_defined_proxies = user_defined_proxies.split(",")
 
     else:

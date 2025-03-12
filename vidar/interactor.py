@@ -74,7 +74,7 @@ class YTDLPInteractor:
         #     }
         # ])
 
-        kwargs["actions"] = "video_download"
+        kwargs["action"] = "video_download"
 
         with get_ytdlp(kwargs) as ydl:
             return ydl.extract_info(url, download=True), kwargs
@@ -160,16 +160,14 @@ class YTDLPInteractor:
             )
 
 
-def interactor_channel_videos_with_retry(url, **dl_kwargs):
+def interactor_channel_videos_with_retry(url, sleep=5, **dl_kwargs):
 
     for x in range(2):
-        if x:
-            dl_kwargs["proxy"] = ""
 
         chan = YTDLPInteractor.channel_videos(url=url, **dl_kwargs)
 
         if not chan or not chan["entries"]:
-            time.sleep(5)
+            time.sleep(sleep)
             continue
 
         return chan

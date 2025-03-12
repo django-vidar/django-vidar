@@ -4,17 +4,18 @@ import pathlib
 
 from unittest.mock import patch, call
 
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.shortcuts import reverse
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission, Group
 from django.utils import timezone
 
 from example import settings
-from vidar import models, forms, renamers, json_encoders, exceptions, app_settings
+from vidar import models, forms, renamers, json_encoders, exceptions, app_settings, interactor, utils
 from vidar.helpers import channel_helpers, video_helpers
 
 UserModel = get_user_model()
+
 
 class UnauthenticatedVideoAccessTests(TestCase):
 
@@ -595,6 +596,10 @@ class RenamerTests(TestCase):
         mock_move.assert_not_called()
 
 
+def ytdlp_initializer_test(action, instance=None, **kwargs):
+    return f'inside vidar.tests.test_general.ytdlp_initializer_test {action=} {instance=} {kwargs=}'
+
+
 class InteractorTests(SimpleTestCase):
 
     @patch('yt_dlp.YoutubeDL')
@@ -607,3 +612,244 @@ class InteractorTests(SimpleTestCase):
         output = user_func(action="testing")
         expected = "Successfully called example.settings.my_ytdlp_initializer"
         self.assertEqual(expected, output)
+
+    def test_cleaning_kwargs(self):
+        kwargs = {
+            "kept": "value",
+            "instance": "should be gone",
+            "action": "should be gone",
+        }
+        interactor._clean_kwargs(kwargs)
+        self.assertNotIn("instance", kwargs)
+        self.assertNotIn("action", kwargs)
+        self.assertIn("kept", kwargs)
+
+    @patch('yt_dlp.YoutubeDL')
+    @patch('vidar.utils.get_proxy')
+    @override_settings(VIDAR_YTDLP_INITIALIZER='vidar.tests.test_general.ytdlp_initializer_test')
+    def test_get_ytdlp_with_user_set_initializer(self, mock_proxy, mock_ytdlp):
+        mock_ytdlp.side_effect = ValueError('yt_dlp.YoutubeDL should NOT be called while testing. Patching failed.')
+        kwargs = dict(
+            action='test_get_ytdlp action',
+            instance='test_get_ytdlp instance',
+            extra='field',
+        )
+        output = interactor.get_ytdlp(kwargs=kwargs)
+        expected = "inside vidar.tests.test_general.ytdlp_initializer_test action='test_get_ytdlp action' instance='test_get_ytdlp instance' kwargs={'extra': 'field'}"
+        self.assertEqual(expected, output)
+        self.assertNotIn("instance", kwargs)
+        self.assertNotIn("action", kwargs)
+        self.assertIn("extra", kwargs)
+        mock_proxy.assert_not_called()
+
+    @patch('yt_dlp.YoutubeDL')
+    @patch('vidar.utils.get_proxy')
+    @override_settings(VIDAR_YTDLP_INITIALIZER=None)
+    def test_get_ytdlp_with_default_initializer(self, mock_proxy, mock_ytdlp):
+        mock_ytdlp.return_value = "mocked yt-dlp call"
+        mock_proxy.return_value = "proxy address"
+        kwargs = dict(
+            action='test_get_ytdlp action',
+            instance='test_get_ytdlp instance',
+            extra='field',
+        )
+        output = interactor.get_ytdlp(kwargs=kwargs)
+        self.assertEqual("mocked yt-dlp call", output)
+        self.assertNotIn("instance", kwargs)
+        self.assertNotIn("action", kwargs)
+        self.assertIn("extra", kwargs)
+
+        mock_ytdlp.assert_called_once()
+        mock_ytdlp.assert_called_with(dict(extra='field', proxy="proxy address"))
+        mock_proxy.assert_called_once()
+
+    @patch('yt_dlp.YoutubeDL')
+    @patch('vidar.interactor.YTDLPInteractor.channel_videos')
+    @patch('time.sleep')
+    def test_interactor_channel_videos_with_retry_fails(self, mock_sleep, mock_interactor, mock_ytdlp):
+        mock_ytdlp.side_effect = ValueError('yt_dlp.YoutubeDL should NOT be called while testing. Patching failed.')
+        mock_interactor.return_value = ""
+
+        output = interactor.interactor_channel_videos_with_retry(url="url", extra='data')
+
+        self.assertIsNone(output)
+        mock_interactor.assert_has_calls([
+            call(url="url", extra="data"),
+            call(url="url", extra="data"),
+        ])
+        mock_sleep.assert_called()
+
+    @patch('yt_dlp.YoutubeDL')
+    @patch('vidar.interactor.YTDLPInteractor.channel_videos')
+    @patch('time.sleep')
+    def test_interactor_channel_videos_with_retry_worked(self, mock_sleep, mock_interactor, mock_ytdlp):
+        mock_ytdlp.side_effect = ValueError('yt_dlp.YoutubeDL should NOT be called while testing. Patching failed.')
+        expected = {"entries": ["entry1", "entry2"]}
+        mock_interactor.return_value = expected
+
+        output = interactor.interactor_channel_videos_with_retry(url="url", sleep=0, extra='data')
+        self.assertEqual(expected, output)
+        mock_sleep.assert_not_called()
+
+    @patch('yt_dlp.YoutubeDL')
+    @patch('vidar.interactor._clean_kwargs')
+    @override_settings(VIDAR_YTDLP_INITIALIZER=None)
+    def test_interactor_playlist_details_passes_action(self, mock_cleaner, mock_ytdlp):
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
+
+        output = interactor.YTDLPInteractor.playlist_details(url="url")
+        self.assertEqual("extract_info test", output)
+        mock_ytdlp.assert_called_once()
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
+        mock_cleaner.assert_called_once()
+
+        first_call = mock_ytdlp.mock_calls[0]
+        first_call_args = first_call.args[0]
+        self.assertIn("action", first_call_args)
+        self.assertEqual("playlist_details", first_call_args["action"])
+
+    @patch('yt_dlp.YoutubeDL')
+    @patch('vidar.interactor._clean_kwargs')
+    @override_settings(VIDAR_YTDLP_INITIALIZER=None)
+    def test_interactor_video_download_passes_action(self, mock_cleaner, mock_ytdlp):
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
+
+        output, _ = interactor.YTDLPInteractor.video_download(url="url")
+        self.assertEqual("extract_info test", output)
+        mock_ytdlp.assert_called_once()
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
+        mock_cleaner.assert_called_once()
+        first_call = mock_ytdlp.mock_calls[0]
+        first_call_args = first_call.args[0]
+        self.assertIn("action", first_call_args)
+        self.assertEqual("video_download", first_call_args["action"])
+
+    @patch('yt_dlp.YoutubeDL')
+    @patch('vidar.interactor._clean_kwargs')
+    @override_settings(VIDAR_YTDLP_INITIALIZER=None)
+    def test_interactor_video_details_passes_action(self, mock_cleaner, mock_ytdlp):
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
+
+        output = interactor.YTDLPInteractor.video_details(url="url")
+        self.assertEqual("extract_info test", output)
+        mock_ytdlp.assert_called_once()
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
+        mock_cleaner.assert_called_once()
+        first_call = mock_ytdlp.mock_calls[0]
+        first_call_args = first_call.args[0]
+        self.assertIn("action", first_call_args)
+        self.assertEqual("video_details", first_call_args["action"])
+
+    @patch('yt_dlp.YoutubeDL')
+    @patch('vidar.interactor._clean_kwargs')
+    @override_settings(VIDAR_YTDLP_INITIALIZER=None)
+    def test_interactor_video_comments_passes_action(self, mock_cleaner, mock_ytdlp):
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
+
+        output = interactor.YTDLPInteractor.video_comments(url="url")
+        self.assertEqual("extract_info test", output)
+        mock_ytdlp.assert_called_once()
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
+        mock_cleaner.assert_called_once()
+        first_call = mock_ytdlp.mock_calls[0]
+        first_call_args = first_call.args[0]
+        self.assertIn("action", first_call_args)
+        self.assertEqual("video_comments", first_call_args["action"])
+
+
+    @patch('yt_dlp.YoutubeDL')
+    @patch('vidar.interactor._clean_kwargs')
+    @override_settings(VIDAR_YTDLP_INITIALIZER=None)
+    def test_interactor_channel_details_passes_action(self, mock_cleaner, mock_ytdlp):
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
+
+        output = interactor.YTDLPInteractor.channel_details(url="url")
+        self.assertEqual("extract_info test", output)
+        mock_ytdlp.assert_called_once()
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
+        mock_cleaner.assert_called_once()
+        first_call = mock_ytdlp.mock_calls[0]
+        first_call_args = first_call.args[0]
+        self.assertIn("action", first_call_args)
+        self.assertEqual("channel_details", first_call_args["action"])
+
+    @patch('yt_dlp.YoutubeDL')
+    @patch('vidar.interactor._clean_kwargs')
+    @override_settings(VIDAR_YTDLP_INITIALIZER=None)
+    def test_interactor_channel_videos_passes_action(self, mock_cleaner, mock_ytdlp):
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
+
+        output = interactor.YTDLPInteractor.channel_videos(url="url", limit=2)
+        self.assertEqual("extract_info test", output)
+        mock_ytdlp.assert_called_once()
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
+        mock_cleaner.assert_called_once()
+        first_call = mock_ytdlp.mock_calls[0]
+        first_call_args = first_call.args[0]
+        self.assertIn("action", first_call_args)
+        self.assertEqual("channel_videos", first_call_args["action"])
+        self.assertIn("playlistend", first_call_args)
+        self.assertEqual(2, first_call_args["playlistend"])
+
+    @patch('yt_dlp.YoutubeDL')
+    @patch('vidar.interactor._clean_kwargs')
+    @override_settings(VIDAR_YTDLP_INITIALIZER=None)
+    def test_interactor_channel_playlists_passes_action(self, mock_cleaner, mock_ytdlp):
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.return_value = "extract_info test"
+
+        output = interactor.YTDLPInteractor.channel_playlists("url")
+        self.assertEqual("extract_info test", output)
+        mock_ytdlp.assert_called_once()
+        mock_ytdlp.return_value.__enter__.return_value.extract_info.assert_called_once()
+        mock_cleaner.assert_called_once()
+        first_call = mock_ytdlp.mock_calls[0]
+        first_call_args = first_call.args[0]
+        self.assertIn("action", first_call_args)
+        self.assertEqual("channel_playlists", first_call_args["action"])
+
+
+def proxies_user_defined(**kwargs):
+    return kwargs
+
+
+class UtilsTests(TestCase):
+
+    @override_settings(
+        VIDAR_PROXIES_DEFAULT="default proxy",
+        VIDAR_PROXIES=['proxy1', 'proxy2', 'proxy3', 'proxy4']
+    )
+    def test_get_proxy_returns_default_after_x(self):
+        possible_proxies = ['proxy1', 'proxy2', 'proxy3', 'proxy4']
+        self.assertIn(utils.get_proxy(attempt=0), possible_proxies)
+        self.assertIn(utils.get_proxy(attempt=1), possible_proxies)
+        self.assertEqual("default proxy", utils.get_proxy(attempt=2))
+
+    @override_settings(
+        VIDAR_PROXIES_DEFAULT="default proxy",
+        VIDAR_PROXIES=['proxy1', 'proxy2', 'proxy3', 'proxy4']
+    )
+    def test_get_proxy_with_previous_proxies_supplied(self):
+        self.assertEqual("proxy3", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy4']))
+        self.assertEqual("default proxy", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy3', 'proxy4']))
+
+    @override_settings(
+        VIDAR_PROXIES_DEFAULT="default proxy",
+        VIDAR_PROXIES='proxy1,proxy2,proxy3,proxy4'
+    )
+    def test_get_proxy_proxies_supplied_as_comma_delim_string(self):
+        self.assertEqual("proxy3", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy4']))
+        self.assertEqual("default proxy", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy3', 'proxy4']))
+
+    @override_settings(VIDAR_PROXIES=proxies_user_defined)
+    def test_get_proxy_with_proxies_user_defined_function(self):
+        self.assertEqual(proxies_user_defined, app_settings.PROXIES)
+
+        output = utils.get_proxy(previous_proxies=['passed into utils.get_proxy'])
+        self.assertEqual(dict(previous_proxies=["passed into utils.get_proxy"], instance=None, attempt=None), output)
+
+    @override_settings(VIDAR_PROXIES=proxies_user_defined)
+    def test_get_proxy_with_proxies_user_defined_function_always_called(self):
+        self.assertEqual(proxies_user_defined, app_settings.PROXIES)
+
+        output = utils.get_proxy(previous_proxies=['passed into utils.get_proxy'], attempt=100)
+        self.assertEqual(dict(previous_proxies=["passed into utils.get_proxy"], instance=None, attempt=100), output)
