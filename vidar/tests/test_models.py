@@ -159,8 +159,10 @@ class VideoMethodTests(TestCase):
         latest_download = video.get_latest_download_stats()
         self.assertEqual({"test_value": ts2}, latest_download)
 
-        with self.assertRaises(TypeError):
+        try:
             video.set_latest_download_stats(test_value=video)
+        except TypeError:
+            self.fail("JSONSetToListEncoder was changed to accept django models, why did this fail?")
 
     def test_get_latest_download_stats_returns_dict_on_no_attmpt(self):
         video = models.Video.objects.create(title="test video")

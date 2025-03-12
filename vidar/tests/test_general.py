@@ -10,7 +10,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission, Group
 from django.utils import timezone
 
-from vidar import models, forms, renamers, json_encoders, exceptions
+from example import settings
+from vidar import models, forms, renamers, json_encoders, exceptions, app_settings
 from vidar.helpers import channel_helpers, video_helpers
 
 UserModel = get_user_model()
@@ -140,38 +141,6 @@ class VideoSaveWatchTimeTests(TestCase):
                          'Jumping into the past should not create another history entry within the time limit')
         latest = models.UserPlaybackHistory.objects.latest()
         self.assertEqual(120, latest.seconds)
-
-
-class VideoTests(TestCase):
-    def test_system_safe_title(self):
-        video = models.Video.objects.create(
-            title="The Myth Busting / Saving a Machinist's A $ $ - Professional TIG Welding Career Advice"
-        )
-
-        expected = 'The Myth Busting Saving a Machinists A Professional TIG Welding Career Advice'
-        self.assertEqual(expected, video.system_safe_title)
-
-    def test_system_safe_title_the(self):
-        video = models.Video.objects.create(
-            title="The Myth Busting / Saving a Machinist's A $ $ - Professional TIG Welding Career Advice"
-        )
-
-        expected = 'Myth Busting Saving a Machinists A Professional TIG Welding Career Advice, The'
-        self.assertEqual(expected, video.system_safe_title_the)
-
-
-class ChannelTests(TestCase):
-    def test_system_safe_name(self):
-        channel = models.Channel.objects.create(name="The Myth Busting & Associates")
-
-        expected = 'The Myth Busting and Associates'
-        self.assertEqual(expected, channel.system_safe_name)
-
-    def test_system_safe_name_the(self):
-        channel = models.Channel.objects.create(name="tHe Myth Busting & Associates")
-
-        expected = 'Myth Busting and Associates, tHe'
-        self.assertEqual(expected, channel.system_safe_name_the)
 
 
 class FormTests(TestCase):
@@ -325,19 +294,21 @@ class FormTests(TestCase):
         self.assertEqual('End must be greater than start time', form.errors['end'][0])
 
 
-class JsonEncoderTests(SimpleTestCase):
+class JsonEncoderTests(TestCase):
     def test_basics(self):
         def test_func(): pass
         test_func_str = str(test_func)
+        video = models.Video.objects.create(title='test video')
         data = {
             'str': '',
             'tuple': tuple(),
             'set': set(),
             'dict': dict(),
             'func': test_func,
+            "video": video,
         }
         output = json.dumps(data, cls=json_encoders.JSONSetToListEncoder)
-        expected = f'{{"str": "", "tuple": [], "set": [], "dict": {{}}, "func": "{test_func_str}"}}'
+        expected = f'{{"str": "", "tuple": [], "set": [], "dict": {{}}, "func": "{test_func_str}", "video": "{video}"}}'
         self.assertEqual(expected, output)
 
 
