@@ -3,15 +3,16 @@ name: build demo image
 on:
   push:
     tags:
-      - '*'
+      - '20*'
 
-permissions:
-  contents: write
-  
 jobs:
-  docker_actions:
-    name: Docker
+  build_docker_demo:
+    name: Build Demo
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Set up QEMU
