@@ -414,6 +414,58 @@ Configurable Settings
 ``VIDAR_SAVE_INFO_JSON_FILE`` (default: ``True``)
     Write info.json file alongside video file?
 
+``VIDAR_SETTING_GETTER``
+    By default all ``VIDAR_*`` settings are read from the primary django project's settings (``django.conf.settings``).
+
+    You can modify this by supplying your own function that returns the necessary information.
+
+    In your django primary settings file, supply a dotted string path to a function
+    that accepts ``name`` and a ``default``::
+
+        VIDAR_SETTING_GETTER = 'myproj.settings_getters.my_project_settings_getter'
+
+    ``myproj/settings_getters.py``::
+
+        def my_project_settings_getter(name, default):
+            # Get the setting that related to name and return its value
+            return ...
+
+    Here is an example that pulls from django settings if it exists, otherwise it pulls from a
+    model that stores settings
+
+    ``core_data/models.py``::
+
+        class Setting(models.Model):
+
+            name = models.CharField(max_length=255)
+            value = models.TextField(blank=True)
+
+            @classmethod
+            def get_value(cls, name, default=None):
+                setting, _ = cls.objects.get_or_create(name=name, defaults=dict(default=default))
+                value = setting.value
+
+                if value.lower() in ['true', 'false']:
+                    return value.lower() == 'true'
+
+                if value.isdigit():
+                    return int(value)
+
+                return value
+
+    ``core_data/settings_getters.py``::
+
+        from django.conf import settings
+        from core_data.models import Setting
+
+
+        def get_vidar_setting(name, default):
+
+            if hasattr(settings, name):
+                return getattr(settings, name)
+
+            return Setting.get_value(name=name, default=default)
+
 ``VIDAR_SHORTS_FORCE_MAX_QUALITY`` (default: ``True``)
     When downloading shorts, grab max quality available?
 
