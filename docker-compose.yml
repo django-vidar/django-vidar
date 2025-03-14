@@ -36,7 +36,8 @@ services:
     ports:
       - "${DOCKER_FLOWER_PORT:-5555}:5555"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 
   web:
     restart: no
@@ -60,8 +61,16 @@ services:
       # My machine path : Containers internal path
       - "${DOCKER_MEDIA_ROOT:-./cache/media/}:/media/"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://127.0.0.1:8000 || exit 1
+      interval: 10s
+      start_period: 30s
+      timeout: 5s
+      retries: 5
 
   celery-beat:
     restart: no
@@ -74,8 +83,12 @@ services:
       - HEALTH_CHECK_DATABASE=postgres
       - HEALTH_CHECK_BROKER=redis
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_healthy
 
   celery-worker:
     restart: no
@@ -91,8 +104,12 @@ services:
       # My machine path : Containers internal path
       - "${DOCKER_MEDIA_ROOT:-./cache/media/}:/media/"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_healthy
 
   celery-worker-processor:
     restart: no
@@ -108,5 +125,9 @@ services:
       # My machine path : Containers internal path
       - "${DOCKER_MEDIA_ROOT:-./cache/media/}:/media/"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_healthy
