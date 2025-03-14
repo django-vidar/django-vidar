@@ -66,9 +66,10 @@ class Command(BaseCommand):
                 "cron": "14 7 * * *",
             },
             {
-                "name": "vidar: daily update video details",
+                "name": "vidar: update video details",
                 "task": "vidar.tasks.update_video_statuses_and_details",
                 "cron": "3,13,23,33,43,53 6-21 * * *",
+                "enabled": False,
             },
         ]
 
@@ -78,6 +79,7 @@ class Command(BaseCommand):
             try:
                 pt = PeriodicTask.objects.get(task=item["task"])
                 self.stdout.write(f"Updating {item['task']}")
+                pt.enabled = item.get("enabled", True)
                 pt.crontab.minute = minute
                 pt.crontab.hour = hour
                 pt.crontab.day_of_month = day_of_month
@@ -100,4 +102,5 @@ class Command(BaseCommand):
                     task=item["task"],
                     name=item["name"],
                     crontab=cron,
+                    enabled=item.get("enabled", True),
                 )
