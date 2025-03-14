@@ -1,4 +1,4 @@
-name: Django CI
+name: Run Django Tests
 
 on:
   workflow_call:

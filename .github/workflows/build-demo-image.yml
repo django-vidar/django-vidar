@@ -1,10 +1,10 @@
-name: build demo image
+name: Build Demo Docker Image
 
 on:
   workflow_call:
 
 jobs:
-  build_docker_demo:
+  build_demo_docker_image:
     name: Build Demo
     runs-on: ubuntu-latest
 

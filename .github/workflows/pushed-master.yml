@@ -1,0 +1,14 @@
+name: Push or PR to master runs django tests
+
+on:
+  push:
+    branches: [ master ]
+    tags-ignore:
+      - '20*'
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  call-workflow-passing-data:
+    uses: django-vidar/django-vidar/.github/workflows/run-django-tests.yml@master
+    secrets: inherit

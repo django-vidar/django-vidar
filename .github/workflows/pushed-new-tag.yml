@@ -1,0 +1,15 @@
+name: New 20* Tag Runs Tests Then Builds Demo Docker Image
+
+on:
+  push:
+    tags:
+      - '20*'
+
+jobs:
+  call-django-tests-workflow:
+    uses: django-vidar/django-vidar/.github/workflows/run-django-tests.yml@master
+    secrets: inherit
+  call-demo-builder-workflow:
+    needs: call-django-tests-workflow
+    uses: django-vidar/django-vidar/.github/workflows/build-demo-image.yml@master
+    secrets: inherit
