@@ -1,9 +1,7 @@
 name: build demo image
 
 on:
-  push:
-    tags:
-      - '20*'
+  workflow_call:
 
 jobs:
   build_docker_demo:

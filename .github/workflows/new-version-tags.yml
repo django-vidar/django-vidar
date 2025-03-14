@@ -1,0 +1,13 @@
+name: Django tests then build demo image
+
+on:
+  push:
+    tags:
+      - '20*'
+
+jobs:
+  call-tests-workflow:
+    uses: django-vidar/django-vidar/.github/workflows/tests.yml@master
+  call-demo-builder-workflow:
+    needs: call-tests-workflow
+    uses: django-vidar/django-vidar/.github/workflows/demo-builder.yml@master
