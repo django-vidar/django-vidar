@@ -1,9 +1,35 @@
 from django.contrib import admin
 
-from vidar.models import Channel, Video, VideoHistory
+from vidar.models import (
+    Channel,
+    Comment,
+    DurationSkip,
+    ExtraFile,
+    Highlight,
+    Playlist,
+    ScanHistory,
+    UserPlaybackHistory,
+    Video,
+    VideoBlocked,
+    VideoDownloadError,
+    VideoHistory,
+    VideoNote,
+)
 
 
-@admin.register(Channel)
+@admin.register(
+    Channel,
+    Comment,
+    DurationSkip,
+    ExtraFile,
+    Highlight,
+    Playlist,
+    ScanHistory,
+    VideoDownloadError,
+    VideoBlocked,
+    VideoNote,
+    UserPlaybackHistory,
+)
 class GeneralAdmin(admin.ModelAdmin):
     pass
 
