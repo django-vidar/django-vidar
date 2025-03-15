@@ -1,4 +1,3 @@
-import io
 import json
 import logging
 import math
@@ -795,10 +794,6 @@ def download_provider_video(
     )
 
     video.save_download_kwargs(dl_kwargs)
-
-    if app_settings.COOKIES_CHECKER(video=video, attempt=self.request.retries):
-        if cookies := app_settings.COOKIES_GETTER(video=video):
-            dl_kwargs.setdefault("cookies", io.StringIO(cookies))
 
     try:
         info, used_dl_kwargs = interactor.video_download(
