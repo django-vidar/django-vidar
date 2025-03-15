@@ -1,6 +1,7 @@
 import datetime
 import difflib
 import functools
+import io
 import logging
 import math
 import re
@@ -332,6 +333,11 @@ class Channel(models.Model):
     )
 
     check_videos_privacy_status = models.BooleanField(default=True)
+
+    needs_cookies = models.BooleanField(
+        default=False,
+        help_text="Does access to this channels content require cookies?",
+    )
 
     class Meta:
         ordering = ["name"]
@@ -752,6 +758,11 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     filename_schema = models.CharField(max_length=500, blank=True)
     directory_schema = models.CharField(max_length=500, blank=True)
 
+    needs_cookies = models.BooleanField(
+        default=False,
+        help_text="Does access to this video require cookies?",
+    )
+
     def __str__(self):
         return self.title or "<Title Placeholder>"
 
@@ -1128,6 +1139,9 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
         for k, v in kwargs.items():
             if hasattr(v, "isoformat"):
                 kwargs[k] = v.isoformat()
+            elif isinstance(v, io.IOBase):
+                v.seek(0)
+                kwargs[k] = v.read()
 
         self.system_notes["downloads"].append(kwargs)
         if commit:
@@ -1206,6 +1220,14 @@ class VideoDownloadError(models.Model):
 
         if "progress_hooks" in kwargs:
             del kwargs["progress_hooks"]
+
+        # auto convert datetime into isoformat
+        for k, v in kwargs.items():
+            if hasattr(v, "isoformat"):
+                kwargs[k] = v.isoformat()
+            elif isinstance(v, io.IOBase):
+                v.seek(0)
+                kwargs[k] = v.read()
 
         self.kwargs = kwargs
         if commit:

@@ -10,7 +10,7 @@ from django.test import TestCase, SimpleTestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from vidar import models, exceptions
+from vidar import models, exceptions, app_settings
 from vidar.services import (
     schema_services,
     ytdlp_services,
@@ -1511,6 +1511,69 @@ class VideoServicesTests(TestCase):
 
         second_log = logs[second_timestamp.isoformat()]
         self.assertEqual('result here', second_log)
+
+    def test_should_use_cookies_without_channel(self):
+
+        video = models.Video.objects.create(title='Test Video')
+        self.assertFalse(video_services.should_use_cookies(video=video))
+        video.needs_cookies = True
+        self.assertTrue(video_services.should_use_cookies(video=video))
+
+    def test_should_use_cookies_with_channel(self):
+        channel = models.Channel.objects.create()
+        video = models.Video.objects.create(channel=channel)
+        self.assertFalse(video_services.should_use_cookies(video=video))
+        channel.needs_cookies = True
+        self.assertTrue(video_services.should_use_cookies(video=video))
+
+    @override_settings(VIDAR_COOKIES_APPLY_ON_RETRIES=False)
+    def test_should_use_cookies_on_retry_not_allowed(self):
+        video = models.Video.objects.create(needs_cookies=True)
+        self.assertFalse(video_services.should_use_cookies(video=video, attempt=1))
+
+        channel = models.Channel.objects.create(needs_cookies=True)
+        video = models.Video.objects.create(channel=channel)
+        self.assertFalse(video_services.should_use_cookies(video=video, attempt=1))
+
+    @override_settings(VIDAR_COOKIES_APPLY_ON_RETRIES=True)
+    def test_should_use_cookies_on_retry_allowed(self):
+        video = models.Video.objects.create(needs_cookies=True)
+        self.assertTrue(video_services.should_use_cookies(video=video, attempt=1))
+
+        channel = models.Channel.objects.create(needs_cookies=True)
+        video = models.Video.objects.create(channel=channel)
+        self.assertTrue(video_services.should_use_cookies(video=video, attempt=1))
+
+    @override_settings(VIDAR_COOKIES="system wide cookies")
+    def test_get_cookies_using_system_level(self):
+        video = models.Video.objects.create(needs_cookies=True)
+        self.assertEqual("system wide cookies", video_services.get_cookies(video=video))
+
+    def test_get_cookies_none_default(self):
+        video = models.Video.objects.create(needs_cookies=True)
+        self.assertIsNone(video_services.get_cookies(video=video))
+
+    @override_settings(VIDAR_COOKIES_FILE="vidar/tests/cookies.txt")
+    def test_get_cookies_using_string_file(self):
+        video = models.Video.objects.create(needs_cookies=True)
+        self.assertEqual("cookies.txt cookies here\n", video_services.get_cookies(video=video))
+
+    @override_settings(VIDAR_COOKIES_FILE=pathlib.Path("vidar/tests/cookies.txt"))
+    def test_get_cookies_using_pathlib_file(self):
+        video = models.Video.objects.create(needs_cookies=True)
+        self.assertEqual("cookies.txt cookies here\n", video_services.get_cookies(video=video))
+
+    @override_settings(VIDAR_COOKIES_GETTER="vidar.tests.test_functions.get_cookies_user_func")
+    def test_user_override_get_cookies(self):
+        video = models.Video.objects.create(needs_cookies=True)
+        self.assertEqual("user func cookies here", app_settings.COOKIES_GETTER(video=video))
+
+    @override_settings(VIDAR_COOKIES_CHECKER="vidar.tests.test_functions.cookies_checker_user_func")
+    def test_user_override_should_use_cookies(self):
+        channel = models.Channel.objects.create()
+        video = models.Video.objects.create(channel=channel)
+        self.assertEqual("user func cookies checker attempt=0", app_settings.COOKIES_CHECKER(video=video))
+        self.assertEqual("user func cookies checker attempt=1", app_settings.COOKIES_CHECKER(video=video, attempt=1))
 
 
 class YtdlpServicesTests(TestCase):

@@ -235,6 +235,39 @@ Configurable Settings
     If a channel is scanned and then the automated system tries to scan again within this window,
     the channel is skipped.
 
+``VIDAR_COOKIES`` (default: ``None``)
+    String of cookies to supply to yt-dlp.
+
+    If supplied, ``VIDAR_COOKIES_FILE`` will be ignored.
+
+``VIDAR_COOKIES_APPLY_ON_RETRIES`` (default: ``False``)
+    If a video fails to download, should retries apply cookie settings?
+
+``VIDAR_COOKIES_CHECKER`` (default: ``"vidar.services.video_services.should_use_cookies"``)
+    Dot notation pathway to a function that returns True or False if the given video
+    should supply cookies to yt-dlp.
+
+    Supplying this setting ignores ``VIDAR_COOKIES_APPLY_ON_RETRIES``. It is your responsibility
+    to replicate that functionality.::
+
+    def cookie_checker(video):
+        ...
+        return False
+
+``VIDAR_COOKIES_FILE`` (default: ``None``)
+    String or pathlib.Path to the local cookie file to be read.
+
+``VIDAR_COOKIES_GETTER`` (default: ``"vidar.services.video_services.get_cookies"``)
+    Dot notation pathway to a function that returns a string containing
+    the cookies you want to use for the given video.
+
+    Supplying this setting ignores ``VIDAR_COOKIES`` and ``VIDAR_COOKIES_FILE``. It is your responsibility
+    to replicate that functionality.::
+
+    def cookie_getter(video, attempt=0):
+        ...
+        return "my cookies here"
+
 ``VIDAR_COMMENTS_MAX_PARENTS`` (default: ``"all"``)
 
 ``VIDAR_COMMENTS_MAX_REPLIES`` (default: ``100``)
