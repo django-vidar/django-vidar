@@ -251,7 +251,7 @@ Configurable Settings
     If you want to use hourly, these are the base selection to choose from WITHOUT the minutes.
     Minutes are calculated on the fly and should not be supplied here.
 
-    So instead of ``m h dom mon dow` you need to supply ``h dom mon dow`.
+    So instead of ``m h dom mon dow`` you need to supply ``h dom mon dow``.
 
     You can supply multiple values by pipe ``|`` separation.
 
@@ -393,7 +393,7 @@ Configurable Settings
     If False vidar will not send any messages to redis.
 
 ``VIDAR_REDIS_URL`` (default: ``None``)
-    URL to connect to redis, will use settings.CELERY_BROKER_URL if it exists
+    URL to connect to redis, will use ``settings.CELERY_BROKER_URL`` if it exists
 
 ``VIDAR_REDIS_CHANNEL_INDEXING`` (default: ``True``)
     Update redis messaging when a Channel is being indexed

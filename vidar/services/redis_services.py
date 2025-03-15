@@ -52,7 +52,7 @@ def check_redis_message_allow(name):
 class RedisMessaging:
     """collection of methods to interact with redis"""
 
-    NAME_SPACE = "django:"
+    NAME_SPACE = "vidar:"
 
     def __init__(self):
         self.conn = None
