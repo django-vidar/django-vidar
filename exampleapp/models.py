@@ -36,6 +36,7 @@ class User(AbstractUser):
 
 
 class TestModel(models.Model):
+    __test__ = False  # pytest
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 
     search_field = models.TextField(blank=True)

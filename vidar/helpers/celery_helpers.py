@@ -1,12 +1,10 @@
 import logging
-import time
-from contextlib import contextmanager
 from functools import wraps
 
 from django.core.cache import cache
 from django.core.cache.backends.base import DEFAULT_TIMEOUT
 
-from celery import current_app, states
+from celery import states
 from celery.exceptions import Ignore
 
 
