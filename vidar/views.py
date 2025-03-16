@@ -1592,7 +1592,7 @@ class HighlightUpdateView(PermissionRequiredMixin, UpdateView):
 
 class VideoChaptersListView(PermissionRequiredMixin, DetailView):
     model = Video
-    permission_required = ["vidar.view_video", "vidar.view_chapter"]
+    permission_required = ["vidar.view_video", "vidar.view_highlight"]
     template_name = "vidar/video_chapter_list.html"
 
     def get_context_data(self, **kwargs):
