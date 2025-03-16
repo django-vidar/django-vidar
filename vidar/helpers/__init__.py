@@ -1,3 +1,4 @@
+import io
 import logging
 
 from django.http import HttpResponseRedirect
@@ -34,3 +35,18 @@ def redirect_next_or_obj(request, other, *args, **kwargs):
     if next_param:
         return HttpResponseRedirect(next_param)
     return redirect(other, *args, **kwargs)
+
+
+def json_safe_kwargs(kwargs):
+    # auto convert datetime into isoformat
+    output = {}
+    for k, v in kwargs.items():
+        if hasattr(v, "isoformat"):
+            output[k] = v.isoformat()
+        elif isinstance(v, io.IOBase):
+            v.seek(0)
+            output[k] = v.read()
+        elif k != "progress_hooks":
+            output[k] = v
+
+    return output

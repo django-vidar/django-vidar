@@ -550,3 +550,23 @@ def quality_to_download(video: models.Video, extras: (set, list, tuple) = None):
         return max(qualities)
 
     return app_settings.DEFAULT_QUALITY
+
+
+def should_use_cookies(video: models.Video, attempt=0):
+
+    if attempt and not app_settings.COOKIES_APPLY_ON_RETRIES:
+        return False
+
+    return video.needs_cookies or video.channel and video.channel.needs_cookies
+
+
+def get_cookies(video: models.Video):
+
+    if system_cookies := app_settings.COOKIES:
+        return system_cookies
+
+    if cookies_file := app_settings.COOKIES_FILE:
+        if hasattr(cookies_file, "open"):
+            return cookies_file.open().read()
+        with open(cookies_file) as fo:
+            return fo.read()

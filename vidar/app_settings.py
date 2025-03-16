@@ -123,6 +123,30 @@ class AppSettings(object):
         )
 
     @property
+    def COOKIES(self):
+        return self._setting("COOKIES", None)
+
+    @property
+    def COOKIES_APPLY_ON_RETRIES(self):
+        return self._setting("COOKIES_APPLY_ON_RETRIES", False)
+
+    @property
+    def COOKIES_CHECKER(self):
+        user_func = self._setting("COOKIES_CHECKER", "vidar.services.video_services.should_use_cookies")
+        func = import_callable(user_func)
+        return func
+
+    @property
+    def COOKIES_FILE(self):
+        return self._setting("COOKIES_FILE", None)
+
+    @property
+    def COOKIES_GETTER(self):
+        user_func = self._setting("COOKIES_GETTER", "vidar.services.video_services.get_cookies")
+        func = import_callable(user_func)
+        return func
+
+    @property
     def CRON_DEFAULT_SELECTION(self):
         return self._setting(
             "CRON_DEFAULT_SELECTION",

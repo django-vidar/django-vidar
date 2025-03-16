@@ -17,7 +17,7 @@ from mptt.models import MPTTModel, TreeForeignKey
 from positions.fields import PositionField
 
 from vidar import app_settings, exceptions, json_encoders, utils
-from vidar.helpers import channel_helpers, extrafile_helpers, model_helpers, video_helpers
+from vidar.helpers import channel_helpers, extrafile_helpers, json_safe_kwargs, model_helpers, video_helpers
 from vidar.services import crontab_services, notification_services, ytdlp_services
 from vidar.storages import vidar_storage
 
@@ -332,6 +332,11 @@ class Channel(models.Model):
     )
 
     check_videos_privacy_status = models.BooleanField(default=True)
+
+    needs_cookies = models.BooleanField(
+        default=False,
+        help_text="Does access to this channels content require cookies?",
+    )
 
     class Meta:
         ordering = ["name"]
@@ -752,6 +757,11 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     filename_schema = models.CharField(max_length=500, blank=True)
     directory_schema = models.CharField(max_length=500, blank=True)
 
+    needs_cookies = models.BooleanField(
+        default=False,
+        help_text="Does access to this video require cookies?",
+    )
+
     def __str__(self):
         return self.title or "<Title Placeholder>"
 
@@ -950,11 +960,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
         )
 
     def save_download_kwargs(self, kwargs):
-
-        if "progress_hooks" in kwargs:
-            del kwargs["progress_hooks"]
-
-        self.download_kwargs = kwargs
+        self.download_kwargs = json_safe_kwargs(kwargs)
         self.save()
 
     def save_system_notes(self, kwargs, commit=True):
@@ -1124,10 +1130,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
         if "downloads" not in self.system_notes:
             self.system_notes["downloads"] = []
 
-        # auto convert datetime into isoformat
-        for k, v in kwargs.items():
-            if hasattr(v, "isoformat"):
-                kwargs[k] = v.isoformat()
+        kwargs = json_safe_kwargs(kwargs)
 
         self.system_notes["downloads"].append(kwargs)
         if commit:
@@ -1143,10 +1146,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     def append_to_latest_download_stats(self, commit=True, **kwargs):
         latest = self.get_latest_download_stats()
 
-        # auto convert datetime into isoformat
-        for k, v in kwargs.items():
-            if hasattr(v, "isoformat"):
-                kwargs[k] = v.isoformat()
+        kwargs = json_safe_kwargs(kwargs)
 
         if latest:
             latest.update(kwargs)
@@ -1203,11 +1203,7 @@ class VideoDownloadError(models.Model):
         get_latest_by = "inserted"
 
     def save_kwargs(self, kwargs, commit=True):
-
-        if "progress_hooks" in kwargs:
-            del kwargs["progress_hooks"]
-
-        self.kwargs = kwargs
+        self.kwargs = json_safe_kwargs(kwargs)
         if commit:
             self.save()
 
