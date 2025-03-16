@@ -27,6 +27,7 @@ class VideoDownloaderForm(forms.ModelForm):
             "download_all_comments",
             "mark_for_deletion",
             "delete_after_watching",
+            "needs_cookies",
         ]
         labels = {"provider_object_id": "Link To Video"}
         help_texts = {
@@ -549,6 +550,7 @@ class ChannelAdministrativeOptionsForm(forms.ModelForm):
             "video_filename_schema",
             "block_rescan_window_in_hours",
             "check_videos_privacy_status",
+            "needs_cookies",
         ]
         help_texts = {
             "fully_indexed": "Do not change this unless you know what you are doing.",
