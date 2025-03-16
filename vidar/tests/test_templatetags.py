@@ -1,15 +1,22 @@
 # flake8: noqa
-
+import pytest
 from django.core.paginator import Paginator
 from django.core.exceptions import FieldDoesNotExist
 from django.contrib.auth import get_user_model
 from django.db.utils import NotSupportedError
 from django.test import TestCase
+from django.utils import timezone
 
 from vidar import models, pagination
 from vidar.templatetags import video_tools, pagination_helpers, playlist_tools
 
 UserModel = get_user_model()
+
+def date_to_aware_date(value):
+    y, m, d = value.split('-')
+    y, m, d = int(y), int(m), int(d)
+
+    return timezone.make_aware(timezone.datetime(y, m, d))
 
 
 class TemplateTagsVideoToolsTests(TestCase):
@@ -35,13 +42,13 @@ class TemplateTagsVideoToolsTests(TestCase):
             videos_playback_ordering=models.Playlist.PlaylistVideoOrderingChoices.VIDEO_UPLOAD_DATE_ASC,
         )
 
-        video1 = models.Video.objects.create(title='video 1', upload_date='2024-06-01')
-        video2 = models.Video.objects.create(title='video 2', upload_date='2024-06-02')
-        video3 = models.Video.objects.create(title='video 3', upload_date='2024-06-03')
-        video4 = models.Video.objects.create(title='video 4', upload_date='2024-06-04')
-        video5 = models.Video.objects.create(title='video 5', upload_date='2024-06-05')
-        video6 = models.Video.objects.create(title='video 6', upload_date='2024-06-06')
-        video7 = models.Video.objects.create(title='video 7', upload_date='2024-06-07')
+        video1 = models.Video.objects.create(title='video 1', upload_date=date_to_aware_date('2024-06-01'))
+        video2 = models.Video.objects.create(title='video 2', upload_date=date_to_aware_date('2024-06-02'))
+        video3 = models.Video.objects.create(title='video 3', upload_date=date_to_aware_date('2024-06-03'))
+        video4 = models.Video.objects.create(title='video 4', upload_date=date_to_aware_date('2024-06-04'))
+        video5 = models.Video.objects.create(title='video 5', upload_date=date_to_aware_date('2024-06-05'))
+        video6 = models.Video.objects.create(title='video 6', upload_date=date_to_aware_date('2024-06-06'))
+        video7 = models.Video.objects.create(title='video 7', upload_date=date_to_aware_date('2024-06-07'))
 
         playlist.videos.add(video3, video4, video5)
 
@@ -60,13 +67,13 @@ class TemplateTagsVideoToolsTests(TestCase):
             videos_playback_ordering=models.Playlist.PlaylistVideoOrderingChoices.VIDEO_UPLOAD_DATE_DESC,
         )
 
-        video1 = models.Video.objects.create(title='video 1', upload_date='2024-06-01')
-        video2 = models.Video.objects.create(title='video 2', upload_date='2024-06-02')
-        video3 = models.Video.objects.create(title='video 3', upload_date='2024-06-03')
-        video4 = models.Video.objects.create(title='video 4', upload_date='2024-06-04')
-        video5 = models.Video.objects.create(title='video 5', upload_date='2024-06-05')
-        video6 = models.Video.objects.create(title='video 6', upload_date='2024-06-06')
-        video7 = models.Video.objects.create(title='video 7', upload_date='2024-06-07')
+        video1 = models.Video.objects.create(title='video 1', upload_date=date_to_aware_date('2024-06-01'))
+        video2 = models.Video.objects.create(title='video 2', upload_date=date_to_aware_date('2024-06-02'))
+        video3 = models.Video.objects.create(title='video 3', upload_date=date_to_aware_date('2024-06-03'))
+        video4 = models.Video.objects.create(title='video 4', upload_date=date_to_aware_date('2024-06-04'))
+        video5 = models.Video.objects.create(title='video 5', upload_date=date_to_aware_date('2024-06-05'))
+        video6 = models.Video.objects.create(title='video 6', upload_date=date_to_aware_date('2024-06-06'))
+        video7 = models.Video.objects.create(title='video 7', upload_date=date_to_aware_date('2024-06-07'))
 
         playlist.videos.add(video3, video4, video5)
 
@@ -81,7 +88,7 @@ class TemplateTagsVideoToolsTests(TestCase):
 
     def test_display_ordering_by_playlist_returns_none_without_audio_on_audio_playlist(self):
         playlist = models.Playlist.objects.create(title='Test Playlist')
-        video3 = models.Video.objects.create(title='video 3', upload_date='2024-06-03')
+        video3 = models.Video.objects.create(title='video 3', upload_date=date_to_aware_date('2024-06-03'))
 
         self.assertIsNone(video_tools.previous_by_playlist(playlist, video3))
         self.assertIsNone(video_tools.next_by_playlist(playlist, video3))
@@ -92,13 +99,13 @@ class TemplateTagsVideoToolsTests(TestCase):
     def test_display_ordering_by_playlist_with_audio_on_audio_playlist(self):
         playlist = models.Playlist.objects.create(title='Test Playlist')
 
-        video1 = models.Video.objects.create(title='video 1', upload_date='2024-06-01')
-        video2 = models.Video.objects.create(title='video 2', upload_date='2024-06-02', audio='test/test.mp3')
-        video3 = models.Video.objects.create(title='video 3', upload_date='2024-06-03')
-        video4 = models.Video.objects.create(title='video 4', upload_date='2024-06-04')
-        video5 = models.Video.objects.create(title='video 5', upload_date='2024-06-05', audio='test/test.mp3')
-        video6 = models.Video.objects.create(title='video 6', upload_date='2024-06-06', audio='test/test.mp3')
-        video7 = models.Video.objects.create(title='video 7', upload_date='2024-06-07')
+        video1 = models.Video.objects.create(title='video 1', upload_date=date_to_aware_date('2024-06-01'))
+        video2 = models.Video.objects.create(title='video 2', upload_date=date_to_aware_date('2024-06-02'), audio='test/test.mp3')
+        video3 = models.Video.objects.create(title='video 3', upload_date=date_to_aware_date('2024-06-03'))
+        video4 = models.Video.objects.create(title='video 4', upload_date=date_to_aware_date('2024-06-04'))
+        video5 = models.Video.objects.create(title='video 5', upload_date=date_to_aware_date('2024-06-05'), audio='test/test.mp3')
+        video6 = models.Video.objects.create(title='video 6', upload_date=date_to_aware_date('2024-06-06'), audio='test/test.mp3')
+        video7 = models.Video.objects.create(title='video 7', upload_date=date_to_aware_date('2024-06-07'))
 
         playlist.videos.add(video1)
         playlist.videos.add(video2)
@@ -174,14 +181,15 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertIsNone(video_tools.next_by_channel(video6))
         self.assertIsNone(video_tools.previous_by_channel(video6))
 
+    @pytest.mark.filterwarnings('ignore::RuntimeWarning')
     def test_display_ordering_by_upload_date(self):
-        video1 = models.Video.objects.create(title='video 1', upload_date='2024-06-01')
-        video2 = models.Video.objects.create(title='video 2', upload_date='2024-06-02', file='test.mp4')
-        video3 = models.Video.objects.create(title='video 3', upload_date='2024-06-03', file='test.mp4')
-        video4 = models.Video.objects.create(title='video 4', upload_date='2024-06-04', file='test.mp4')
-        video5 = models.Video.objects.create(title='video 5', upload_date='2024-06-05', file='test.mp4')
-        video6 = models.Video.objects.create(title='video 6', upload_date='2024-06-06', file='test.mp4')
-        video7 = models.Video.objects.create(title='video 7', upload_date='2024-06-07', file='test.mp4')
+        video1 = models.Video.objects.create(title='video 1', upload_date=date_to_aware_date('2024-06-01'))
+        video2 = models.Video.objects.create(title='video 2', upload_date=date_to_aware_date('2024-06-02'), file='test.mp4')
+        video3 = models.Video.objects.create(title='video 3', upload_date=date_to_aware_date('2024-06-03'), file='test.mp4')
+        video4 = models.Video.objects.create(title='video 4', upload_date=date_to_aware_date('2024-06-04'), file='test.mp4')
+        video5 = models.Video.objects.create(title='video 5', upload_date=date_to_aware_date('2024-06-05'), file='test.mp4')
+        video6 = models.Video.objects.create(title='video 6', upload_date=date_to_aware_date('2024-06-06'), file='test.mp4')
+        video7 = models.Video.objects.create(title='video 7', upload_date=date_to_aware_date('2024-06-07'), file='test.mp4')
 
         self.assertIsNone(video_tools.previous_by_upload_date(video7))
         self.assertEqual(video6, video_tools.next_by_upload_date(video7))
@@ -201,14 +209,15 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertEqual(video3, video_tools.previous_by_upload_date(video2))
         self.assertIsNone(video_tools.next_by_upload_date(video2))
 
+    @pytest.mark.filterwarnings('ignore::RuntimeWarning')
     def test_display_ordering_by_upload_date_with_audio_true(self):
-        video1 = models.Video.objects.create(title='video 1', upload_date='2024-06-01', file='test.mp4')
-        video2 = models.Video.objects.create(title='video 2', upload_date='2024-06-02', file='test.mp4', audio='test/test.mp3')
-        video3 = models.Video.objects.create(title='video 3', upload_date='2024-06-03', file='test.mp4')
-        video4 = models.Video.objects.create(title='video 4', upload_date='2024-06-04', file='test.mp4')
-        video5 = models.Video.objects.create(title='video 5', upload_date='2024-06-05', file='test.mp4', audio='test/test.mp3')
-        video6 = models.Video.objects.create(title='video 6', upload_date='2024-06-06', file='test.mp4', audio='test/test.mp3')
-        video7 = models.Video.objects.create(title='video 7', upload_date='2024-06-07', file='test.mp4')
+        video1 = models.Video.objects.create(title='video 1', upload_date=date_to_aware_date('2024-06-01'), file='test.mp4')
+        video2 = models.Video.objects.create(title='video 2', upload_date=date_to_aware_date('2024-06-02'), file='test.mp4', audio='test/test.mp3')
+        video3 = models.Video.objects.create(title='video 3', upload_date=date_to_aware_date('2024-06-03'), file='test.mp4')
+        video4 = models.Video.objects.create(title='video 4', upload_date=date_to_aware_date('2024-06-04'), file='test.mp4')
+        video5 = models.Video.objects.create(title='video 5', upload_date=date_to_aware_date('2024-06-05'), file='test.mp4', audio='test/test.mp3')
+        video6 = models.Video.objects.create(title='video 6', upload_date=date_to_aware_date('2024-06-06'), file='test.mp4', audio='test/test.mp3')
+        video7 = models.Video.objects.create(title='video 7', upload_date=date_to_aware_date('2024-06-07'), file='test.mp4')
 
         self.assertIsNone(video_tools.previous_by_upload_date(video7, view="audio"))
         self.assertEqual(video6, video_tools.next_by_upload_date(video7, view="audio"))
@@ -225,14 +234,15 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertIsNone(video_tools.next_by_upload_date(video1, view="audio"))
         self.assertEqual(video2, video_tools.previous_by_upload_date(video1, view="audio"))
 
+    @pytest.mark.filterwarnings('ignore::RuntimeWarning')
     def test_display_ordering_by_date_downloaded(self):
-        video1 = models.Video.objects.create(title='video 1', date_downloaded='2024-06-01')
-        video2 = models.Video.objects.create(title='video 2', date_downloaded='2024-06-02', file='test.mp4')
-        video3 = models.Video.objects.create(title='video 3', date_downloaded='2024-06-03', file='test.mp4')
-        video4 = models.Video.objects.create(title='video 4', date_downloaded='2024-06-04', file='test.mp4')
-        video6 = models.Video.objects.create(title='video 6', date_downloaded='2024-06-06', file='test.mp4')
-        video7 = models.Video.objects.create(title='video 7', date_downloaded='2024-06-07', file='test.mp4')
-        video5 = models.Video.objects.create(title='video 5', date_downloaded='2024-06-08', file='test.mp4')
+        video1 = models.Video.objects.create(title='video 1', date_downloaded=date_to_aware_date('2024-06-01'))
+        video2 = models.Video.objects.create(title='video 2', date_downloaded=date_to_aware_date('2024-06-02'), file='test.mp4')
+        video3 = models.Video.objects.create(title='video 3', date_downloaded=date_to_aware_date('2024-06-03'), file='test.mp4')
+        video4 = models.Video.objects.create(title='video 4', date_downloaded=date_to_aware_date('2024-06-04'), file='test.mp4')
+        video6 = models.Video.objects.create(title='video 6', date_downloaded=date_to_aware_date('2024-06-06'), file='test.mp4')
+        video7 = models.Video.objects.create(title='video 7', date_downloaded=date_to_aware_date('2024-06-07'), file='test.mp4')
+        video5 = models.Video.objects.create(title='video 5', date_downloaded=date_to_aware_date('2024-06-08'), file='test.mp4')
 
         self.assertIsNone(video_tools.previous_by_date_downloaded(video5))
         self.assertEqual(video7, video_tools.next_by_date_downloaded(video5))
@@ -252,14 +262,15 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertEqual(video3, video_tools.previous_by_date_downloaded(video2))
         self.assertIsNone(video_tools.next_by_date_downloaded(video2))
 
+    @pytest.mark.filterwarnings('ignore::RuntimeWarning')
     def test_display_ordering_by_date_downloaded_with_audio_true(self):
-        video1 = models.Video.objects.create(title='video 1', date_downloaded='2024-06-01', file='test.mp4')
-        video2 = models.Video.objects.create(title='video 2', date_downloaded='2024-06-02', file='test.mp4', audio='test/test.mp3')
-        video3 = models.Video.objects.create(title='video 3', date_downloaded='2024-06-03', file='test.mp4')
-        video4 = models.Video.objects.create(title='video 4', date_downloaded='2024-06-04', file='test.mp4')
-        video6 = models.Video.objects.create(title='video 6', date_downloaded='2024-06-06', file='test.mp4', audio='test/test.mp3')
-        video7 = models.Video.objects.create(title='video 7', date_downloaded='2024-06-07', file='test.mp4')
-        video5 = models.Video.objects.create(title='video 5', date_downloaded='2024-06-08', file='test.mp4', audio='test/test.mp3')
+        video1 = models.Video.objects.create(title='video 1', date_downloaded=date_to_aware_date('2024-06-01'), file='test.mp4')
+        video2 = models.Video.objects.create(title='video 2', date_downloaded=date_to_aware_date('2024-06-02'), file='test.mp4', audio='test/test.mp3')
+        video3 = models.Video.objects.create(title='video 3', date_downloaded=date_to_aware_date('2024-06-03'), file='test.mp4')
+        video4 = models.Video.objects.create(title='video 4', date_downloaded=date_to_aware_date('2024-06-04'), file='test.mp4')
+        video6 = models.Video.objects.create(title='video 6', date_downloaded=date_to_aware_date('2024-06-06'), file='test.mp4', audio='test/test.mp3')
+        video7 = models.Video.objects.create(title='video 7', date_downloaded=date_to_aware_date('2024-06-07'), file='test.mp4')
+        video5 = models.Video.objects.create(title='video 5', date_downloaded=date_to_aware_date('2024-06-08'), file='test.mp4', audio='test/test.mp3')
 
         self.assertIsNone(video_tools.previous_by_date_downloaded(video5, view="audio"))
         self.assertEqual(video6, video_tools.next_by_date_downloaded(video5, view="audio"))
@@ -273,14 +284,15 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertIsNone(video_tools.next_by_date_downloaded(video1, view="audio"))
         self.assertEqual(video2, video_tools.previous_by_date_downloaded(video1, view="audio"))
 
+    @pytest.mark.filterwarnings('ignore::RuntimeWarning')
     def test_display_ordering_by_starred(self):
-        video1 = models.Video.objects.create(title='video 1', starred='2024-06-01')
-        video2 = models.Video.objects.create(title='video 2', starred='2024-06-02', file='test.mp4')
-        video3 = models.Video.objects.create(title='video 3', starred='2024-06-03', file='test.mp4')
-        video4 = models.Video.objects.create(title='video 4', starred='2024-06-04', file='test.mp4')
-        video6 = models.Video.objects.create(title='video 6', starred='2024-06-06', file='test.mp4')
-        video7 = models.Video.objects.create(title='video 7', starred='2024-06-07', file='test.mp4')
-        video5 = models.Video.objects.create(title='video 5', starred='2024-06-08', file='test.mp4')
+        video1 = models.Video.objects.create(title='video 1', starred=date_to_aware_date('2024-06-01'))
+        video2 = models.Video.objects.create(title='video 2', starred=date_to_aware_date('2024-06-02'), file='test.mp4')
+        video3 = models.Video.objects.create(title='video 3', starred=date_to_aware_date('2024-06-03'), file='test.mp4')
+        video4 = models.Video.objects.create(title='video 4', starred=date_to_aware_date('2024-06-04'), file='test.mp4')
+        video6 = models.Video.objects.create(title='video 6', starred=date_to_aware_date('2024-06-06'), file='test.mp4')
+        video7 = models.Video.objects.create(title='video 7', starred=date_to_aware_date('2024-06-07'), file='test.mp4')
+        video5 = models.Video.objects.create(title='video 5', starred=date_to_aware_date('2024-06-08'), file='test.mp4')
 
         self.assertIsNone(video_tools.previous_by_starred(video5))
         self.assertEqual(video7, video_tools.next_by_starred(video5))
@@ -301,13 +313,13 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertIsNone(video_tools.next_by_starred(video2))
 
     def test_display_ordering_by_starred_with_audio_true(self):
-        video1 = models.Video.objects.create(title='video 1', starred='2024-06-01', file='test.mp4')
-        video2 = models.Video.objects.create(title='video 2', starred='2024-06-02', file='test.mp4', audio='test/test.mp3')
-        video3 = models.Video.objects.create(title='video 3', starred='2024-06-03', file='test.mp4')
-        video4 = models.Video.objects.create(title='video 4', starred='2024-06-04', file='test.mp4')
-        video6 = models.Video.objects.create(title='video 6', starred='2024-06-06', file='test.mp4', audio='test/test.mp3')
-        video7 = models.Video.objects.create(title='video 7', starred='2024-06-07', file='test.mp4')
-        video5 = models.Video.objects.create(title='video 5', starred='2024-06-08', file='test.mp4', audio='test/test.mp3')
+        video1 = models.Video.objects.create(title='video 1', starred=date_to_aware_date('2024-06-01'), file='test.mp4')
+        video2 = models.Video.objects.create(title='video 2', starred=date_to_aware_date('2024-06-02'), file='test.mp4', audio='test/test.mp3')
+        video3 = models.Video.objects.create(title='video 3', starred=date_to_aware_date('2024-06-03'), file='test.mp4')
+        video4 = models.Video.objects.create(title='video 4', starred=date_to_aware_date('2024-06-04'), file='test.mp4')
+        video6 = models.Video.objects.create(title='video 6', starred=date_to_aware_date('2024-06-06'), file='test.mp4', audio='test/test.mp3')
+        video7 = models.Video.objects.create(title='video 7', starred=date_to_aware_date('2024-06-07'), file='test.mp4')
+        video5 = models.Video.objects.create(title='video 5', starred=date_to_aware_date('2024-06-08'), file='test.mp4', audio='test/test.mp3')
 
         self.assertIsNone(video_tools.previous_by_starred(video5, view="audio"))
         self.assertEqual(video6, video_tools.next_by_starred(video5, view="audio"))
