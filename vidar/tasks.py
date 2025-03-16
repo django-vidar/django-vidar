@@ -2002,7 +2002,7 @@ def channel_rename_files(self, channel_id, commit=True, remove_empty=True, renam
 
 
 @shared_task(bind=True, queue="queue-vidar")
-@celery_helpers.prevent_asynchronous_task_execution(lock_expiry=2 * 60 * 60)
+@celery_helpers.prevent_asynchronous_task_execution(lock_key="rename-archived-files", lock_expiry=2 * 60 * 60)
 def rename_all_archived_video_files(self, commit=True, remove_empty=True):
 
     if not file_helpers.can_file_be_moved(Video.file.field):
@@ -2125,6 +2125,7 @@ def trigger_convert_video_to_mp4(pk=None):
 
 
 @shared_task(bind=True, queue="queue-vidar-processor")
+@celery_helpers.prevent_asynchronous_task_execution(lock_key="convert-video-to-mp4-{pk}", lock_expiry=4 * 60 * 60)
 def convert_video_to_mp4(self, pk, filepath=None, ext="mp4"):
     # NOTE: update celery_helpers if you change this task name
 
