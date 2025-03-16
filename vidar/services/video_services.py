@@ -557,6 +557,11 @@ def should_use_cookies(video: models.Video, attempt=0):
     if attempt and not app_settings.COOKIES_APPLY_ON_RETRIES:
         return False
 
+    if app_settings.COOKIES_ALWAYS_REQUIRED:
+        if not get_cookies(video=video):
+            raise ValueError("VIDAR_COOKIES_ALWAYS_REQUIRED=True but no cookies were returned.")
+        return True
+
     return video.needs_cookies or video.channel and video.channel.needs_cookies
 
 

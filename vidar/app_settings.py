@@ -127,6 +127,10 @@ class AppSettings(object):
         return self._setting("COOKIES", None)
 
     @property
+    def COOKIES_ALWAYS_REQUIRED(self):
+        return self._setting("COOKIES_ALWAYS_REQUIRED", False)
+
+    @property
     def COOKIES_APPLY_ON_RETRIES(self):
         return self._setting("COOKIES_APPLY_ON_RETRIES", False)
 

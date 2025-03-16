@@ -240,6 +240,8 @@ Configurable Settings
 
     If supplied, ``VIDAR_COOKIES_FILE`` will be ignored.
 
+``VIDAR_COOKIES_ALWAYS_REQUIRED`` (default ``False``)
+
 ``VIDAR_COOKIES_APPLY_ON_RETRIES`` (default: ``False``)
     If a video fails to download, should retries apply cookie settings?
 
