@@ -3,7 +3,9 @@ import io
 
 from django.test import TestCase
 
-from vidar.helpers import json_safe_kwargs
+from vidar import models
+from vidar.helpers import json_safe_kwargs, celery_helpers
+
 
 class GeneralHelpersTests(TestCase):
 
@@ -31,3 +33,16 @@ class GeneralHelpersTests(TestCase):
         self.assertIn("untouched", output)
         self.assertEqual(str, type(output["untouched"]))
         self.assertEqual("here", output["untouched"])
+
+
+class CeleryHelpersTests(TestCase):
+
+    def test_object_locks(self):
+        video = models.Video.objects.create()
+        self.assertFalse(celery_helpers.is_object_locked(video))
+
+        celery_helpers.object_lock_acquire(video)
+        self.assertTrue(celery_helpers.is_object_locked(video))
+
+        celery_helpers.object_lock_release(video)
+        self.assertFalse(celery_helpers.is_object_locked(video))
