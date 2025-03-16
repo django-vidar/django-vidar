@@ -31,7 +31,7 @@ def user_played_entire_playlist(playlist: Playlist, user, raise_error=False):
     if not hasattr(user, "vidar_playback_completion_percentage"):
         return False
 
-    base_qs = playlist.videos.exclude(file='')
+    base_qs = playlist.videos.exclude(file="")
     base_qs_count = base_qs.count()
 
     if not base_qs_count:
@@ -39,9 +39,7 @@ def user_played_entire_playlist(playlist: Playlist, user, raise_error=False):
 
     try:
         return (
-            base_qs.annotate(
-                percentage_of_video=F("duration") * float(user.vidar_playback_completion_percentage)
-            )
+            base_qs.annotate(percentage_of_video=F("duration") * float(user.vidar_playback_completion_percentage))
             .filter(user_playback_history__user=user, user_playback_history__seconds__gte=F("percentage_of_video"))
             .distinct("id")
             .order_by()
