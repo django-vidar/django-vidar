@@ -570,7 +570,8 @@ def get_cookies(video: models.Video):
 
     if cookies_file := app_settings.COOKIES_FILE:
         if hasattr(cookies_file, "open"):
-            return cookies_file.open().read()
+            with cookies_file.open() as fo:
+                return fo.read()
         with open(cookies_file) as fo:
             return fo.read()
 
