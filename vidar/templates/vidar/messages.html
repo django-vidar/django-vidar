@@ -1,0 +1,9 @@
+
+{% for message in messages %}
+    <div data-timestamp="{{ now.timestamp }}" class="alert alert-{% if message.tags == 'error' or message.tags == 'critical' %}danger{% else %}{{ message.tags }}{% endif %}">
+        <strong>{{ message|safe }}</strong>
+        <span style="float: right">
+            <a href="javascript:;" class="close-site-message-alert">Close</a>
+        </span>
+    </div>
+{% endfor %}
