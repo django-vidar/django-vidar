@@ -30,21 +30,25 @@ def user_played_entire_playlist(playlist: Playlist, user, raise_error=False):
         return False
     if not hasattr(user, "vidar_playback_completion_percentage"):
         return False
-    if not playlist.videos.exists():
+
+    base_qs = playlist.videos.exclude(file='')
+    base_qs_count = base_qs.count()
+
+    if not base_qs_count:
         return False
 
     try:
         return (
-            playlist.videos.annotate(
+            base_qs.annotate(
                 percentage_of_video=F("duration") * float(user.vidar_playback_completion_percentage)
             )
             .filter(user_playback_history__user=user, user_playback_history__seconds__gte=F("percentage_of_video"))
             .distinct("id")
             .order_by()
             .count()
-            == playlist.videos.count()
+            == base_qs_count
         )
-    except NotSupportedError:
+    except NotSupportedError:  # pragma: no cover
         if raise_error:
             raise
         warnings.warn("Call to templatetags.playlist_tools.user_played_entire_playlist without DB support")

@@ -1054,8 +1054,8 @@ class TemplateTagsPlaylistToolsWithUserCustomFieldsTests(TestCase):
             self.skipTest('User model has no vidar_playback_completion_percentage')
 
     def test_user_has_not_watched_entire_playlist(self):
-        video1 = models.Video.objects.create(title='video 1', duration=100)
-        video2 = models.Video.objects.create(title='video 2', duration=100)
+        video1 = models.Video.objects.create(title='video 1', file='test.mp4', duration=100)
+        video2 = models.Video.objects.create(title='video 2', file='test.mp4', duration=100)
         playlist = models.Playlist.objects.create(title='playlist 1')
 
         playlist.videos.add(video1, video2)
@@ -1067,9 +1067,9 @@ class TemplateTagsPlaylistToolsWithUserCustomFieldsTests(TestCase):
         output = playlist_tools.user_played_entire_playlist(playlist=playlist, user=user)
         self.assertFalse(output, "User has not watched the entire playlist yet")
 
-    def test_user_not_watched_entire_playlist(self):
-        video1 = models.Video.objects.create(title='video 1', duration=100)
-        video2 = models.Video.objects.create(title='video 2', duration=100)
+    def test_user_has_watched_entire_playlist_all_videos_have_files(self):
+        video1 = models.Video.objects.create(title='video 1', file='test.mp4', duration=100)
+        video2 = models.Video.objects.create(title='video 2', file='test.mp4', duration=100)
         playlist = models.Playlist.objects.create(title='playlist 1')
 
         playlist.videos.add(video1, video2)
@@ -1093,9 +1093,23 @@ class TemplateTagsPlaylistToolsWithUserCustomFieldsTests(TestCase):
         output = playlist_tools.user_played_entire_playlist(playlist=playlist, user=user)
         self.assertFalse(output, "Playlist has no videos, it should not have been identified as watched")
 
-    def test_multi_user_doesnt_clash(self):
-        video1 = models.Video.objects.create(title='video 1', duration=100)
+    def test_user_has_watched_entire_playlist_where_some_videos_have_no_file(self):
+        video1 = models.Video.objects.create(title='video 1', file='test', duration=100)
         video2 = models.Video.objects.create(title='video 2', duration=100)
+        playlist = models.Playlist.objects.create(title='playlist 1')
+
+        playlist.videos.add(video1, video2)
+
+        user = UserModel.objects.create(username='test')
+
+        models.UserPlaybackHistory.objects.create(video=video1, user=user, seconds=96)
+
+        output = playlist_tools.user_played_entire_playlist(playlist=playlist, user=user)
+        self.assertTrue(output, "User has watched the entire playlist, video 2 has no file.")
+
+    def test_multi_user_doesnt_clash(self):
+        video1 = models.Video.objects.create(title='video 1', file='test.mp4',duration=100)
+        video2 = models.Video.objects.create(title='video 2', file='test.mp4',duration=100)
         playlist = models.Playlist.objects.create(title='playlist 1')
 
         playlist.videos.add(video1, video2)
