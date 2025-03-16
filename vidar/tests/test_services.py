@@ -1575,6 +1575,19 @@ class VideoServicesTests(TestCase):
         self.assertEqual("user func cookies checker attempt=0", app_settings.COOKIES_CHECKER(video=video))
         self.assertEqual("user func cookies checker attempt=1", app_settings.COOKIES_CHECKER(video=video, attempt=1))
 
+    @override_settings(VIDAR_COOKIES_ALWAYS_REQUIRED=True)
+    def test_cookies_always_required_without_cookies_raises_valueerror(self):
+        video = models.Video.objects.create()
+        self.assertTrue(app_settings.COOKIES_CHECKER(video=video))
+        with self.assertRaises(ValueError) as em:
+            app_settings.COOKIES_GETTER(video=video)
+
+    @override_settings(VIDAR_COOKIES_ALWAYS_REQUIRED=True, VIDAR_COOKIES="system cookies")
+    def test_cookies_always_required_with_cookies_does_not_raise_valueerror(self):
+        video = models.Video.objects.create()
+        self.assertTrue(app_settings.COOKIES_CHECKER(video=video))
+        self.assertEqual("system cookies", app_settings.COOKIES_GETTER(video=video))
+
 
 class YtdlpServicesTests(TestCase):
 
