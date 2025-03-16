@@ -1,5 +1,4 @@
 # flake8: noqa
-import pytest
 from django.core.paginator import Paginator
 from django.core.exceptions import FieldDoesNotExist
 from django.contrib.auth import get_user_model
@@ -181,7 +180,6 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertIsNone(video_tools.next_by_channel(video6))
         self.assertIsNone(video_tools.previous_by_channel(video6))
 
-    @pytest.mark.filterwarnings('ignore::RuntimeWarning')
     def test_display_ordering_by_upload_date(self):
         video1 = models.Video.objects.create(title='video 1', upload_date=date_to_aware_date('2024-06-01'))
         video2 = models.Video.objects.create(title='video 2', upload_date=date_to_aware_date('2024-06-02'), file='test.mp4')
@@ -209,7 +207,6 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertEqual(video3, video_tools.previous_by_upload_date(video2))
         self.assertIsNone(video_tools.next_by_upload_date(video2))
 
-    @pytest.mark.filterwarnings('ignore::RuntimeWarning')
     def test_display_ordering_by_upload_date_with_audio_true(self):
         video1 = models.Video.objects.create(title='video 1', upload_date=date_to_aware_date('2024-06-01'), file='test.mp4')
         video2 = models.Video.objects.create(title='video 2', upload_date=date_to_aware_date('2024-06-02'), file='test.mp4', audio='test/test.mp3')
@@ -234,7 +231,6 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertIsNone(video_tools.next_by_upload_date(video1, view="audio"))
         self.assertEqual(video2, video_tools.previous_by_upload_date(video1, view="audio"))
 
-    @pytest.mark.filterwarnings('ignore::RuntimeWarning')
     def test_display_ordering_by_date_downloaded(self):
         video1 = models.Video.objects.create(title='video 1', date_downloaded=date_to_aware_date('2024-06-01'))
         video2 = models.Video.objects.create(title='video 2', date_downloaded=date_to_aware_date('2024-06-02'), file='test.mp4')
@@ -262,7 +258,6 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertEqual(video3, video_tools.previous_by_date_downloaded(video2))
         self.assertIsNone(video_tools.next_by_date_downloaded(video2))
 
-    @pytest.mark.filterwarnings('ignore::RuntimeWarning')
     def test_display_ordering_by_date_downloaded_with_audio_true(self):
         video1 = models.Video.objects.create(title='video 1', date_downloaded=date_to_aware_date('2024-06-01'), file='test.mp4')
         video2 = models.Video.objects.create(title='video 2', date_downloaded=date_to_aware_date('2024-06-02'), file='test.mp4', audio='test/test.mp3')
@@ -284,7 +279,6 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertIsNone(video_tools.next_by_date_downloaded(video1, view="audio"))
         self.assertEqual(video2, video_tools.previous_by_date_downloaded(video1, view="audio"))
 
-    @pytest.mark.filterwarnings('ignore::RuntimeWarning')
     def test_display_ordering_by_starred(self):
         video1 = models.Video.objects.create(title='video 1', starred=date_to_aware_date('2024-06-01'))
         video2 = models.Video.objects.create(title='video 2', starred=date_to_aware_date('2024-06-02'), file='test.mp4')
