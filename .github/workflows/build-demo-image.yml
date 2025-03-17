@@ -31,3 +31,5 @@ jobs:
         with:
           push: true
           tags: ghcr.io/django-vidar/django-vidar:demo
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
