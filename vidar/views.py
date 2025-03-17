@@ -1,3 +1,4 @@
+import json
 import logging
 from collections import defaultdict
 
@@ -706,7 +707,20 @@ class ChannelLivePlaylistsView(PermissionRequiredMixin, UseProviderObjectIdMatch
 
 def generate_crontab(request):
 
-    hours = None
+    hours = request.GET.get("hours")
+    if hours:
+        try:
+            hours = json.loads(hours)
+        except ValueError:  # pragma: no cover
+            hours = None
+
+    day_of_week = request.GET.get("day_of_week")
+    if day_of_week:
+        try:
+            day_of_week = json.loads(day_of_week)
+        except ValueError:  # pragma: no cover
+            day_of_week = None
+
     playlist = None
     channel = None
     field = request.GET.get("field", "upload_date")
@@ -716,16 +730,16 @@ def generate_crontab(request):
         hours = [14, 15, 16, 17]
 
     if cid := request.GET.get("channel"):
-        channel = get_object_or_404(Channel, id=cid)
+        channel = get_object_or_404(Channel, pk=cid)
 
     if request.GET.get("type") == "weekly":
 
-        day_of_week = None
-        if channel:
+        if channel and channel.videos.exists():
             base_day_of_week = statistics_helpers.most_common_date_weekday(queryset=channel.videos, date_field=field)
             day_of_week = helpers.convert_to_next_day_of_week(base_day_of_week)
-        elif playlist:
-            day_of_week = statistics_helpers.most_common_date_weekday(queryset=playlist.videos, date_field=field)
+        elif playlist and playlist.videos.exists():
+            base_day_of_week = statistics_helpers.most_common_date_weekday(queryset=playlist.videos, date_field=field)
+            day_of_week = helpers.convert_to_next_day_of_week(base_day_of_week)
 
         return HttpResponse(crontab_services.generate_weekly(hour=hours, day_of_week=day_of_week))
 
@@ -747,6 +761,9 @@ def generate_crontab(request):
 
     elif request.GET.get("type") == "hourly":
         return HttpResponse(utils.generate_balanced_crontab_hourly())
+
+    elif request.GET.get("type") == "every_other_day":
+        return HttpResponse(crontab_services.generate_every_other_day(hour=hours))
 
     return HttpResponse(crontab_services.generate_daily(hour=hours))
 
