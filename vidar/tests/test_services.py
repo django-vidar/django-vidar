@@ -205,6 +205,8 @@ class CrontabServicesTests(SimpleTestCase):
 
     def test_parse_steps(self):
         self.assertEqual(crontab_services.CrontabParser(8).parse('*/2'), {0, 2, 4, 6})
+        self.assertEqual(crontab_services.CrontabParser(8).parse('0-7/2'), {0, 2, 4, 6})
+        self.assertEqual(crontab_services.CrontabParser(8).parse('1-7/2'), {1, 3, 5, 7})
         self.assertEqual(crontab_services.CrontabParser().parse('*/2'), {i * 2 for i in range(30)})
         self.assertEqual(crontab_services.CrontabParser().parse('*/3'), {i * 3 for i in range(20)})
         self.assertEqual(crontab_services.CrontabParser(8, 1).parse('*/2'), {1, 3, 5, 7})
@@ -356,6 +358,12 @@ class CrontabServicesTests(SimpleTestCase):
         self.assertEqual('10 2 * * *', output)
         output = crontab_services.generate_daily(minute=10, hour=[2,3])
         self.assertRegex(output, r'10 ([2,3]) \* \* \*')
+
+    def test_generate_every_other_day(self):
+        output = crontab_services.generate_every_other_day(minute=10, hour=2)
+        self.assertRegex(output, r'10 2 \* \* (0-7\/2|1-7\/2)')
+        output = crontab_services.generate_every_other_day(minute=10, hour=[2,3])
+        self.assertRegex(output, r'10 ([2,3]) \* \* (0-7\/2|1-7\/2)')
 
     def test_generate_weekly(self):
         output = crontab_services.generate_weekly(minute=10, hour=2, day_of_week=6)

@@ -253,8 +253,6 @@ def generate_weekly(minute=None, hour=None, day_of_week=None):
     day_of_week can be 0-7 with 0 and 7 meaning sunday.
     """
 
-    validate_crontab_values(minute=minute, hour=hour, day_of_week=day_of_week)
-
     minutes = list(range(0, 60, 10))
     hours = list(range(8, 20))
     month = "*"
@@ -268,6 +266,10 @@ def generate_weekly(minute=None, hour=None, day_of_week=None):
 
     if not day_of_week:
         day_of_week = random.choice(list(range(0, 7)))
+    elif isinstance(day_of_week, list):
+        day_of_week = random.choice(day_of_week)
+
+    validate_crontab_values(minute=minute, hour=hour, day_of_week=day_of_week)
 
     return f"{minute} {hour} {day_of_month} {month} {day_of_week}"
 
@@ -276,8 +278,6 @@ def generate_monthly(minute=None, hour=None, day=None):
 
     if isinstance(hour, list):
         hour = random.choice(hour)
-
-    validate_crontab_values(minute=minute, hour=hour, day_of_month=day)
 
     minutes = list(range(0, 60, 10))
     hours = list(range(8, 20))
@@ -289,12 +289,12 @@ def generate_monthly(minute=None, hour=None, day=None):
     day_of_month = day or random.choice(days)
     day_of_week = "*"
 
+    validate_crontab_values(minute=minute, hour=hour, day_of_month=day)
+
     return f"{minute} {hour} {day_of_month} {month} {day_of_week}"
 
 
 def generate_biyearly(minute=None, hour=None, day=None):
-
-    validate_crontab_values(minute=minute, hour=hour, day_of_month=day)
 
     minutes = list(range(0, 60, 10))
     hours = list(range(8, 20))
@@ -311,12 +311,12 @@ def generate_biyearly(minute=None, hour=None, day=None):
     month2 = (month1 + 6) % 12 or 1
     day_of_week = "*"
 
+    validate_crontab_values(minute=minute, hour=hour, day_of_month=day)
+
     return f"{minute} {hour} {day_of_month} {month1},{month2} {day_of_week}"
 
 
 def generate_yearly(minute=None, hour=None, day=None):
-
-    validate_crontab_values(minute=minute, hour=hour)
 
     minutes = list(range(0, 60, 10))
     hours = list(range(8, 20))
@@ -332,12 +332,31 @@ def generate_yearly(minute=None, hour=None, day=None):
     month = random.choice(month)
     day_of_week = "*"
 
+    validate_crontab_values(minute=minute, hour=hour)
+
+    return f"{minute} {hour} {day_of_month} {month} {day_of_week}"
+
+
+def generate_every_other_day(minute=None, hour=None):
+
+    minutes = list(range(0, 60, 10))
+    hours = list(range(8, 20))
+
+    if isinstance(hour, list):
+        hour = random.choice(hour)
+
+    minute = minute or random.choice(minutes)
+    hour = hour or random.choice(hours)
+    day_of_month = "*"
+    month = "*"
+    day_of_week = random.choice(["0-7/2", "1-7/2"])
+
+    validate_crontab_values(minute=minute, hour=hour)
+
     return f"{minute} {hour} {day_of_month} {month} {day_of_week}"
 
 
 def generate_daily(minute=None, hour=None):
-
-    validate_crontab_values(minute=minute, hour=hour)
 
     minutes = list(range(0, 60, 10))
     hours = list(range(8, 20))
@@ -350,6 +369,8 @@ def generate_daily(minute=None, hour=None):
     day_of_month = "*"
     month = "*"
     day_of_week = "*"
+
+    validate_crontab_values(minute=minute, hour=hour)
 
     return f"{minute} {hour} {day_of_month} {month} {day_of_week}"
 
