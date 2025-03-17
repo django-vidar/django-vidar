@@ -6,8 +6,10 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import override_settings, TestCase
 from django.utils import timezone
+from django.shortcuts import reverse
 
 from vidar import models, app_settings, exceptions
+from vidar.helpers import channel_helpers
 
 
 UserModel = get_user_model()
@@ -45,6 +47,18 @@ class ChannelTests(TestCase):
         expected_ts = ts.replace(hour=16, minute=10)
 
         self.assertEqual(expected_ts, output)
+
+    def test_next_runtime_scan_after_datetime_before_next(self):
+        scan_after_datetime = timezone.now() - timezone.timedelta(days=1)
+        channel = models.Channel.objects.create(
+            scanner_crontab='10 16 * * *',
+            scan_after_datetime=scan_after_datetime,
+        )
+        ts = timezone.now().replace(hour=14, minute=59, second=0, microsecond=0)
+        with patch.object(timezone, 'localtime', return_value=ts):
+            output = channel.next_runtime
+
+        self.assertEqual(scan_after_datetime, output)
 
     def test_average_days_between_upload(self):
         channel = models.Channel.objects.create()
@@ -155,8 +169,228 @@ class ChannelTests(TestCase):
         self.assertEqual((2, 200), output[models.Video.VideoPrivacyStatuses.UNLISTED])
         self.assertEqual((1, 100), output[models.Video.VideoPrivacyStatuses.BLOCKED])
 
+    def test_manager_already_exists(self):
+        self.assertFalse(models.Channel.objects.already_exists('not existing'))
+        models.Channel.objects.create(provider_object_id='exists')
+        self.assertTrue(models.Channel.objects.already_exists('exists'))
+
+    def test_manager_active(self):
+        channel_active = models.Channel.objects.create(status=channel_helpers.ChannelStatuses.ACTIVE)
+        channel_banned = models.Channel.objects.create(status=channel_helpers.ChannelStatuses.BANNED)
+
+        self.assertEqual(1, models.Channel.objects.active().count())
+        self.assertIn(channel_active, models.Channel.objects.active())
+        self.assertNotIn(channel_banned, models.Channel.objects.active())
+
+    def test_manager_indexing_enabled(self):
+        channel_active = models.Channel.objects.create(
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            index_videos=False, index_shorts=False, index_livestreams=False,
+        )
+        channel_banned = models.Channel.objects.create(status=channel_helpers.ChannelStatuses.BANNED)
+
+        self.assertEqual(0, models.Channel.objects.indexing_enabled().count())
+        self.assertNotIn(channel_active, models.Channel.objects.indexing_enabled())
+        self.assertNotIn(channel_banned, models.Channel.objects.indexing_enabled())
+
+        channel_active.index_videos = True
+        channel_active.save()
+        self.assertEqual(1, models.Channel.objects.indexing_enabled().count())
+        self.assertIn(channel_active, models.Channel.objects.indexing_enabled())
+
+        channel_active.index_videos = False
+        channel_active.index_shorts = True
+        channel_active.save()
+        self.assertEqual(1, models.Channel.objects.indexing_enabled().count())
+        self.assertIn(channel_active, models.Channel.objects.indexing_enabled())
+
+        channel_active.index_shorts = False
+        channel_active.index_livestreams = True
+        channel_active.save()
+        self.assertEqual(1, models.Channel.objects.indexing_enabled().count())
+        self.assertIn(channel_active, models.Channel.objects.indexing_enabled())
+
+    def test_manager_actively_scanning(self):
+        channel_active = models.Channel.objects.create(
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            index_videos=True, index_shorts=False, index_livestreams=False,
+        )
+        channel_full_archiving = models.Channel.objects.create(
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            index_videos=True, index_shorts=False, index_livestreams=False,
+            full_archive=True,
+        )
+
+        self.assertEqual(1, models.Channel.objects.actively_scanning().count())
+        self.assertIn(channel_active, models.Channel.objects.actively_scanning())
+        self.assertNotIn(channel_full_archiving, models.Channel.objects.actively_scanning())
+
+    def test_manager_indexing_and_archiving(self):
+        channel_active = models.Channel.objects.create(
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            index_videos=True, index_shorts=False, index_livestreams=False,
+            download_videos=False, download_shorts=False, download_livestreams=False,
+        )
+
+        qs = models.Channel.objects.indexing_and_archiving()
+
+        self.assertEqual(0, qs.count())
+
+        channel_active.download_videos = True
+        channel_active.save()
+        self.assertTrue(qs.exists())
+
+        channel_active.download_videos = False
+        channel_active.download_shorts = True
+        channel_active.save()
+        self.assertTrue(qs.exists())
+
+        channel_active.download_shorts = False
+        channel_active.download_livestreams = True
+        channel_active.save()
+        self.assertTrue(qs.exists())
+
+        channel_active.full_archive = True
+        channel_active.save()
+        self.assertFalse(qs.exists())
+
+        models.Channel.objects.filter(pk=channel_active.pk).update(
+            full_archive=False,
+            scanner_crontab="",
+        )
+        self.assertFalse(qs.exists())
+
+    def test_save_slugify_name(self):
+        channel = models.Channel.objects.create()
+        self.assertEqual("", channel.slug)
+
+        channel.name = "Test Channel"
+        channel.save()
+
+        self.assertEqual("test-channel", channel.slug)
+
+        channel.name = "Name Changed"
+        channel.save()
+
+        self.assertEqual("name-changed", channel.slug)
+
+    def test_save_active_and_indexing_ensures_crontab_exists(self):
+        channel = models.Channel(index_videos=False, index_shorts=False, index_livestreams=False)
+        channel.save()
+
+        self.assertEqual("", channel.scanner_crontab)
+
+        channel.index_videos = True
+        channel.save()
+        self.assertNotEqual("", channel.scanner_crontab)
+
+        channel.index_videos = False
+        channel.save()
+        self.assertEqual("", channel.scanner_crontab)
+
+        channel.index_shorts = True
+        channel.save()
+        self.assertNotEqual("", channel.scanner_crontab)
+
+        channel.index_shorts = False
+        channel.save()
+        self.assertEqual("", channel.scanner_crontab)
+
+        channel.index_livestreams = True
+        channel.save()
+        self.assertNotEqual("", channel.scanner_crontab)
+
+        channel.index_livestreams = False
+        channel.save()
+        self.assertEqual("", channel.scanner_crontab)
+
+    def test_save_active_full_archive_after_clears(self):
+        ts = timezone.now()
+        channel = models.Channel(full_archive=True, full_archive_after=ts)
+
+        self.assertTrue(channel.full_archive)
+        self.assertEqual(ts, channel.full_archive_after)
+
+        channel.save()
+
+        self.assertTrue(channel.full_archive)
+        self.assertIsNone(channel.full_archive_after)
+
+    def test_save_existing_item_removing_indexing_clears_fully_indexed_flags(self):
+        channel = models.Channel.objects.create(
+            index_videos=True, index_shorts=True, index_livestreams=True,
+            fully_indexed=True, fully_indexed_shorts=True, fully_indexed_livestreams=True,
+        )
+        self.assertTrue(channel.index_videos)
+        self.assertTrue(channel.index_shorts)
+        self.assertTrue(channel.index_livestreams)
+        self.assertTrue(channel.fully_indexed)
+        self.assertTrue(channel.fully_indexed_shorts)
+        self.assertTrue(channel.fully_indexed_livestreams)
+
+        channel.index_videos = False
+        channel.save()
+        self.assertFalse(channel.index_videos)
+        self.assertFalse(channel.fully_indexed)
+
+        channel.index_shorts = False
+        channel.save()
+        self.assertFalse(channel.index_shorts)
+        self.assertFalse(channel.fully_indexed_shorts)
+
+        channel.index_livestreams = False
+        channel.save()
+        self.assertFalse(channel.index_livestreams)
+        self.assertFalse(channel.fully_indexed_livestreams)
+
+    def test_save_fully_indexed_disabling_full_archive_after_clears_indexed_flags(self):
+        ts = timezone.now()
+        channel = models.Channel.objects.create(
+            index_videos=True, index_shorts=True, index_livestreams=True,
+            fully_indexed=True, fully_indexed_shorts=True, fully_indexed_livestreams=True,
+            full_archive_cutoff=timezone.now(),
+        )
+        self.assertTrue(channel.fully_indexed)
+        self.assertTrue(channel.fully_indexed_shorts)
+        self.assertTrue(channel.fully_indexed_livestreams)
+
+        channel.full_archive_cutoff = None
+        channel.save()
+
+        self.assertFalse(channel.fully_indexed)
+        self.assertFalse(channel.fully_indexed_shorts)
+        self.assertFalse(channel.fully_indexed_livestreams)
+
+    def test_save_fully_indexed_changing_full_archive_after_clears_indexed_flags(self):
+        ts = timezone.now()
+        channel = models.Channel.objects.create(
+            index_videos=True, index_shorts=True, index_livestreams=True,
+            fully_indexed=True, fully_indexed_shorts=True, fully_indexed_livestreams=True,
+            full_archive_cutoff=timezone.now(),
+        )
+        self.assertTrue(channel.fully_indexed)
+        self.assertTrue(channel.fully_indexed_shorts)
+        self.assertTrue(channel.fully_indexed_livestreams)
+
+        channel.full_archive_cutoff = timezone.now()
+        channel.save()
+
+        self.assertFalse(channel.fully_indexed)
+        self.assertFalse(channel.fully_indexed_shorts)
+        self.assertFalse(channel.fully_indexed_livestreams)
+
 
 class VideoTests(TestCase):
+
+    def test_manager_archived(self):
+        v1 = models.Video.objects.create()
+        v2 = models.Video.objects.create(file='test')
+        v3 = models.Video.objects.create(file='test')
+
+        self.assertEqual(2, models.Video.objects.archived().count())
+        self.assertNotIn(v1, models.Video.objects.archived())
+        self.assertIn(v2, models.Video.objects.archived())
+        self.assertIn(v3, models.Video.objects.archived())
 
     def test_system_safe_title(self):
         video = models.Video.objects.create(
@@ -654,6 +888,45 @@ class VideoTests(TestCase):
 
         self.assertTrue(video.log_to_scanhistory())
 
+    def test_video_has_inserted_on_save(self):
+        video = models.Video()
+        self.assertIsNone(video.inserted)
+
+        ts = timezone.now()
+        with patch.object(timezone, 'now', return_value=ts):
+            video.save()
+
+        self.assertEqual(ts, video.inserted)
+        self.assertEqual(ts, video.updated)
+
+    def test_video_has_updated_on_save_with_update_fields(self):
+        video = models.Video.objects.create()
+
+        ts = timezone.now()
+        with patch.object(timezone, 'now', return_value=ts):
+            video.save(update_fields=['title'])
+
+        self.assertEqual(ts, video.updated)
+
+    def test_video_has_inserted_on_save_with_update_fields(self):
+        video = models.Video.objects.create()
+
+        video.inserted = None
+
+        ts = timezone.now()
+        with patch.object(timezone, 'now', return_value=ts):
+            video.save(update_fields=['title'])
+
+        self.assertEqual(ts, video.updated)
+
+    def test_video_has_sort_ordering_on_save_with_update_fields(self):
+        channel = models.Channel.objects.create()
+        video = models.Video.objects.create(sort_ordering=1, channel=channel)
+
+        video.sort_ordering = 0
+
+        video.save(update_fields=['title'])
+
 
 class VideoBlockedTests(TestCase):
     def test_is_local(self):
@@ -874,6 +1147,11 @@ class PlaylistTests(TestCase):
         )
         qs = playlist.playlistitem_set.all()
 
+        output = playlist.apply_playback_ordering_to_queryset(qs)
+        self.assertTrue(output.ordered)
+        self.assertEqual(0, len(output.query.order_by))
+        self.assertEqual((), output.query.order_by)
+
         playlist.videos_playback_ordering = models.Playlist.PlaylistVideoOrderingChoices.DEFAULT_REVERSED
         output = playlist.apply_playback_ordering_to_queryset(qs)
         self.assertTrue(output.ordered)
@@ -929,6 +1207,21 @@ class PlaylistTests(TestCase):
         self.assertIn(v4.pk, missing)
         self.assertIn(v5.pk, missing)
 
+    def test_missing_from_live(self):
+        playlist = models.Playlist.objects.create(provider_object_id='test')
+        v1 = models.Video.objects.create(file='test.mp4')
+        models.PlaylistItem.objects.create(
+            video=v1, playlist=playlist,
+            missing_from_playlist_on_provider=True,
+        )
+        playlist.videos.add(models.Video.objects.create())
+
+        missing = playlist.items_missing_from_live().values_list('video', flat=True)
+
+        self.assertEqual(1, missing.count())
+
+        self.assertIn(v1.pk, missing)
+
     def test_latest_video_by_upload_date(self):
         playlist = models.Playlist.objects.create(provider_object_id='test')
         v1 = models.Video.objects.create(upload_date="2025-01-01")
@@ -941,3 +1234,13 @@ class PlaylistTests(TestCase):
     def test_latest_video_by_upload_date_without_videos_returns_none(self):
         playlist = models.Playlist.objects.create(provider_object_id='test')
         self.assertIsNone(playlist.latest_video_by_upload_date())
+
+
+class HighlightTests(TestCase):
+    def test_get_absolute_url(self):
+        v = models.Video.objects.create()
+        h = models.Highlight.objects.create(video=v, source=models.Highlight.Sources.USER, point=2)
+        c = models.Highlight.objects.create(video=v, source=models.Highlight.Sources.CHAPTERS, point=2)
+
+        self.assertEqual(h.get_absolute_url(), reverse('vidar:video-highlight-list', args=[v.pk]))
+        self.assertEqual(c.get_absolute_url(), reverse('vidar:video-chapter-list', args=[v.pk]))

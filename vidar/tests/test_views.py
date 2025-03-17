@@ -1,10 +1,11 @@
 import urllib.parse
-from unittest.mock import patch
+from unittest.mock import patch, call
 
 import bootstrap4.exceptions
 from django.test import TestCase
 from django.shortcuts import reverse
 from django.utils import timezone
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 
@@ -329,4 +330,110 @@ class Channel_add_view_tests(TestCase):
         mock_s_form.assert_called_with(initial={"index_shorts": False, "download_shorts": False})
         mock_ls_form.assert_called_with(initial=None)
         mock_v_form.assert_called_with(initial=None)
+
+
+class GeneralUtilitiesViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password", is_superuser=True)
+
+        self.client.force_login(self.user)
+
+        self.url = reverse('vidar:utilities')
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+        self.client.logout()
+
+        self.client.force_login(User.objects.create_user(username="testuser2", password="password"))
+        resp = self.client.get(self.url)
+        self.assertEqual(403, resp.status_code)
+
+    @patch("vidar.tasks.rename_all_archived_video_files")
+    def test_videos_rename_files(self, mock_renamer):
+        resp = self.client.post(self.url, {"videos_rename_files": True})
+
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(self.url, resp.url)
+
+        msgs = messages.get_messages(resp.wsgi_request)
+
+        self.assertEqual(1, len(msgs))
+
+        mock_renamer.delay.assert_called_once()
+
+    @patch("vidar.tasks.channel_rename_files")
+    def test_channel_rename_files(self, mock_renamer):
+
+        channel = models.Channel.objects.create()
+
+        resp = self.client.post(self.url, {"channel_rename_files": True, "channel": channel.pk})
+
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(self.url, resp.url)
+
+        msgs = messages.get_messages(resp.wsgi_request)
+
+        self.assertEqual(1, len(msgs))
+
+        mock_renamer.delay.assert_called_once()
+
+    @patch("vidar.tasks.trigger_channel_scanner_tasks")
+    def test_scan_all(self, mock_scanner):
+        mock_scanner.return_value = 10
+
+        channel1 = models.Channel.objects.create()
+        channel2 = models.Channel.objects.create()
+        channel3 = models.Channel.objects.create(index_videos=True)
+
+        resp = self.client.post(self.url, {"scan_all": True, "countdown": 10})
+
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(self.url, resp.url)
+
+        mock_scanner.assert_has_calls([
+            call(
+                channel=channel1,
+                countdown=0,
+                wait_period=10,
+            ),
+            call(
+                channel=channel2,
+                countdown=10,
+                wait_period=10,
+            ),
+            call(
+                channel=channel3,
+                countdown=10,
+                wait_period=10,
+            ),
+        ])
+
+    @patch("vidar.tasks.trigger_channel_scanner_tasks")
+    def test_scan_all_indexing_only(self, mock_scanner):
+        mock_scanner.return_value = 10
+
+        channel1 = models.Channel.objects.create(index_videos=False, index_shorts=False, index_livestreams=False)
+        channel2 = models.Channel.objects.create(index_videos=False, index_shorts=False, index_livestreams=False)
+        channel3 = models.Channel.objects.create(index_videos=True)
+
+        resp = self.client.post(self.url, {"scan_all": True, "countdown": 10, "indexing_enabled": True})
+
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(self.url, resp.url)
+
+        mock_scanner.assert_called_with(
+            channel=channel3,
+            countdown=0,
+            wait_period=10,
+        )
 
