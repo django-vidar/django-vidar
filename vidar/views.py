@@ -746,9 +746,9 @@ def generate_crontab(request):
     elif request.GET.get("type") == "monthly":
 
         day_of_month = None
-        if channel:
+        if channel and channel.videos.exists():
             day_of_month = statistics_helpers.most_common_date_day_of_month(queryset=channel.videos, date_field=field)
-        elif playlist:
+        elif playlist and playlist.videos.exists():
             day_of_month = statistics_helpers.most_common_date_day_of_month(queryset=playlist.videos, date_field=field)
 
         return HttpResponse(crontab_services.generate_monthly(hour=hours, day=day_of_month))

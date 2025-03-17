@@ -60,6 +60,42 @@ class Generate_crontab_tests(TestCase):
         resp = self.client.get(self.make_url(type="monthly", hours=[2,3]))
         self.assertRegex(resp.content, br'(0|10|20|30|40|50) ([2,3]) (\d+){1,2} \* \*')
 
+    def test_monthly_with_channel(self):
+        channel = models.Channel.objects.create()
+        resp = self.client.get(self.make_url(type="monthly", channel=channel.pk))
+        self.assertRegex(resp.content, br'(0|10|20|30|40|50) (\d+){1,2} (\d+){1,2} \* \*')
+
+        channel.videos.create(upload_date=date_to_aware_date('2025-01-03'))
+        channel.videos.create(upload_date=date_to_aware_date('2025-02-03'))
+        channel.videos.create(upload_date=date_to_aware_date('2025-03-03'))
+
+        resp = self.client.get(self.make_url(type="monthly", channel=channel.pk))
+        self.assertRegex(resp.content, br'(0|10|20|30|40|50) (\d+){1,2} 3 \* \*')
+
+        channel.videos.create(upload_date=date_to_aware_date('2025-03-06'))
+        channel.videos.create(upload_date=date_to_aware_date('2025-03-15'))
+
+        resp = self.client.get(self.make_url(type="monthly", channel=channel.pk))
+        self.assertRegex(resp.content, br'(0|10|20|30|40|50) (\d+){1,2} 3 \* \*')
+
+    def test_monthly_with_playlist(self):
+        playlist = models.Playlist.objects.create()
+        resp = self.client.get(self.make_url(type="monthly", playlist=playlist.pk))
+        self.assertRegex(resp.content, br'(0|10|20|30|40|50) (\d+){1,2} (\d+){1,2} \* \*')
+
+        playlist.videos.create(upload_date=date_to_aware_date('2025-01-03'))
+        playlist.videos.create(upload_date=date_to_aware_date('2025-02-03'))
+        playlist.videos.create(upload_date=date_to_aware_date('2025-03-03'))
+
+        resp = self.client.get(self.make_url(type="monthly", playlist=playlist.pk))
+        self.assertRegex(resp.content, br'(0|10|20|30|40|50) (\d+){1,2} 3 \* \*')
+
+        playlist.videos.create(upload_date=date_to_aware_date('2025-03-06'))
+        playlist.videos.create(upload_date=date_to_aware_date('2025-03-15'))
+
+        resp = self.client.get(self.make_url(type="monthly", playlist=playlist.pk))
+        self.assertRegex(resp.content, br'(0|10|20|30|40|50) (\d+){1,2} 3 \* \*')
+
     def test_weekly(self):
         resp = self.client.get(self.make_url(type="weekly"))
         self.assertEqual(200, resp.status_code)
