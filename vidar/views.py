@@ -65,7 +65,6 @@ class GeneralUtilitiesView(UserPassesTestMixin, TemplateView):
         return super().get_context_data(**kwargs)
 
     def post(self, request, *args, **kwargs):
-        print(request.POST)
 
         if "videos_rename_files" in request.POST:
             tasks.rename_all_archived_video_files.delay()

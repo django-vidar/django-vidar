@@ -341,10 +341,10 @@ class Channel(models.Model):
     class Meta:
         ordering = ["name"]
 
-    def __str__(self):
+    def __str__(self):  # pragma: no cover
         return self.display_name or self.name or str(self.pk)
 
-    def get_absolute_url(self):
+    def get_absolute_url(self):  # pragma: no cover
         return reverse("vidar:channel-details", args=[self.slug or self.pk])
 
     @property
@@ -371,35 +371,35 @@ class Channel(models.Model):
         return current_name
 
     @property
-    def base_url(self):
+    def base_url(self):  # pragma: no cover
         return f"https://www.youtube.com/channel/{self.provider_object_id}"
 
     @property
-    def url(self):
+    def url(self):  # pragma: no cover
         return f"{self.base_url}/videos"
 
     @property
-    def shorts_url(self):
+    def shorts_url(self):  # pragma: no cover
         return f"{self.base_url}/shorts"
 
     @property
-    def livestreams_url(self):
+    def livestreams_url(self):  # pragma: no cover
         return f"{self.base_url}/live"
 
     @property
-    def banner_url(self):
+    def banner_url(self):  # pragma: no cover
         if self.banner:
             return self.banner.url
         return ""
 
     @property
-    def thumbnail_url(self):
+    def thumbnail_url(self):  # pragma: no cover
         if self.thumbnail:
             return self.thumbnail.url
         return ""
 
     @property
-    def tvart_url(self):
+    def tvart_url(self):  # pragma: no cover
         if self.tvart:
             return self.tvart.url
         return ""
@@ -472,21 +472,10 @@ class Channel(models.Model):
                     changed_fields.append("fully_indexed_livestreams")
 
                 # Disabling full archive cutoff clears the fully_indexed flag as videos could have been missed.
-                if (
-                    orig.full_archive_cutoff
-                    and not self.full_archive_after
-                    and (self.fully_indexed or self.fully_indexed_shorts or self.fully_indexed_livestreams)
-                ):
-                    self.fully_indexed = False
-                    self.fully_indexed_shorts = False
-                    self.fully_indexed_livestreams = False
-                    changed_fields.extend(["fully_indexed", "fully_indexed_shorts", "fully_indexed_livestreams"])
-
                 # Changing the cutoff date will clear the fully_indexed flag
                 if (
                     orig.full_archive_cutoff
-                    and self.full_archive_after
-                    and orig.full_archive_cutoff != self.full_archive_cutoff
+                    and (not self.full_archive_cutoff or orig.full_archive_cutoff != self.full_archive_cutoff)
                     and (self.fully_indexed or self.fully_indexed_shorts or self.fully_indexed_livestreams)
                 ):
                     self.fully_indexed = False
@@ -494,10 +483,10 @@ class Channel(models.Model):
                     self.fully_indexed_livestreams = False
                     changed_fields.extend(["fully_indexed", "fully_indexed_shorts", "fully_indexed_livestreams"])
 
-            except Channel.DoesNotExist:
+            except Channel.DoesNotExist:  # pragma: no cover
                 pass
 
-        if changed_fields and "update_fields" in kwargs:
+        if changed_fields and "update_fields" in kwargs:  # pragma: no cover
             kwargs["update_fields"].extend(changed_fields)
 
         return super().save(*args, **kwargs)
@@ -768,11 +757,11 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     def __repr__(self):
         return f"<{self.__class__.__name__}.pk={self.pk}: {self.title}>"
 
-    def get_absolute_url(self):
+    def get_absolute_url(self):  # pragma: no cover
         return reverse("vidar:video-detail", args=[self.pk])
 
     @property
-    def url(self):
+    def url(self):  # pragma: no cover
         return f"https://www.youtube.com/watch?v={self.provider_object_id}"
 
     def save(self, *args, **kwargs):
@@ -828,7 +817,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             raise exceptions.UnauthorizedVideoDeletionError("Use video_services to delete a Video object.")
         return super().delete(using=using, keep_parents=keep_parents)
 
-    def embed_url(self):
+    def embed_url(self):  # pragma: no cover
         return f"https://www.youtube.com/embed/{self.provider_object_id}"
 
     @property
@@ -980,47 +969,6 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
         max_dl_attempts = app_settings.VIDEO_DOWNLOAD_ERROR_DAILY_ATTEMPTS
         return self.download_errors.filter(inserted__gt=time_ago).count() >= max_dl_attempts
 
-    def local_data_to_info_json_format(self):
-        channel_url = f"https://www.youtube.com/channel/{self.channel_provider_object_id}"
-        channel_id = self.channel_provider_object_id
-        uploader = "public"
-        if self.channel:
-            channel_url = self.channel.base_url
-            channel_id = self.channel.provider_object_id
-            uploader = self.channel.name
-
-        data = {
-            "id": self.provider_object_id,
-            "title": self.title,
-            "description": self.description,
-            "duration": self.duration,
-            "upload_date": self.upload_date.strftime("%Y%m%d"),
-            "view_count": self.view_count,
-            "channel_id": channel_id,
-            "channel_url": channel_url,
-            "uploader": uploader,
-            "uploader_id": channel_id,
-            "uploader_url": channel_url,
-            "availability": self.privacy_status.lower(),
-            "format": self.format_note or self.get_quality_display(),
-            "format_id": self.format_id,
-            "ext": self.file.name.rsplit(".", 1)[-1],
-            "like_count": self.like_count,
-            "width": self.width,
-            "height": self.height,
-        }
-        if self.thumbnail:
-            data["thumbnails"] = [
-                {
-                    "url": self.thumbnail.url,
-                    "preference": 99,
-                    "id": "99",
-                }
-            ]
-            data["thumbnail"] = self.thumbnail.url
-
-        return data
-
     def is_at_max_quality(self):
         if self.at_max_quality:
             return True
@@ -1169,17 +1117,17 @@ class VideoBlocked(models.Model):
     class Meta:
         ordering = ["-inserted"]
 
-    def __str__(self):
+    def __str__(self):  # pragma: no cover
         return self.provider_object_id
 
     @property
-    def url(self):
+    def url(self):  # pragma: no cover
         return f"https://www.youtube.com/watch?v={self.provider_object_id}"
 
     def is_still_local(self):
         return Video.objects.filter(provider_object_id=self.provider_object_id).exists()
 
-    def local_url(self):
+    def local_url(self):  # pragma: no cover
         return reverse("vidar:video-detail", args=[self.provider_object_id])
 
 
@@ -1385,12 +1333,12 @@ class Playlist(models.Model):
     class Meta:
         ordering = ["channel", "title"]
 
-    def __str__(self):
+    def __str__(self):  # pragma: no cover
         if self.channel:
             return f"{self.channel}: {self.title}"
         return self.title
 
-    def get_absolute_url(self):
+    def get_absolute_url(self):  # pragma: no cover
         return reverse("vidar:playlist-detail", args=[self.pk])
 
     @classmethod
@@ -1424,7 +1372,7 @@ class Playlist(models.Model):
         return value
 
     @property
-    def url(self):
+    def url(self):  # pragma: no cover
         return f"https://www.youtube.com/playlist?list={self.provider_object_id}"
 
     def missing_videos(self):
@@ -1528,7 +1476,7 @@ class PlaylistItem(models.Model):
     inserted = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
-    def get_absolute_url(self):
+    def get_absolute_url(self):  # pragma: no cover
         return self.video.get_absolute_url()
 
 
@@ -1603,7 +1551,7 @@ class ScanHistory(models.Model):
     class Meta:
         ordering = ["-inserted"]
 
-    def __str__(self):
+    def __str__(self):  # pragma: no cover
         return (
             f"{self.channel=} {self.inserted=} {self.updated=} "
             f"{self.videos_downloaded=} {self.shorts_downloaded=} {self.livestreams_downloaded=}"
@@ -1632,7 +1580,7 @@ class UserPlaybackHistory(models.Model):
         return percentage
 
     def considered_fully_played(self):
-        if not hasattr(self.user, "vidar_playback_completion_percentage"):
+        if not hasattr(self.user, "vidar_playback_completion_percentage"):  # pragma: no cover
             return False
         return self.completion_percentage() >= (float(self.user.vidar_playback_completion_percentage) * 100)
 
