@@ -107,6 +107,7 @@ class PlaylistAdderForm(forms.ModelForm):
             "crontab": "minute, hour, day of month, month, day of week. "
             'assign <a href="javascript:;" onclick="assign_crontab(\'hourly\')">hourly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'daily\')">daily</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'every_other_day\')">every other day</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'monthly\')">monthly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\')">bi-yearly</a> '
@@ -161,6 +162,7 @@ class PlaylistEditForm(forms.ModelForm):
             "crontab": "minute, hour, day of month, month, day of week. "
             'assign <a href="javascript:;" onclick="assign_crontab(\'hourly\')">hourly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'daily\')">daily</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'every_other_day\')">every other day</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'monthly\')">monthly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\')">bi-yearly</a> '
@@ -387,6 +389,7 @@ class ChannelSubGeneralOptionsForm(forms.ModelForm):
             "scanner_crontab": "minute, hour, day of month, month, day of week. "
             'assign <a href="javascript:;" onclick="assign_crontab(\'hourly\')">hourly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'daily\')">daily</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'every_other_day\')">every other day</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'monthly\')">monthly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\')">bi-yearly</a> '
@@ -720,6 +723,7 @@ class BulkChannelForm(forms.ModelForm):
         self.fields["scanner_crontab"].help_text = (
             f'<a href="javascript:;" onclick="assign_crontab(\'hourly\', {cid})">hourly</a> '
             f'or <a href="javascript:;" onclick="assign_crontab(\'daily\', {cid})">daily</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'every_other_day\', {cid})">every other day</a> '
             f'or <a href="javascript:;" onclick="assign_crontab(\'weekly\', {cid})">weekly</a> '
             f'or <a href="javascript:;" onclick="assign_crontab(\'monthly\', {cid})">monthly</a> '
             f'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\', {cid})">bi-yearly</a> '
