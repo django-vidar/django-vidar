@@ -1867,7 +1867,7 @@ class PlaylistCreateView(PermissionRequiredMixin, CreateView):
     def get_initial(self):
         youtube_id = self.request.GET.get("youtube_id", "")
         return {
-            "youtube_id": f"https://www.youtube.com/playlist?list={youtube_id}",
+            "provider_object_id": f"https://www.youtube.com/playlist?list={youtube_id}",
         }
 
     def form_valid(self, form):
