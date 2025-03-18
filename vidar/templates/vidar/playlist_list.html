@@ -38,6 +38,9 @@
             {% if perms.vidar.add_playlist %}
                 <a href="{% url 'vidar:playlist-create' %}" class="btn btn-primary">New</a>
                 <a href="{% url 'vidar:playlist-create-custom' %}{% if request.GET.channel %}?channel={{ request.GET.channel }}{% endif %}" class="btn btn-primary">New Custom</a>
+                {% if perms.vidar.change_playlist %}
+                    <a href="{% url 'vidar:playlist-bulk-update' %}{% querystring %}" class="btn btn-primary">Bulk</a>
+                {% endif %}
                 <br />
             {% endif %}
             <a href="?custom" class="btn btn-info my-2">Show Custom</a>

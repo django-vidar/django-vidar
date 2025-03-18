@@ -85,6 +85,7 @@ urlpatterns = [
     path("channels/<slug:slug>/", include(channel_patterns)),
     path("htmx/crontab/", views.generate_crontab, name="htmx-crontab-generate"),
     path("playlists/", views.PlaylistListView.as_view(), name="playlist-index"),
+    path("playlists/bulk/", views.update_playlists_bulk, name="playlist-bulk-update"),
     path("playlists/create/", views.PlaylistCreateView.as_view(), name="playlist-create"),
     path("playlists/create/custom/", views.PlaylistCustomCreateView.as_view(), name="playlist-create-custom"),
     path("playlists/<int:pk>/", views.PlaylistDetailView.as_view(), name="playlist-detail"),

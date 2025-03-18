@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 
 from vidar import models, forms
+from vidar.helpers import channel_helpers
 
 User = get_user_model()
 
@@ -606,3 +607,211 @@ class PlaylistEditViewTests(TestCase):
             break
         else:
             self.fail("PlaylistCreateView should have told user how many scans per month were happening.")
+
+
+class Update_playlists_bulk_tests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission_change_channel = Permission.objects.get(codename="change_playlist")
+        self.user.user_permissions.add(self.permission_change_channel)
+
+        self.url = reverse('vidar:playlist-bulk-update')
+
+        self.client.force_login(self.user)
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+    def test_filtering_basic(self):
+
+        p1 = models.Playlist.objects.create()
+        p2 = models.Playlist.objects.create(provider_object_id="id")
+        p3 = models.Playlist.objects.create()
+
+        resp = self.client.get(self.url)
+
+        self.assertNotIn(p1, resp.context['formset'].queryset)
+        self.assertIn(p2, resp.context['formset'].queryset)
+        self.assertNotIn(p3, resp.context['formset'].queryset)
+
+    def test_filtering_channel(self):
+
+        channel = models.Channel.objects.create()
+
+        p1 = models.Playlist.objects.create(title="p1", )
+        p2 = models.Playlist.objects.create(title="p2", provider_object_id="id")
+        p3 = models.Playlist.objects.create(title="p3", provider_object_id="id2", channel=channel)
+
+        resp = self.client.get(self.url + f"?channel={channel.pk}")
+
+        self.assertNotIn(p1, resp.context['formset'].queryset)
+        self.assertNotIn(p2, resp.context['formset'].queryset)
+        self.assertIn(p3, resp.context['formset'].queryset)
+
+    def test_submit_saves_channel_only(self):
+
+        channel = models.Channel.objects.create()
+
+        p1 = models.Playlist.objects.create(title="p1", )
+        p2 = models.Playlist.objects.create(title="p2", provider_object_id="id")
+        p3 = models.Playlist.objects.create(title="p3", provider_object_id="id2", channel=channel)
+
+        response = self.client.get(self.url + f"?channel={channel.pk}")
+
+        # https://stackoverflow.com/a/38479643
+        # data will receive all the forms field names
+        # key will be the field name (as "formx-fieldname"), value will be the string representation.
+        data = {
+            'csrf_token': response.context['csrf_token'],
+        }
+
+        # management form information, needed because of the formset
+        management_form = response.context['formset'].management_form
+        for i in 'TOTAL_FORMS', 'INITIAL_FORMS', 'MIN_NUM_FORMS', 'MAX_NUM_FORMS':
+            data['%s-%s' % (management_form.prefix, i)] = management_form[i].value()
+
+        for i in range(response.context['formset'].total_form_count()):
+            current_form = response.context['formset'].forms[i]
+
+            # retrieve all the fields
+            for field_name in current_form.fields:
+                value = current_form[field_name].value()
+                if field_name == "crontab":
+                    value = "10 5 * * *"
+                data['%s-%s' % (current_form.prefix, field_name)] = value if value is not None else ''
+
+        self.client.post(self.url + f"?channel={channel.pk}", data)
+
+        p1.refresh_from_db()
+        p2.refresh_from_db()
+        p3.refresh_from_db()
+
+        self.assertEqual("", p1.crontab)
+        self.assertEqual("", p2.crontab)
+        self.assertEqual("10 5 * * *", p3.crontab)
+
+    def test_submit_saves(self):
+
+        channel = models.Channel.objects.create()
+
+        p1 = models.Playlist.objects.create(title="p1", )
+        p2 = models.Playlist.objects.create(title="p2", provider_object_id="id")
+        p3 = models.Playlist.objects.create(title="p3", provider_object_id="id2", channel=channel)
+
+        response = self.client.get(self.url)
+
+        # https://stackoverflow.com/a/38479643
+        # data will receive all the forms field names
+        # key will be the field name (as "formx-fieldname"), value will be the string representation.
+        data = {
+            'csrf_token': response.context['csrf_token'],
+        }
+
+        # management form information, needed because of the formset
+        management_form = response.context['formset'].management_form
+        for i in 'TOTAL_FORMS', 'INITIAL_FORMS', 'MIN_NUM_FORMS', 'MAX_NUM_FORMS':
+            data['%s-%s' % (management_form.prefix, i)] = management_form[i].value()
+
+        for i in range(response.context['formset'].total_form_count()):
+            current_form = response.context['formset'].forms[i]
+
+            # retrieve all the fields
+            for field_name in current_form.fields:
+                value = current_form[field_name].value()
+                if field_name == "crontab":
+                    value = f"10 {current_form.instance.pk} * * *"
+                data['%s-%s' % (current_form.prefix, field_name)] = value if value is not None else ''
+
+        self.client.post(self.url, data)
+
+        p1.refresh_from_db()
+        p2.refresh_from_db()
+        p3.refresh_from_db()
+
+        self.assertEqual("", p1.crontab)
+        self.assertEqual(f"10 {p2.pk} * * *", p2.crontab)
+        self.assertEqual(f"10 {p3.pk} * * *", p3.crontab)
+
+
+class Update_channels_bulk_tests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission_change_channel = Permission.objects.get(codename="change_channel")
+        self.user.user_permissions.add(self.permission_change_channel)
+
+        self.url = reverse('vidar:channel-bulk-update')
+
+        self.client.force_login(self.user)
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+    def test_filtering_basic(self):
+
+        p1 = models.Channel.objects.create(status=channel_helpers.ChannelStatuses.BANNED)
+        p2 = models.Channel.objects.create(provider_object_id="id")
+        p3 = models.Channel.objects.create()
+
+        resp = self.client.get(self.url)
+
+        self.assertNotIn(p1, resp.context['formset'].queryset)
+        self.assertIn(p2, resp.context['formset'].queryset)
+        self.assertIn(p3, resp.context['formset'].queryset)
+
+    def test_submit_saves(self):
+
+        c1 = models.Channel.objects.create(name="p1", )
+        c2 = models.Channel.objects.create(name="p2", provider_object_id="id")
+        c3 = models.Channel.objects.create(name="p3", provider_object_id="id2")
+
+        response = self.client.get(self.url)
+
+        # https://stackoverflow.com/a/38479643
+        # data will receive all the forms field names
+        # key will be the field name (as "formx-fieldname"), value will be the string representation.
+        data = {
+            'csrf_token': response.context['csrf_token'],
+        }
+
+        # management form information, needed because of the formset
+        management_form = response.context['formset'].management_form
+        for i in 'TOTAL_FORMS', 'INITIAL_FORMS', 'MIN_NUM_FORMS', 'MAX_NUM_FORMS':
+            data['%s-%s' % (management_form.prefix, i)] = management_form[i].value()
+
+        for i in range(response.context['formset'].total_form_count()):
+            current_form = response.context['formset'].forms[i]
+
+            # retrieve all the fields
+            for field_name in current_form.fields:
+                value = current_form[field_name].value()
+                if field_name == "scanner_crontab":
+                    value = f"10 {current_form.instance.pk} * * *"
+                data['%s-%s' % (current_form.prefix, field_name)] = value if value is not None else ''
+
+        self.client.post(self.url, data)
+
+        c1.refresh_from_db()
+        c2.refresh_from_db()
+        c3.refresh_from_db()
+
+        self.assertEqual(f"10 {c1.pk} * * *", c1.scanner_crontab)
+        self.assertEqual(f"10 {c2.pk} * * *", c2.scanner_crontab)
+        self.assertEqual(f"10 {c3.pk} * * *", c3.scanner_crontab)

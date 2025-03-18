@@ -1,0 +1,95 @@
+{% extends 'vidar/base.html' %}
+{% load bootstrap4 %}
+
+{% block site_title %}Vidar / Bulk Playlist Edit{% endblock %}
+
+{% block content %}
+
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'vidar:playlist-index' %}">Playlists</a></li>
+        {% if channel %}
+            <li class="breadcrumb-item"><a href="{{ channel.get_absolute_url }}">{{ channel }}</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:playlist-index' %}?channel={{ channel.id }}">Playlists</a></li>
+        {% endif %}
+        <li class="breadcrumb-item active">Bulk Playlist Edit</li>
+    </ul>
+
+    <form method="post" class="form">{% csrf_token %}
+        {{ formset.management_form }}
+        <div class="row">
+            {% for form in formset %}
+                <div class="col-12">
+                    <h4>{{ form.instance }}</h4>
+                    {% bootstrap_form form %}
+                </div>
+            {% endfor %}
+        </div>
+
+        {% buttons %}
+            <input type="submit" name="submit" value="Save" class="btn btn-primary">
+        {% endbuttons %}
+    </form>
+
+{% endblock %}
+
+{% block footer %}
+
+    <script type="text/javascript">
+
+        function assign_crontab(crontab_type, playlist_id) {
+            $.get("{% url 'vidar:htmx-crontab-generate' %}?type=" + crontab_type + "&field=upload_date&source=playlist&playlist=" + playlist_id, function(data, status){
+                console.log(crontab_type, data);
+                document.querySelector('.playlist-' + playlist_id).value = data;
+            });
+        }
+
+        $('#id_full_archive_after').pickadate({
+            format: 'yyyy-mm-dd',
+            selectYears: true,
+            selectMonths: true,
+            editable: true,
+            min: new Date(),
+        });
+        $('#id_full_archive_cutoff').pickadate({
+            format: 'yyyy-mm-dd',
+            selectYears: true,
+            selectMonths: true,
+            editable: true,
+            min: new Date(),
+        });
+        $('#id_full_index_after').pickadate({
+            format: 'yyyy-mm-dd',
+            selectYears: true,
+            selectMonths: true,
+            editable: true,
+            min: new Date(),
+        });
+
+        $('#id_swap_index_videos_after').pickadate({
+            format: 'yyyy-mm-dd',
+            selectYears: true,
+            selectMonths: true,
+            editable: true,
+            min: new Date(),
+        });
+
+        $('#id_swap_index_shorts_after').pickadate({
+            format: 'yyyy-mm-dd',
+            selectYears: true,
+            selectMonths: true,
+            editable: true,
+            min: new Date(),
+        });
+
+        $('#id_swap_index_livestreams_after').pickadate({
+            format: 'yyyy-mm-dd',
+            selectYears: true,
+            selectMonths: true,
+            editable: true,
+            min: new Date(),
+        });
+
+    </script>
+
+{% endblock %}

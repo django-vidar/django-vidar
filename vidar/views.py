@@ -2214,26 +2214,54 @@ def update_video_details_queue(request):
     return render(request, "vidar/queue_update_video_details.html", context)
 
 
-@user_passes_test(lambda u: u.has_perms(["vidar.update_channel"]))
+@user_passes_test(lambda u: u.has_perms(["vidar.change_channel"]))
 def update_channels_bulk(request):
 
-    qs = Channel.objects.active().exclude(scanner_crontab="").order_by("name")
+    qs = Channel.objects.indexing_enabled().exclude(scanner_crontab="").order_by("name")
+
     formset = forms.BulkChannelModelFormSet(queryset=qs)
 
     if request.method == "POST":
         formset = forms.BulkChannelModelFormSet(request.POST, queryset=qs)
 
         if formset.is_valid():
-            print("is valid")
+            messages.success(request, "crontabs saved")
             formset.save()
-
-            return redirect("vidar:channel-bulk-update")
 
     return render(
         request,
         "vidar/channel_form_bulk.html",
         {
             "formset": formset,
+        },
+    )
+
+
+@user_passes_test(lambda u: u.has_perms(["vidar.change_playlist"]))
+def update_playlists_bulk(request):
+
+    qs = Playlist.objects.all().exclude(provider_object_id="").order_by("title")
+
+    channel = None
+    if cid := request.GET.get("channel"):
+        qs = qs.filter(channel_id=cid)
+        channel = get_object_or_404(Channel, pk=cid)
+
+    formset = forms.BulkPlaylistModelFormSet(queryset=qs)
+
+    if request.method == "POST":
+        formset = forms.BulkPlaylistModelFormSet(request.POST, queryset=qs)
+
+        if formset.is_valid():
+            messages.success(request, "crontabs saved")
+            formset.save()
+
+    return render(
+        request,
+        "vidar/playlist_form_bulk.html",
+        {
+            "formset": formset,
+            "channel": channel,
         },
     )
 

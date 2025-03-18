@@ -733,4 +733,29 @@ class BulkChannelForm(forms.ModelForm):
         self.fields["scanner_crontab"].widget.attrs["class"] = f"form-control channel-{cid}"
 
 
+class BulkPlaylistForm(forms.ModelForm):
+    class Meta:
+        model = Playlist
+        fields = ["crontab"]
+        labels = {"crontab": ""}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        pid = self.instance.pk
+
+        self.fields["crontab"].help_text = (
+            f'<a href="javascript:;" onclick="assign_crontab(\'hourly\', {pid})">hourly</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'daily\', {pid})">daily</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'every_other_day\', {pid})">every other day</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'weekly\', {pid})">weekly</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'monthly\', {pid})">monthly</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\', {pid})">bi-yearly</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'yearly\', {pid})">yearly</a> '
+        )
+
+        self.fields["crontab"].widget.attrs["class"] = f"form-control playlist-{pid}"
+
+
 BulkChannelModelFormSet = forms.modelformset_factory(model=Channel, form=BulkChannelForm, edit_only=True, extra=0)
+BulkPlaylistModelFormSet = forms.modelformset_factory(model=Playlist, form=BulkPlaylistForm, edit_only=True, extra=0)
