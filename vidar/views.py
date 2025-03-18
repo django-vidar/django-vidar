@@ -726,7 +726,7 @@ def generate_crontab(request):
 
     if pid := request.GET.get("playlist"):
         playlist = get_object_or_404(Playlist, id=pid)
-        hours = [14, 15, 16, 17]
+        hours = playlist_services.crontab_hours
 
     if cid := request.GET.get("channel"):
         channel = get_object_or_404(Channel, pk=cid)

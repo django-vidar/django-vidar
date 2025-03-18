@@ -1,5 +1,8 @@
 # flake8: noqa
+from unittest.mock import patch
+import warnings
 
+import requests
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import TestCase, SimpleTestCase, override_settings, RequestFactory
 
@@ -308,6 +311,33 @@ class UtilTest(SimpleTestCase):
         ]
         with self.assertRaises(ValueError):
             utils.contains_one_of_many(find_within_this, find_one_of_these)
+
+    @patch('requests.get')
+    def test_get_channel_id_from_url(self, mock_get):
+        mock_get.return_value.text = """
+        <!DOCTYPE html><html lang="en"><head>
+            <link rel="canonical" href="https://www.youtube.com/channel/UCfIXdjDQH9Fau7y99_Orpjw">
+        </head><body></body></html>
+        """
+        output = utils.get_channel_id_from_url("https://www.youtube.com/channel/UCfIXdjDQH9Fau7y99_Orpjw")
+        self.assertEqual("UCfIXdjDQH9Fau7y99_Orpjw", output)
+        mock_get.assert_not_called()
+
+        output = utils.get_channel_id_from_url("https://www.youtube.com/@Gorillaz")
+        self.assertEqual("UCfIXdjDQH9Fau7y99_Orpjw", output)
+        mock_get.assert_called_once()
+
+    @patch('requests.get')
+    def test_get_channel_id_from_url_fails_bad_url(self, mock_get):
+        mock_get.side_effect = requests.ConnectionError()
+
+        with warnings.catch_warnings(record=True) as w:
+            output = utils.get_channel_id_from_url("https://www.youtube.com/channel/bad")
+            msg = w[-1]
+            self.assertEqual("Failure to obtain youtube_id from youtube channel", str(msg.message))
+
+            self.assertEqual("bad", output)
+            mock_get.assert_called_once()
 
 
 class HelperTest(TestCase):

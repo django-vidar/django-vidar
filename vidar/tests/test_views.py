@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 
-from vidar import models
+from vidar import models, forms
 
 User = get_user_model()
 
@@ -437,3 +437,172 @@ class GeneralUtilitiesViewTests(TestCase):
             wait_period=10,
         )
 
+
+class PlaylistCreateViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission_change_channel = Permission.objects.get(codename="add_playlist")
+        self.user.user_permissions.add(self.permission_change_channel)
+
+        self.client.force_login(self.user)
+
+        self.url = reverse('vidar:playlist-create')
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+    def test_youtube_id_in_querystring_is_copied_to_initial(self):
+        resp = self.client.get(self.url)
+        form = resp.context_data['form']
+        self.assertIn("provider_object_id", form.initial)
+        self.assertEqual("https://www.youtube.com/playlist?list=", form.initial["provider_object_id"])
+
+        resp = self.client.get(self.url + "?youtube_id=someidhere")
+        form = resp.context_data['form']
+        self.assertIn("provider_object_id", form.initial)
+        self.assertEqual(f"https://www.youtube.com/playlist?list=someidhere", form.initial["provider_object_id"])
+
+    @patch('vidar.tasks.sync_playlist_data')
+    def test_save_calls_task(self, mock_task):
+        resp = self.client.post(self.url, {
+            "provider_object_id": "https://www.youtube.com/playlist?list=someidhere",
+            "videos_display_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+            "videos_playback_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+        })
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(1, models.Playlist.objects.count())
+        obj = models.Playlist.objects.get()
+        self.assertEqual(obj.get_absolute_url(), resp.url)
+        mock_task.delay.assert_called_with(pk=obj.pk, initial_sync=True)
+
+    @patch('vidar.tasks.sync_playlist_data')
+    def test_save_errors_on_duplicate_id(self, mock_task):
+        models.Playlist.objects.create(provider_object_id="someidhere")
+        resp = self.client.post(self.url, {
+            "provider_object_id": "https://www.youtube.com/playlist?list=someidhere",
+            "videos_display_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+            "videos_playback_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+        })
+        self.assertEqual(200, resp.status_code)
+        mock_task.delay.assert_not_called()
+        self.assertFormError(resp.context_data["form"], "provider_object_id", "Playlist already exists.")
+
+    @patch('vidar.tasks.sync_playlist_data')
+    def test_save_errors_on_duplicate_id_old(self, mock_task):
+        models.Playlist.objects.create(provider_object_id_old="someidhere")
+        resp = self.client.post(self.url, {
+            "provider_object_id": "https://www.youtube.com/playlist?list=someidhere",
+            "videos_display_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+            "videos_playback_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+        })
+        self.assertEqual(200, resp.status_code)
+        mock_task.delay.assert_not_called()
+        self.assertFormError(resp.context_data["form"], "provider_object_id", "Playlist already exists.")
+
+    @patch('vidar.tasks.sync_playlist_data')
+    def test_save_messages_x_runtimes_per_day(self, mock_task):
+        resp = self.client.post(self.url, {
+            "provider_object_id": "https://www.youtube.com/playlist?list=someidhere",
+            "videos_display_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+            "videos_playback_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+            "crontab": "10 4 * * *",
+        })
+        msgs = messages.get_messages(resp.wsgi_request)
+
+        for msg in msgs:
+            self.assertIn("1 times per day", msg.message)
+            break
+        else:
+            self.fail("PlaylistCreateView should have told user how many scans per day were happening.")
+
+    @patch('vidar.tasks.sync_playlist_data')
+    def test_save_messages_x_runtimes_per_month(self, mock_task):
+        resp = self.client.post(self.url, {
+            "provider_object_id": "https://www.youtube.com/playlist?list=someidhere",
+            "videos_display_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+            "videos_playback_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+            "crontab": "10 4 * * 3",
+        })
+        msgs = messages.get_messages(resp.wsgi_request)
+
+        for msg in msgs:
+            self.assertRegex(msg.message, r"[3,4,5] times per month")
+            break
+        else:
+            self.fail("PlaylistCreateView should have told user how many scans per month were happening.")
+
+
+class PlaylistEditViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission_change_channel = Permission.objects.get(codename="change_playlist")
+        self.user.user_permissions.add(self.permission_change_channel)
+
+        self.client.force_login(self.user)
+
+        self.playlist = models.Playlist.objects.create(provider_object_id="test-id")
+
+        self.url = reverse('vidar:playlist-edit', args=[self.playlist.pk])
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+    def test_regular_form_with_provider_object_id(self):
+
+        resp = self.client.get(self.url)
+        self.assertEqual(forms.PlaylistEditForm, type(resp.context_data['form']))
+
+    def test_custom_form_without_provider_object_id(self):
+
+        playlist = models.Playlist.objects.create()
+
+        resp = self.client.get(reverse("vidar:playlist-edit", args=[playlist.pk]))
+        self.assertEqual(forms.PlaylistManualEditForm, type(resp.context_data['form']))
+
+    def test_save_messages_x_runtimes_per_day(self):
+        resp = self.client.post(self.url, {
+            "provider_object_id": "https://www.youtube.com/playlist?list=someidhere",
+            "videos_display_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+            "videos_playback_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+            "crontab": "10 4 * * *",
+        })
+        msgs = messages.get_messages(resp.wsgi_request)
+
+        for msg in msgs:
+            self.assertIn("1 times per day", msg.message)
+            break
+        else:
+            self.fail("PlaylistCreateView should have told user how many scans per day were happening.")
+
+    def test_save_messages_x_runtimes_per_month(self):
+        resp = self.client.post(self.url, {
+            "provider_object_id": "https://www.youtube.com/playlist?list=someidhere",
+            "videos_display_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+            "videos_playback_ordering": models.Playlist.PlaylistVideoOrderingChoices.DEFAULT,
+            "crontab": "10 4 * * 3",
+        })
+        msgs = messages.get_messages(resp.wsgi_request)
+
+        for msg in msgs:
+            self.assertRegex(msg.message, r"[3,4,5] times per month")
+            break
+        else:
+            self.fail("PlaylistCreateView should have told user how many scans per month were happening.")

@@ -3,7 +3,7 @@ import json
 import logging
 import pathlib
 
-from unittest.mock import patch
+from unittest.mock import patch, call
 
 from django.conf import settings
 from django.test import TestCase, SimpleTestCase, override_settings
@@ -474,6 +474,56 @@ class PlaylistServicesTests(TestCase):
         p.scan_history.create()
 
         self.assertIsNone(playlist_services.recently_scanned(playlist=p))
+
+    @patch('vidar.services.video_services.delete_video')
+    def test_delete_playlist_videos(self, mock_delete):
+        p = models.Playlist.objects.create()
+        v1 = models.Video.objects.create()
+        v2 = models.Video.objects.create()
+        v3 = models.Video.objects.create()
+        p.videos.add(v1, v2, v3)
+
+        playlist_services.delete_playlist_videos(playlist=p)
+
+        self.assertEqual(3, mock_delete.call_count)
+        mock_delete.assert_has_calls([
+            call(video=v1, keep_record=False),
+            call(video=v2, keep_record=False),
+            call(video=v3, keep_record=False),
+        ], any_order=True)
+
+    @patch('vidar.services.video_services.delete_video')
+    def test_delete_playlist_videos_keeps_channel_videos(self, mock_delete):
+        c = models.Channel.objects.create()
+        p = models.Playlist.objects.create()
+        v1 = models.Video.objects.create()
+        v2 = models.Video.objects.create(channel=c)
+        v3 = models.Video.objects.create()
+        p.videos.add(v1, v2, v3)
+
+        playlist_services.delete_playlist_videos(playlist=p)
+
+        mock_delete.assert_has_calls([
+            call(video=v1, keep_record=False),
+            call(video=v2, keep_record=True),
+            call(video=v3, keep_record=False),
+        ], any_order=True)
+
+    @patch('vidar.services.video_services.delete_video')
+    def test_delete_playlist_videos_blocked_by_prevent_deletion(self, mock_delete):
+        p = models.Playlist.objects.create()
+        v1 = models.Video.objects.create()
+        v2 = models.Video.objects.create(prevent_deletion=True)
+        v3 = models.Video.objects.create()
+        p.videos.add(v1, v2, v3)
+
+        playlist_services.delete_playlist_videos(playlist=p)
+
+        mock_delete.assert_has_calls([
+            call(video=v1, keep_record=False),
+            call(video=v3, keep_record=False),
+        ], any_order=True)
+
 
 
 class ChannelServicesTests(TestCase):

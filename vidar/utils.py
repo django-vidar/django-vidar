@@ -3,6 +3,7 @@ import datetime
 import logging
 import random
 import requests
+import warnings
 from collections import defaultdict
 from urllib.parse import parse_qs
 
@@ -90,7 +91,7 @@ def get_channel_id_from_url(url):
             youtube_url = soup.find("link", {"rel": "canonical"})["href"]
             channel_id = get_channel_id_from_url(youtube_url)
         except (requests.exceptions.ConnectionError, KeyError, TypeError):
-            log.exception("Failure to obtain youtube_id from youtube channel")
+            warnings.warn("Failure to obtain youtube_id from youtube channel")
 
     return channel_id
 
