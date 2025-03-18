@@ -54,7 +54,7 @@ fi
 if [ "$INIT_VIDAR_DATA" = "True" ]
 then
   python manage.py migrate --noinput
-  python manage.py init_vidar_tasks
+  python manage.py init_vidar --create-tasks
   python manage.py init_example_users
   #python manage.py collectstatic --noinput &
 fi
