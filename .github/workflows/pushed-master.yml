@@ -8,9 +8,9 @@ on:
 
 jobs:
   call-django-tests-workflow:
-    uses: ./.github/workflows/run-django-tests.yml@master
+    uses: ./.github/workflows/run-django-tests.yml
     secrets: inherit
   call-demo-builder-workflow:
     needs: call-django-tests-workflow
-    uses: ./.github/workflows/build-demo-image.yml@master
+    uses: ./.github/workflows/build-demo-image.yml
     secrets: inherit
