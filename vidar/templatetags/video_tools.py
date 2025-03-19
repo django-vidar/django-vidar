@@ -5,6 +5,7 @@ from django.db.models import F, Q
 from django.utils.safestring import mark_safe
 
 from vidar.models import Playlist, UserPlaybackHistory, Video
+from vidar.services import video_services
 
 
 log = logging.getLogger(__name__)
@@ -444,3 +445,8 @@ def description_with_linked_timestamps(video_description):
 @register.simple_tag()
 def user_watch_history_for_video(video: Video, user):
     return video.user_playback_history.filter(user=user)
+
+
+@register.simple_tag()
+def video_can_be_deleted(video: Video, skip_playlist_ids=None):
+    return video_services.can_delete(video=video, skip_playlist_ids=skip_playlist_ids)

@@ -510,6 +510,30 @@ class TemplateTagsVideoToolsTests(TestCase):
 
         self.assertTrue(video_tools.is_on_watch_later(video=v, user=user))
 
+    def test_video_can_be_deleted(self):
+        video = models.Video.objects.create(prevent_deletion=True)
+        self.assertFalse(video_tools.video_can_be_deleted(video=video))
+
+        video = models.Video.objects.create(prevent_deletion=False)
+        self.assertTrue(video_tools.video_can_be_deleted(video=video))
+
+    def test_user_watch_history_for_video(self):
+        user1 = UserModel.objects.create(username='test1')
+        user2 = UserModel.objects.create(username='test2')
+
+        video1 = models.Video.objects.create(title='v1')
+        video2 = models.Video.objects.create(title='v2')
+
+        h1 = models.UserPlaybackHistory.objects.create(seconds=1, video=video1, user=user1)
+        h2 = models.UserPlaybackHistory.objects.create(seconds=1, video=video1, user=user2)
+        h3 = models.UserPlaybackHistory.objects.create(seconds=1, video=video2, user=user2)
+
+        output = video_tools.user_watch_history_for_video(video=video1, user=user1)
+        self.assertEqual(1, output.count())
+        self.assertIn(h1, output)
+        self.assertNotIn(h2, output)
+        self.assertNotIn(h3, output)
+
 
 class TemplateTagsVideoToolsWithCustomUserFieldsTests(TestCase):
 
