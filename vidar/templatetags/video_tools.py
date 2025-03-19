@@ -389,57 +389,52 @@ def is_on_watch_later(video: Video, user):
 
 @register.simple_tag
 def description_with_linked_timestamps(video_description):
-    try:
-        output = []
+    output = []
 
-        for line in video_description.splitlines():
+    for line in video_description.splitlines():
 
-            if ":" in line:
+        if ":" in line:
 
-                for possible_timestamp in line.split(" "):
-                    if ":" not in possible_timestamp:
+            for possible_timestamp in line.split(" "):
+                if ":" not in possible_timestamp:
+                    continue
+
+                possible_timestamp = possible_timestamp.strip()
+
+                minute, sep, second = possible_timestamp.partition(":")
+                hour = None
+
+                # 1:03:42 turns into
+                # >>> '1:03:42'.partition(':')
+                # ('1', ':', '03:42')
+                if ":" in second:
+                    k, sep, v = second.partition(":")
+                    hour = minute
+                    minute = k
+                    second = v
+
+                if not minute.isdigit() or not second.isdigit():
+                    continue
+
+                if hour is not None:
+                    if not hour.isdigit():
                         continue
 
-                    possible_timestamp = possible_timestamp.strip()
+                    hour = int(hour)
+                else:
+                    hour = 0
 
-                    minute, sep, second = possible_timestamp.partition(":")
-                    hour = None
+                minute = int(minute)
+                second = int(second)
 
-                    # 1:03:42 turns into
-                    # >>> '1:03:42'.partition(':')
-                    # ('1', ':', '03:42')
-                    if ":" in second:
-                        k, sep, v = second.partition(":")
-                        hour = minute
-                        minute = k
-                        second = v
+                total_seconds = (hour * 60 * 60) + (minute * 60) + second
 
-                    if not minute.isdigit() or not second.isdigit():
-                        continue
+                html = f'<a href="javascript:;" onclick="setVideoTime({total_seconds})">{possible_timestamp}</a>'
+                line = line.replace(possible_timestamp, html, 1)
 
-                    if hour is not None:
-                        if not hour.isdigit():
-                            continue
+        output.append(line)
 
-                        hour = int(hour)
-                    else:
-                        hour = 0
-
-                    minute = int(minute)
-                    second = int(second)
-
-                    total_seconds = (hour * 60 * 60) + (minute * 60) + second
-
-                    html = f'<a href="javascript:;" onclick="setVideoTime({total_seconds})">{possible_timestamp}</a>'
-                    line = line.replace(possible_timestamp, html, 1)
-
-            output.append(line)
-
-        return mark_safe("\n".join(output))
-    except (TypeError, ValueError):
-        log.exception("failure to convert video descriptions timestamps")
-
-    return video_description
+    return mark_safe("\n".join(output))
 
 
 @register.simple_tag()

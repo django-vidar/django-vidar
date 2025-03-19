@@ -1,13 +1,15 @@
 # flake8: noqa
+import datetime
+
 from django.core.paginator import Paginator
 from django.core.exceptions import FieldDoesNotExist
 from django.contrib.auth import get_user_model
 from django.db.utils import NotSupportedError
-from django.test import TestCase
+from django.test import TestCase, SimpleTestCase
 from django.utils import timezone
 
 from vidar import models, pagination
-from vidar.templatetags import video_tools, pagination_helpers, playlist_tools
+from vidar.templatetags import video_tools, pagination_helpers, playlist_tools, vidar_utils, crontab_links
 
 UserModel = get_user_model()
 
@@ -498,6 +500,25 @@ class TemplateTagsVideoToolsTests(TestCase):
 
         self.assertEqual(expected, output)
 
+    def test_description_with_linked_timestamps_with_bad_timestamp(self):
+        description = """This is my video
+
+        1:05 is section 1
+        4:50 is section 2
+        6:45:50:90 is final area
+        This line contains a semi colon : that should not be linked"""
+
+        output = video_tools.description_with_linked_timestamps(description)
+
+        expected = """This is my video
+
+        <a href="javascript:;" onclick="setVideoTime(65)">1:05</a> is section 1
+        <a href="javascript:;" onclick="setVideoTime(290)">4:50</a> is section 2
+        6:45:50:90 is final area
+        This line contains a semi colon : that should not be linked"""
+
+        self.assertEqual(expected, output)
+
     def test_is_on_watch_later(self):
         user = UserModel.objects.create(username='test')
         playlist = models.Playlist.get_user_watch_later(user=user)
@@ -533,6 +554,20 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertIn(h1, output)
         self.assertNotIn(h2, output)
         self.assertNotIn(h3, output)
+
+    def test_user_watched_video_without_custom_field(self):
+
+        class UserWithoutRequiredField:
+            is_authenticated = True
+        class Req:
+            user = UserWithoutRequiredField()
+
+        self.assertFalse(video_tools.user_watched_video(
+            context = {
+                "request": Req(),
+            },
+            video=models.Video.objects.create(),
+        ))
 
 
 class TemplateTagsVideoToolsWithCustomUserFieldsTests(TestCase):
@@ -1285,3 +1320,90 @@ class TemplateTagsPlaylistTools(TestCase):
         v1 = models.Video.objects.create(title=f"Video 1")
         playlist.videos.add(v1)
         self.assertIsNone(playlist_tools.link_to_playlist_page(playlist, v1))
+
+    def test_is_subscribed_to_playlist(self):
+        p1 = models.Playlist.objects.create(provider_object_id='test1')
+        p2 = models.Playlist.objects.create(provider_object_id='test2')
+        self.assertEqual(p1, playlist_tools.is_subscribed_to_playlist('test1'))
+        self.assertEqual(p2, playlist_tools.is_subscribed_to_playlist('test2'))
+        self.assertIsNone(playlist_tools.is_subscribed_to_playlist('test3'))
+
+    def test_user_played_entire_playlist_unauthenticated(self):
+        class UserWithoutRequiredField:
+            is_authenticated = False
+
+        self.assertFalse(playlist_tools.user_played_entire_playlist(
+            playlist=None, user=UserWithoutRequiredField()
+        ))
+
+    def test_user_played_entire_playlist_missing_custom_field(self):
+        class UserWithoutRequiredField:
+            is_authenticated = True
+
+        self.assertFalse(playlist_tools.user_played_entire_playlist(
+            playlist=None, user=UserWithoutRequiredField()
+        ))
+
+    def test_get_next_unwatched_video_on_playlist_unauthenticated(self):
+        class UserWithoutRequiredField:
+            is_authenticated = False
+
+        self.assertFalse(playlist_tools.get_next_unwatched_video_on_playlist(
+            playlist=None, user=UserWithoutRequiredField()
+        ))
+
+    def test_get_next_unwatched_video_on_playlist_missing_custom_field(self):
+        class UserWithoutRequiredField:
+            is_authenticated = True
+
+        self.assertFalse(playlist_tools.get_next_unwatched_video_on_playlist(
+            playlist=None, user=UserWithoutRequiredField()
+        ))
+
+    def test_get_next_unwatched_audio_on_playlist_unauthenticated(self):
+        class UserWithoutRequiredField:
+            is_authenticated = False
+
+        self.assertFalse(playlist_tools.get_next_unwatched_audio_on_playlist(
+            playlist=None, user=UserWithoutRequiredField()
+        ))
+
+    def test_get_next_unwatched_audio_on_playlist_missing_custom_field(self):
+        class UserWithoutRequiredField:
+            is_authenticated = True
+
+        self.assertFalse(playlist_tools.get_next_unwatched_audio_on_playlist(
+            playlist=None, user=UserWithoutRequiredField()
+        ))
+
+
+class VidarUtilsTests(SimpleTestCase):
+    def test_get_type(self):
+        class MyObject:
+            pass
+        obj = MyObject()
+        self.assertEqual(MyObject, vidar_utils.get_type(obj))
+        self.assertEqual(type(obj), vidar_utils.get_type(obj))
+
+    def test_get_type_name(self):
+        class MyObject:
+            pass
+        obj = MyObject()
+        self.assertEqual("MyObject", vidar_utils.get_type_name(obj))
+
+    def test_int_to_timedelta_seconds(self):
+        self.assertEqual(
+            datetime.timedelta(seconds=500),
+            vidar_utils.int_to_timedelta_seconds(500)
+        )
+
+        self.assertIsNone(vidar_utils.int_to_timedelta_seconds(None))
+
+    def test_filename(self):
+        self.assertEqual("test.mp4", vidar_utils.filename("/path/to/test.mp4"))
+
+
+class CrontabLinksTests(SimpleTestCase):
+    def test_basics(self):
+        output = crontab_links.crontab_link_to_crontab_guru('10 5 * * *')
+        self.assertEqual(f"https://crontab.guru/#10_5_*_*_*", output)
