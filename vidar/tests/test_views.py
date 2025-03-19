@@ -815,3 +815,102 @@ class Update_channels_bulk_tests(TestCase):
         self.assertEqual(f"10 {c1.pk} * * *", c1.scanner_crontab)
         self.assertEqual(f"10 {c2.pk} * * *", c2.scanner_crontab)
         self.assertEqual(f"10 {c3.pk} * * *", c3.scanner_crontab)
+
+
+class PlaylistListViewTest(TestCase):
+    # simple test, this view uses querystring so it'll fail tests under django v5.1
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission_change_channel = Permission.objects.get(codename="view_playlist")
+        self.user.user_permissions.add(self.permission_change_channel)
+
+        self.url = reverse('vidar:playlist-index')
+
+        self.client.force_login(self.user)
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+    def test_default_view_shows_all(self):
+
+        p1 = models.Playlist.objects.create(title="p1")
+        p2 = models.Playlist.objects.create(title="p2")
+        p3 = models.Playlist.objects.create(title="p3")
+
+        resp = self.client.get(self.url)
+
+        self.assertEqual(3, resp.context_data["object_list"].count())
+        self.assertIn(p1, resp.context_data["object_list"])
+        self.assertIn(p2, resp.context_data["object_list"])
+        self.assertIn(p3, resp.context_data["object_list"])
+
+    def test_filtered_view_shows_channel_only(self):
+
+        c = models.Channel.objects.create()
+
+        p1 = models.Playlist.objects.create(title="p1")
+        p2 = models.Playlist.objects.create(title="p2", channel=c)
+        p3 = models.Playlist.objects.create(title="p3")
+        p4 = models.Playlist.objects.create(title="p4", channel=c)
+
+        resp = self.client.get(self.url + f"?channel={c.pk}")
+
+        self.assertEqual(2, resp.context_data["object_list"].count())
+        self.assertNotIn(p1, resp.context_data["object_list"])
+        self.assertIn(p2, resp.context_data["object_list"])
+        self.assertNotIn(p3, resp.context_data["object_list"])
+        self.assertIn(p4, resp.context_data["object_list"])
+
+    def test_ordering_asc(self):
+
+        c = models.Channel.objects.create()
+
+        p1 = models.Playlist.objects.create(title="p1")
+        p2 = models.Playlist.objects.create(title="p2", channel=c)
+        p3 = models.Playlist.objects.create(title="p3")
+        p4 = models.Playlist.objects.create(title="p4", channel=c)
+
+        resp = self.client.get(self.url + f"?channel={c.pk}&o=title")
+
+        qs = resp.context_data["object_list"]
+        self.assertEqual(p2, qs[0])
+        self.assertEqual(p4, qs[1])
+
+    def test_ordering_desc(self):
+
+        c = models.Channel.objects.create()
+
+        p1 = models.Playlist.objects.create(title="p1")
+        p2 = models.Playlist.objects.create(title="p2", channel=c)
+        p3 = models.Playlist.objects.create(title="p3")
+        p4 = models.Playlist.objects.create(title="p4", channel=c)
+
+        resp = self.client.get(self.url + f"?channel={c.pk}&o=-title")
+
+        qs = resp.context_data["object_list"]
+        self.assertEqual(p2, qs[1])
+        self.assertEqual(p4, qs[0])
+
+    def test_ordering_invalid_field(self):
+
+        p1 = models.Playlist.objects.create(title="p1")
+        p2 = models.Playlist.objects.create(title="p2")
+        p3 = models.Playlist.objects.create(title="p3")
+        p4 = models.Playlist.objects.create(title="p4")
+
+        resp = self.client.get(self.url + f"?o=invalid_field")
+
+        qs = resp.context_data["object_list"]
+        self.assertEqual(p1, qs[0])
+        self.assertEqual(p2, qs[1])
+        self.assertEqual(p3, qs[2])
+        self.assertEqual(p4, qs[3])
