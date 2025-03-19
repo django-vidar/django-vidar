@@ -598,7 +598,7 @@ class RenamerTests(TestCase):
 
 
 def ytdlp_initializer_test(action, instance=None, **kwargs):
-    return f'inside vidar.tests.test_general.ytdlp_initializer_test {action=} {instance=} {kwargs=}'
+    return f'inside tests.test_general.ytdlp_initializer_test {action=} {instance=} {kwargs=}'
 
 
 class InteractorTests(SimpleTestCase):
@@ -627,7 +627,7 @@ class InteractorTests(SimpleTestCase):
 
     @patch('yt_dlp.YoutubeDL')
     @patch('vidar.utils.get_proxy')
-    @override_settings(VIDAR_YTDLP_INITIALIZER='vidar.tests.test_general.ytdlp_initializer_test')
+    @override_settings(VIDAR_YTDLP_INITIALIZER='tests.test_general.ytdlp_initializer_test')
     def test_get_ytdlp_with_user_set_initializer(self, mock_proxy, mock_ytdlp):
         mock_ytdlp.side_effect = ValueError('yt_dlp.YoutubeDL should NOT be called while testing. Patching failed.')
         kwargs = dict(
@@ -636,7 +636,7 @@ class InteractorTests(SimpleTestCase):
             extra='field',
         )
         output = interactor.get_ytdlp(kwargs=kwargs)
-        expected = "inside vidar.tests.test_general.ytdlp_initializer_test action='test_get_ytdlp action' instance='test_get_ytdlp instance' kwargs={'extra': 'field'}"
+        expected = "inside tests.test_general.ytdlp_initializer_test action='test_get_ytdlp action' instance='test_get_ytdlp instance' kwargs={'extra': 'field'}"
         self.assertEqual(expected, output)
         self.assertNotIn("instance", kwargs)
         self.assertNotIn("action", kwargs)

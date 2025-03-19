@@ -1610,22 +1610,22 @@ class VideoServicesTests(TestCase):
         video = models.Video.objects.create(needs_cookies=True)
         self.assertIsNone(video_services.get_cookies(video=video))
 
-    @override_settings(VIDAR_COOKIES_FILE="vidar/tests/cookies.txt")
+    @override_settings(VIDAR_COOKIES_FILE="tests/cookies.txt")
     def test_get_cookies_using_string_file(self):
         video = models.Video.objects.create(needs_cookies=True)
         self.assertEqual("cookies.txt cookies here\n", video_services.get_cookies(video=video))
 
-    @override_settings(VIDAR_COOKIES_FILE=pathlib.Path("vidar/tests/cookies.txt"))
+    @override_settings(VIDAR_COOKIES_FILE=pathlib.Path("tests/cookies.txt"))
     def test_get_cookies_using_pathlib_file(self):
         video = models.Video.objects.create(needs_cookies=True)
         self.assertEqual("cookies.txt cookies here\n", video_services.get_cookies(video=video))
 
-    @override_settings(VIDAR_COOKIES_GETTER="vidar.tests.test_functions.get_cookies_user_func")
+    @override_settings(VIDAR_COOKIES_GETTER="tests.test_functions.get_cookies_user_func")
     def test_user_override_get_cookies(self):
         video = models.Video.objects.create(needs_cookies=True)
         self.assertEqual("user func cookies here", app_settings.COOKIES_GETTER(video=video))
 
-    @override_settings(VIDAR_COOKIES_CHECKER="vidar.tests.test_functions.cookies_checker_user_func")
+    @override_settings(VIDAR_COOKIES_CHECKER="tests.test_functions.cookies_checker_user_func")
     def test_user_override_should_use_cookies(self):
         channel = models.Channel.objects.create()
         video = models.Video.objects.create(channel=channel)
@@ -1903,7 +1903,7 @@ class SchemaServicesTests(TestCase):
 class YtdlpServicesDLPFormatsTest(SimpleTestCase):
 
     def setUp(self) -> None:
-        with open('vidar/tests/dlp_formats.json', 'r') as f:
+        with open('tests/dlp_formats.json', 'r') as f:
             self.dlp_formats = json.load(f)["formats"]
 
     def test_get_highest_quality_from_video_dlp_formats(self):
@@ -1971,9 +1971,9 @@ class YtdlpServicesDLPResponseTest(SimpleTestCase):
     def get_fixture_data(self):
         # yt-dlp https://www.youtube.com/watch?v=6CmX4ZmhwPM --format wv --write-info-json
         # open json, del heatmap, write dlp_formats, del formats, write response.
-        with open('vidar/tests/dlp_response.json', 'r') as f:
+        with open('tests/dlp_response.json', 'r') as f:
             self.dlp_response = json.load(f)
-        with open('vidar/tests/dlp_formats.json', 'r') as f:
+        with open('tests/dlp_formats.json', 'r') as f:
             self.dlp_response["formats"] = json.load(f)["formats"]
 
         return self.dlp_response

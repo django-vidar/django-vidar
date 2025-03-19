@@ -110,6 +110,9 @@ per_file_ignores = [
 include = [
 	"vidar/*"
 ]
+omit = [
+	"*vidar/oneoffs.py",
+]
 
 [tool.coverage.html]
 directory = "coverage_html_report"
