@@ -38,57 +38,16 @@
     <script type="text/javascript">
 
         function assign_crontab(crontab_type, playlist_id) {
-            $.get("{% url 'vidar:htmx-crontab-generate' %}?type=" + crontab_type + "&field=upload_date&source=playlist&playlist=" + playlist_id, function(data, status){
+            let elem = document.querySelector('.playlist-' + playlist_id);
+            let clicks = elem.getAttribute(crontab_type);
+            if (clicks != null) { clicks = parseInt(clicks) + 1; } else { clicks = 0; }
+            elem.setAttribute(crontab_type, clicks.toString());
+
+            $.get("{% url 'vidar:htmx-crontab-generate' %}?type=" + crontab_type + "&field=upload_date&source=playlist&playlist=" + playlist_id + '&attempt=' + clicks.toString(), function(data, status){
                 console.log(crontab_type, data);
-                document.querySelector('.playlist-' + playlist_id).value = data;
+                elem.value = data;
             });
         }
-
-        $('#id_full_archive_after').pickadate({
-            format: 'yyyy-mm-dd',
-            selectYears: true,
-            selectMonths: true,
-            editable: true,
-            min: new Date(),
-        });
-        $('#id_full_archive_cutoff').pickadate({
-            format: 'yyyy-mm-dd',
-            selectYears: true,
-            selectMonths: true,
-            editable: true,
-            min: new Date(),
-        });
-        $('#id_full_index_after').pickadate({
-            format: 'yyyy-mm-dd',
-            selectYears: true,
-            selectMonths: true,
-            editable: true,
-            min: new Date(),
-        });
-
-        $('#id_swap_index_videos_after').pickadate({
-            format: 'yyyy-mm-dd',
-            selectYears: true,
-            selectMonths: true,
-            editable: true,
-            min: new Date(),
-        });
-
-        $('#id_swap_index_shorts_after').pickadate({
-            format: 'yyyy-mm-dd',
-            selectYears: true,
-            selectMonths: true,
-            editable: true,
-            min: new Date(),
-        });
-
-        $('#id_swap_index_livestreams_after').pickadate({
-            format: 'yyyy-mm-dd',
-            selectYears: true,
-            selectMonths: true,
-            editable: true,
-            min: new Date(),
-        });
 
     </script>
 

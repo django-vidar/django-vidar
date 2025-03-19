@@ -113,9 +113,14 @@
     <script type="text/javascript">
 
         function assign_crontab(crontab_type) {
-            $.get("{% url 'vidar:htmx-crontab-generate' %}?type=" + crontab_type + "&field=upload_date&source=channel{% if general_form.instance.pk %}&channel={{ general_form.instance.pk }}{% endif %}", function(data, status){
+            let elem = document.getElementById('id_scanner_crontab');
+            let clicks = elem.getAttribute(crontab_type);
+            if (clicks != null) { clicks = parseInt(clicks) + 1; } else { clicks = 0; }
+            elem.setAttribute(crontab_type, clicks.toString());
+
+            $.get("{% url 'vidar:htmx-crontab-generate' %}?type=" + crontab_type + "&field=upload_date&attempt=" + clicks + "&source=channel{% if general_form.instance.pk %}&channel={{ general_form.instance.pk }}{% endif %}", function(data, status){
                 console.log(crontab_type, data);
-                document.getElementById('id_scanner_crontab').value = data;
+                elem.value = data;
             });
         }
 

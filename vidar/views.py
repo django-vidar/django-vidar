@@ -723,6 +723,7 @@ def generate_crontab(request):
     playlist = None
     channel = None
     field = request.GET.get("field", "upload_date")
+    skip_calculated_selection = int(request.GET.get("attempt", 0)) > 2
 
     if pid := request.GET.get("playlist"):
         playlist = get_object_or_404(Playlist, id=pid)
@@ -733,10 +734,10 @@ def generate_crontab(request):
 
     if request.GET.get("type") == "weekly":
 
-        if channel and channel.videos.exists():
+        if channel and channel.videos.exists() and not skip_calculated_selection:
             base_day_of_week = statistics_helpers.most_common_date_weekday(queryset=channel.videos, date_field=field)
             day_of_week = helpers.convert_to_next_day_of_week(base_day_of_week)
-        elif playlist and playlist.videos.exists():
+        elif playlist and playlist.videos.exists() and not skip_calculated_selection:
             base_day_of_week = statistics_helpers.most_common_date_weekday(queryset=playlist.videos, date_field=field)
             day_of_week = helpers.convert_to_next_day_of_week(base_day_of_week)
 
@@ -745,9 +746,9 @@ def generate_crontab(request):
     elif request.GET.get("type") == "monthly":
 
         day_of_month = None
-        if channel and channel.videos.exists():
+        if channel and channel.videos.exists() and not skip_calculated_selection:
             day_of_month = statistics_helpers.most_common_date_day_of_month(queryset=channel.videos, date_field=field)
-        elif playlist and playlist.videos.exists():
+        elif playlist and playlist.videos.exists() and not skip_calculated_selection:
             day_of_month = statistics_helpers.most_common_date_day_of_month(queryset=playlist.videos, date_field=field)
 
         return HttpResponse(crontab_services.generate_monthly(hour=hours, day=day_of_month))

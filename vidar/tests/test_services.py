@@ -525,7 +525,6 @@ class PlaylistServicesTests(TestCase):
         ], any_order=True)
 
 
-
 class ChannelServicesTests(TestCase):
 
     def test_cleanup_storage_directory_cancelled_path_empty(self):
