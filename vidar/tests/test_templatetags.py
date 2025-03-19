@@ -1049,6 +1049,31 @@ class TemplateTagsProperPaginationTests(TestCase):
         )
         self.assertEqual([5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25], output)
 
+    def test_default_pagination_settings_on_page_zero(self):
+        output = pagination_helpers.proper_pagination(
+            paginator=Paginator(models.Video.objects.all().order_by('id'), 2), current_page=0, neighbors=10
+        )
+        self.assertEqual(list(range(1, 22)), output)
+
+    def test_default_pagination_settings_on_page_one(self):
+        output = pagination_helpers.proper_pagination(
+            paginator=Paginator(models.Video.objects.all().order_by('id'), 2), current_page=1, neighbors=10
+        )
+        self.assertEqual(list(range(1, 22)), output)
+
+    def test_default_pagination_settings_on_last_page(self):
+        output = pagination_helpers.proper_pagination(
+            paginator=Paginator(models.Video.objects.all().order_by('id'), 2), current_page=50, neighbors=10
+        )
+        self.assertEqual(list(range(30, 51)), output)
+
+    def test_default_pagination_settings_with_extra_large_neighbors(self):
+        paginator = Paginator(models.Video.objects.all().order_by('id'), 2)
+        output = pagination_helpers.proper_pagination(
+            paginator=paginator, current_page=15, neighbors=200
+        )
+        self.assertEqual(paginator.page_range, output)
+
     def test_proper_pagination_settings_with_first(self):
         output = pagination_helpers.proper_pagination(
             paginator=Paginator(models.Video.objects.all().order_by('id'), 2),
@@ -1107,6 +1132,25 @@ class TemplateTagsProperPaginationTests(TestCase):
         self.assertEqual(
             [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, '...', 49, 50], output
         )
+    def test_ensure_neighbors_positive(self):
+        with self.assertRaises(ValueError):
+            pagination_helpers.proper_pagination(
+                paginator=None, current_page=None, neighbors=-2
+            )
+
+    def test_default_pagination_settings_current_page_exceeds_range(self):
+        paginator = Paginator(models.Video.objects.all().order_by('id'), 2)
+        with self.assertRaises(ValueError):
+            pagination_helpers.proper_pagination(
+                paginator=paginator, current_page=58, neighbors=2
+            )
+
+    def test_default_pagination_settings_current_page_lower_than_range(self):
+        paginator = Paginator(models.Video.objects.all().order_by('id'), 2)
+        with self.assertRaises(ValueError):
+            pagination_helpers.proper_pagination(
+                paginator=paginator, current_page=-2, neighbors=2
+            )
 
 
 class TemplateTagsPlaylistToolsWithUserCustomFieldsTests(TestCase):

@@ -45,17 +45,16 @@ def proper_pagination(
             1, 2, ..., 11, 12, 13, 14, 15, 16, 17, ..., 71, 72
 
     """
+    if not neighbors >= 0:
+        raise ValueError("pagination neighbors must be zero or greater")
+    if not 0 <= current_page <= paginator.num_pages:
+        raise ValueError(f"{current_page=} outside range 0-{paginator.num_pages=}")
     if paginator.num_pages > 2 * neighbors:
         start_index = max(1, current_page - neighbors)
         end_index = min(paginator.num_pages, current_page + neighbors)
         if end_index < start_index + 2 * neighbors:
             end_index = start_index + 2 * neighbors
-        elif start_index > end_index - 2 * neighbors:
-            start_index = end_index - 2 * neighbors
-        if start_index < 1:
-            end_index -= start_index
-            start_index = 1
-        elif end_index > paginator.num_pages:
+        if end_index > paginator.num_pages:
             start_index -= end_index - paginator.num_pages
             end_index = paginator.num_pages
         page_list = [f for f in range(start_index, end_index + 1)]
