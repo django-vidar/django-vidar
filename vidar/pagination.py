@@ -1,6 +1,5 @@
 import copy
 import urllib.parse
-import warnings
 
 from django.conf import settings
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
@@ -11,7 +10,6 @@ def paginator_helper(
     queryset,
     requested_page=None,
     limit=None,
-    params=None,
     request_params=None,
     page_url_param=getattr(settings, "PAGINATION_PAGE_PARAM", "page"),
     limit_url_param=getattr(settings, "PAGINATION_LIMIT_PARAM", "limit"),
@@ -66,10 +64,6 @@ def paginator_helper(
     Returns:
         dict of data to be added to the templates context for pagination purposes.
     """
-    if params:
-        warnings.warn("params has been depreciated, use request_params", DeprecationWarning)
-        request_params = params
-
     if not isinstance(request_params, dict):
         request_params = {}
     if page_url_param and page_url_param in request_params:
