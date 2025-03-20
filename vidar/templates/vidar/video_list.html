@@ -36,12 +36,12 @@
                 {% endif %}
             {% endspaceless %}">Inserted</a>
             / <a href="{% spaceless %}
-                {% if request.GET.o == '-downloaded' %}
-                    {% querystring o='downloaded' %}
-                {% elif request.GET.o == 'downloaded' %}
+                {% if request.GET.o == '-date_downloaded' %}
+                    {% querystring o='date_downloaded' %}
+                {% elif request.GET.o == 'date_downloaded' %}
                     {% querystring o=None %}
                 {% else %}
-                    {% querystring o='-downloaded' %}
+                    {% querystring o='-date_downloaded' %}
                 {% endif %}
             {% endspaceless %}">Downloaded</a>
             <br />

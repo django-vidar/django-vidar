@@ -1061,3 +1061,215 @@ class VideoRequestViewUnauthenticatedTests(TestCase):
         resp = self.client.get(self.video1.get_absolute_url())
         self.assertEqual(200, resp.status_code)
 
+
+class VideoListViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission = Permission.objects.get(codename="access_vidar")
+        self.user.user_permissions.add(self.permission)
+
+        self.video1 = models.Video.objects.create(
+            title="video 1",
+            provider_object_id="test-video-1",
+            date_added_to_system=date_to_aware_date('2025-01-01'),
+            date_downloaded=date_to_aware_date('2025-02-10'),
+            file_size=200,
+        )
+        self.video2 = models.Video.objects.create(
+            title="video 2",
+            provider_object_id="test-video-2",
+            date_added_to_system=date_to_aware_date('2025-01-10'),
+            date_downloaded=date_to_aware_date('2025-02-01'),
+            file_size=100
+        )
+
+        self.url = reverse('vidar:index')
+
+        self.client.force_login(self.user)
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+    def test_ordering(self):
+
+        resp = self.client.get(self.url + "?o=date_added_to_system")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(self.video1, queryset[0])
+        self.assertEqual(self.video2, queryset[1])
+
+        resp = self.client.get(self.url + "?o=-date_added_to_system")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(self.video1, queryset[1])
+        self.assertEqual(self.video2, queryset[0])
+
+    def test_starred_watched_missing_archived(self):
+
+        video_starred = models.Video.objects.create(starred=timezone.now())
+        video_watched = models.Video.objects.create(watched=timezone.now(), file='test.mp4')
+
+        resp = self.client.get(self.url + "?starred")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video_starred, queryset)
+
+        resp = self.client.get(self.url + "?watched")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video_watched, queryset)
+
+        resp = self.client.get(self.url + "?missing")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(3, queryset.count())
+        self.assertIn(video_starred, queryset)
+        self.assertIn(self.video1, queryset)
+        self.assertIn(self.video2, queryset)
+
+        resp = self.client.get(self.url + "?archived")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video_watched, queryset)
+
+    def test_ordering_altering_object_count(self):
+
+        video = models.Video.objects.create(
+            title="video with file",
+            last_privacy_status_check=timezone.now(),
+            file='test.mp4',
+            file_size=300
+        )
+
+        resp = self.client.get(self.url + "?o=last_privacy_status_check")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video, queryset)
+
+        resp = self.client.get(self.url + "?o=file_size")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video, queryset)
+        self.assertNotIn(self.video1, queryset)
+        self.assertNotIn(self.video2, queryset)
+
+    def test_ordering_invalid_field(self):
+        resp = self.client.get(self.url + "?o=invalid_field_name")
+        self.assertEqual(200, resp.status_code)
+
+    def test_date_filtering(self):
+        video = models.Video.objects.create(
+            upload_date=date_to_aware_date('2025-03-01')
+        )
+
+        resp = self.client.get(self.url + "?date=2025-02-01")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(self.video2, queryset)
+
+        resp = self.client.get(self.url + "?upload_date=2025-03-01")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video, queryset)
+
+        resp = self.client.get(self.url + "?date_downloaded=2025-02-10")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(self.video1, queryset)
+
+        resp = self.client.get(self.url + "?year=2025")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video, queryset)
+
+        resp = self.client.get(self.url + "?year=2025&month=3")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video, queryset)
+
+        resp = self.client.get(self.url + "?year=2025&month=2")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(0, queryset.count())
+
+    def test_channel_filtering(self):
+        c = models.Channel.objects.create()
+        video = models.Video.objects.create(channel=c)
+
+        resp = self.client.get(self.url + f"?channel={c.pk}")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video, queryset)
+
+        resp = self.client.get(self.url + f"?channel=none")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(2, queryset.count())
+        self.assertIn(self.video1, queryset)
+        self.assertIn(self.video2, queryset)
+
+    def test_quality_filtering(self):
+        video = models.Video.objects.create(quality=480)
+
+        resp = self.client.get(self.url + "?quality=480")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video, queryset)
+
+    def test_audio_filtering(self):
+        video = models.Video.objects.create(quality=480, audio='audio.mp4')
+
+        resp = self.client.get(self.url + "?view=audio")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video, queryset)
+
+
+class VideoListViewUnauthenticatedTests(TestCase):
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        resp = self.client.get(reverse('vidar:index'))
+        self.assertEqual(302, resp.status_code)
+
+        self.group, _ = Group.objects.get_or_create(name="Anonymous Users")
+        self.group.permissions.add(
+            Permission.objects.get(codename="access_vidar"),
+        )
+
+        video1 = models.Video.objects.create(title="Test Video 1", provider_object_id="test-video-1")
+        video2 = models.Video.objects.create(title="Test Video 2", provider_object_id="test-video-2")
+
+        resp = self.client.get(reverse('vidar:index'))
+        self.assertTemplateUsed(resp, 'vidar/video_list_public.html')
+        self.assertEqual(200, resp.status_code)
+        self.assertNotIn(video1, resp.context_data["object_list"])
+        self.assertNotIn(video2, resp.context_data["object_list"])
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_unauth_request_access_and_see_in_list_view(self, mock_download):
+        self.group, _ = Group.objects.get_or_create(name="Anonymous Users")
+        self.group.permissions.add(
+            Permission.objects.get(codename="add_video"),
+            Permission.objects.get(codename="access_vidar"),
+        )
+
+        video1 = models.Video.objects.create(title="Test Video 1", provider_object_id="test-video-1")
+        video2 = models.Video.objects.create(title="Test Video 2", provider_object_id="test-video-2")
+
+        url = reverse("vidar:video-create") + "?url=" + video1.url
+        resp = self.client.get(url)
+
+        self.assertEqual(302, resp.status_code)
+
+        resp = self.client.get(reverse('vidar:index'))
+        self.assertTemplateUsed(resp, 'vidar/video_list_public.html')
+        self.assertEqual(200, resp.status_code)
+        self.assertIn(video1, resp.context_data["object_list"])
+        self.assertNotIn(video2, resp.context_data["object_list"])
+
+        mock_download.assert_not_called()

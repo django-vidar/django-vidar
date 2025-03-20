@@ -954,10 +954,6 @@ class VideoListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin,
             direction = "-" if ordering.startswith("-") else ""
             ordering = ordering[1:] if direction else ordering
             try:
-                if ordering == "added":
-                    return [f"{direction}date_added_to_system"]
-                if ordering == "downloaded":
-                    return [f"{direction}date_downloaded"]
                 if ordering not in ["filesize", "fs"]:
                     # Ensure the field supplied actually exists on Video.
                     self.model._meta.get_field(ordering)
