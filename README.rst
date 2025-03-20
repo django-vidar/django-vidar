@@ -357,6 +357,14 @@ Configurable Settings
 
 ``VIDAR_MEDIA_URL`` (default: ``settings.MEDIA_URL``)
 
+``VIDAR_METADATA_ALBUM`` (default: ``"vidar.services.video_services.metadata_album"``)
+    Dot notation path to a function that accepts ``video`` and returns the album
+    for ``navigator.mediaSession.metadata`` used on the video player.
+
+``VIDAR_METADATA_ARTIST`` (default: ``"vidar.services.video_services.metadata_artist"``)
+    Dot notation path to a function that accepts ``video`` and returns the artist
+    for ``navigator.mediaSession.metadata`` used on the video player.
+
 ``VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS`` (default: ``True``)
 
 ``VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING`` (default: ``False``)

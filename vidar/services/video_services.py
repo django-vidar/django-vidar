@@ -577,3 +577,15 @@ def get_cookies(video: models.Video):
 
     if app_settings.COOKIES_ALWAYS_REQUIRED:
         raise ValueError("VIDAR_COOKIES_ALWAYS_REQUIRED=True but no cookies were returned.")
+
+
+def metadata_album(video: models.Video):
+    if video.channel:
+        return str(video.channel)
+    return ""
+
+
+def metadata_artist(video: models.Video):
+    if video.channel:
+        return str(video.channel)
+    return ""

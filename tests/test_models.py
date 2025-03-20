@@ -927,6 +927,34 @@ class VideoTests(TestCase):
 
         video.save(update_fields=['title'])
 
+        self.assertEqual(2, video.sort_ordering)
+
+    def test_metadata_artist(self):
+        v1 = models.Video.objects.create()
+        c1 = models.Channel.objects.create(name="Test Channel")
+        v2 = models.Video.objects.create(channel=c1)
+
+        self.assertEqual("", v1.metadata_artist())
+        self.assertEqual(str(c1), v2.metadata_artist())
+
+    def test_metadata_album(self):
+        v1 = models.Video.objects.create()
+        c1 = models.Channel.objects.create(name="Test Channel")
+        v2 = models.Video.objects.create(channel=c1)
+
+        self.assertEqual("", v1.metadata_album())
+        self.assertEqual(str(c1), v2.metadata_album())
+
+    @override_settings(VIDAR_METADATA_ARTIST="tests.test_functions.video_metadata_artist")
+    def test_metadata_artist_user_override(self):
+        v1 = models.Video.objects.create()
+        self.assertEqual("user assigned func for artist", v1.metadata_artist())
+
+    @override_settings(VIDAR_METADATA_ALBUM="tests.test_functions.video_metadata_album")
+    def test_metadata_album_user_override(self):
+        v1 = models.Video.objects.create()
+        self.assertEqual("user assigned func for album", v1.metadata_album())
+
 
 class VideoBlockedTests(TestCase):
     def test_is_local(self):

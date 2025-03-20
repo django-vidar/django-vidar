@@ -1645,6 +1645,22 @@ class VideoServicesTests(TestCase):
         self.assertTrue(app_settings.COOKIES_CHECKER(video=video))
         self.assertEqual("system cookies", app_settings.COOKIES_GETTER(video=video))
 
+    def test_metadata_artist(self):
+        v1 = models.Video.objects.create()
+        c1 = models.Channel.objects.create(name="Test Channel")
+        v2 = models.Video.objects.create(channel=c1)
+
+        self.assertEqual("", video_services.metadata_artist(video=v1))
+        self.assertEqual(str(c1), video_services.metadata_artist(video=v2))
+
+    def test_metadata_album(self):
+        v1 = models.Video.objects.create()
+        c1 = models.Channel.objects.create(name="Test Channel")
+        v2 = models.Video.objects.create(channel=c1)
+
+        self.assertEqual("", video_services.metadata_album(video=v1))
+        self.assertEqual(str(c1), video_services.metadata_album(video=v2))
+
 
 class YtdlpServicesTests(TestCase):
 

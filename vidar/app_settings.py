@@ -249,6 +249,18 @@ class AppSettings(object):
         return self._setting("MEDIA_URL", settings.MEDIA_URL)
 
     @property
+    def METADATA_ALBUM(self):
+        user_func = self._setting("METADATA_ALBUM", "vidar.services.video_services.metadata_album")
+        func = import_callable(user_func)
+        return func
+
+    @property
+    def METADATA_ARTIST(self):
+        user_func = self._setting("METADATA_ARTIST", "vidar.services.video_services.metadata_artist")
+        func = import_callable(user_func)
+        return func
+
+    @property
     def MONTHLY_CHANNEL_UPDATE_BANNERS(self):
         return self._setting("MONTHLY_CHANNEL_UPDATE_BANNERS", False)
 

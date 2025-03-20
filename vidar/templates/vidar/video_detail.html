@@ -836,8 +836,8 @@
         }
         navigator.mediaSession.metadata = new MediaMetadata({
             title: '{{ video.title|escapejs }}',
-            artist: '{{ video.channel|escapejs|default_if_none:"" }}',
-            album: '{{ video.channel|escapejs|default_if_none:"" }}',
+            artist: '{{ video.metadata_artist|escapejs|default_if_none:"" }}',
+            album: '{{ video.metadata_album|escapejs|default_if_none:"" }}',
             artwork: [
                 {% if video.thumbnail %}{ src: '{{ video.thumbnail.url }}' }{% endif %}
             ],

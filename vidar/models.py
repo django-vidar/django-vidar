@@ -1105,6 +1105,12 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
         return latest
 
+    def metadata_album(self):
+        return app_settings.METADATA_ALBUM(video=self)
+
+    def metadata_artist(self):
+        return app_settings.METADATA_ARTIST(video=self)
+
 
 class VideoBlocked(models.Model):
     provider_object_id = models.CharField(max_length=255)
