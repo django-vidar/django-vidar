@@ -87,6 +87,13 @@
             </div>
         </div>
 
+        <div class="row">
+            <div class="col pl-4">
+                <input type="checkbox" onClick="toggle(this, '.can-delete')" id="select_deletable_videos" class="form-check-input" />
+                <label for="select_deletable_videos">Select deletable videos</label>
+            </div>
+        </div>
+
         <table class="table" id="result_list">
             <thead>
                 <tr>
@@ -101,11 +108,12 @@
             </thead>
             <tbody>
                 {% for video in videos_list.all %}
+                    {% video_can_be_deleted video as vcbd %}
                     <tr title="{{ video.file.name }}">
                         {% if all_livestreams_count or all_shorts_count %}<td>{% if video.is_video %}Video{% elif video.is_short %}Short{% elif video.is_livestream %}Live{% else %}Unknown{% endif %}</td>{% endif %}
                         <td>
                             <div class="form-check">
-                                <input class="form-check-input {% if video.is_video %}is-video{% elif video.is_short %}is-short{% elif video.is_livestream %}is-livestream{% endif %} {% if video.file %}has-file{% endif %} {% if video.audio %}has-audio{% endif %} {% if video.starred %}is-starred{% endif %}"
+                                <input class="form-check-input {% if vcbd %}can-delete{% else %}cannot-delete{% endif %} {% if video.is_video %}is-video{% elif video.is_short %}is-short{% elif video.is_livestream %}is-livestream{% endif %} {% if video.file %}has-file{% endif %} {% if video.audio %}has-audio{% endif %} {% if video.starred %}is-starred{% endif %}"
                                        type="checkbox"
                                        value="{{ video.pk }}"
                                        data-filesize="{{ video.file_size }}"
@@ -127,7 +135,7 @@
                                 <i class="fa-solid fa-star" title="{{ video.starred }}" data-toggle="tooltip"></i>
                             {% endif %}
                         </td>
-                        <td>{% video_can_be_deleted video as vcbd %}
+                        <td>
                             <i class="fa fa-lg {{ vcbd|yesno:"fa-check,fa-xmark" }}" title="{{ vcbd|yesno:"Can Be Deleted,Cannot Be Deleted" }}" data-toggle="tooltip"></i>
                         </td>
                     </tr>
