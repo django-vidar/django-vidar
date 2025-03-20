@@ -7,7 +7,7 @@ from django.shortcuts import reverse
 from django.utils import timezone
 from django.contrib import messages
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Permission, Group
 
 from vidar import models, forms
 from vidar.helpers import channel_helpers
@@ -914,3 +914,150 @@ class PlaylistListViewTest(TestCase):
         self.assertEqual(p2, qs[1])
         self.assertEqual(p3, qs[2])
         self.assertEqual(p4, qs[3])
+
+
+class VideoDetailViewTest(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission = Permission.objects.get(codename="view_video")
+        self.user.user_permissions.add(self.permission)
+
+        self.channel = models.Channel.objects.create(name="Test Channel")
+        self.video = models.Video.objects.create(title="Test Video Detail View", channel=self.channel)
+
+        self.url = self.video.get_absolute_url()
+
+        self.client.force_login(self.user)
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+    def test_metadata_artist_exists(self):
+        resp = self.client.get(self.url)
+        self.assertIn(f"artist: '{self.video.metadata_artist()}',".encode('utf8'), resp.content)
+
+    def test_metadata_album_exists(self):
+        resp = self.client.get(self.url)
+        self.assertIn(f"album: '{self.video.metadata_album()}',".encode('utf8'), resp.content)
+
+    def test_metadata_artist_without_channel_blank(self):
+        video = models.Video.objects.create(title="Video Without Channel")
+        resp = self.client.get(video.get_absolute_url())
+        self.assertIn(f"artist: '{video.metadata_artist()}',".encode('utf8'), resp.content)
+
+    def test_metadata_album_without_channel_blank(self):
+        video = models.Video.objects.create(title="Video Without Channel")
+        resp = self.client.get(video.get_absolute_url())
+        self.assertIn(f"album: '{video.metadata_album()}',".encode('utf8'), resp.content)
+
+
+class VideoRequestViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission = Permission.objects.get(codename="add_video")
+        self.user.user_permissions.add(self.permission)
+
+        self.video = models.Video.objects.create(provider_object_id="test-video-1")
+
+        self.url = reverse('vidar:video-create')
+
+        self.client.force_login(self.user)
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_ensure_id_only_works(self, mock_download):
+
+        resp = self.client.post(reverse('vidar:video-create'), data={
+            "provider_object_id": "some-id-here",
+            "quality": 480,
+        })
+
+        self.assertEqual(302, resp.status_code)
+
+        mock_download.apply_async.assert_called_once()
+
+        self.assertEqual(1, models.Video.objects.filter(provider_object_id="some-id-here").count())
+        v = models.Video.objects.get(provider_object_id="some-id-here")
+        self.assertEqual(v.get_absolute_url(), resp.url)
+
+    def test_view_with_url_to_existing_video_redirects_to_video(self):
+        resp = self.client.get(self.url + "?url=" + self.video.url)
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(self.video.get_absolute_url(), resp.url)
+
+    def test_view_with_url_to_non_existing_video_fills_initial(self):
+        resp = self.client.get(self.url + "?url=https://www.youtube.com/watch?v=some-id-here")
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual("some-id-here", resp.context_data["form"].initial['provider_object_id'])
+
+
+class VideoRequestViewUnauthenticatedTests(TestCase):
+
+    def setUp(self) -> None:
+        self.group = Group.objects.create(name="Anonymous Users")
+        self.group.permissions.add(
+            Permission.objects.get(codename="view_video"),
+            Permission.objects.get(codename="add_video")
+        )
+
+        self.video1 = models.Video.objects.create(title="Test Video 1", provider_object_id="test-video-1")
+        self.video2 = models.Video.objects.create(title="Test Video 2", provider_object_id="test-video-2")
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_cannot_access_video_before_requesting(self, mock_download):
+
+        resp = self.client.get(self.video1.get_absolute_url())
+        self.assertEqual(302, resp.status_code)
+
+        mock_download.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_can_access_permitted_video_after_requesting(self, mock_download):
+
+        self.client.post(reverse('vidar:video-create'), data={
+            "provider_object_id": self.video1.url,
+            "quality": 480,
+        })
+
+        mock_download.assert_not_called()
+
+        resp = self.client.get(self.video1.get_absolute_url())
+        self.assertEqual(200, resp.status_code)
+
+        resp = self.client.get(self.video2.get_absolute_url())
+        self.assertEqual(302, resp.status_code)
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_can_access_redirect_immediately_with_url_supplied(self, mock_download):
+
+        url = reverse("vidar:video-create") + "?url=" + self.video1.url
+        resp = self.client.get(url)
+
+        mock_download.assert_not_called()
+
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(self.video1.get_absolute_url(), resp.url)
+
+        resp = self.client.get(self.video1.get_absolute_url())
+        self.assertEqual(200, resp.status_code)
+

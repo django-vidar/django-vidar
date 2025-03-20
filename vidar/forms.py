@@ -50,7 +50,7 @@ class VideoDownloaderForm(forms.ModelForm):
         if Video.objects.filter(provider_object_id=video_id).exists():
             raise forms.ValidationError("Video already exists.")
 
-        return video_id
+        return video_id or data
 
     def save(self, commit=True):
         obj = super().save(commit=commit)  # type: Video

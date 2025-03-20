@@ -1053,11 +1053,17 @@ class VideoRequestView(PermissionRequiredMixin, CreateView):
     # success_url = reverse_lazy("vidar:video-index")
     permission_required = ["vidar.add_video"]
 
+    def get_existing_video(self, possible_id):
+        if possible_id:
+            if ytid := utils.get_video_id_from_url(possible_id):
+                if video := Video.objects.filter(provider_object_id=ytid):
+                    if not self.request.user.is_authenticated:
+                        helpers.unauthenticated_allow_view_video(self.request, ytid)
+                    return redirect(video.first())
+
     def get(self, request, *args, **kwargs):
-        if url := self.request.GET.get("url"):
-            ytid = utils.get_video_id_from_url(url)
-            if video := Video.objects.filter(provider_object_id=ytid):
-                return redirect(video.first())
+        if ret := self.get_existing_video(self.request.GET.get("url")):
+            return ret
         return super().get(*args, request=request, **kwargs)
 
     def get_initial(self):
@@ -1066,17 +1072,13 @@ class VideoRequestView(PermissionRequiredMixin, CreateView):
         return super().get_initial()
 
     def form_valid(self, form):
-        if not self.request.user.is_authenticated:
-            helpers.unauthenticated_allow_view_video(self.request, form.cleaned_data["provider_object_id"])
+        if ret := self.get_existing_video(form.data.get("provider_object_id")):
+            return ret
         return super().form_valid(form=form)
 
     def form_invalid(self, form):
-        if possible_ytid := form.data.get("provider_object_id"):
-            if ytid := utils.get_video_id_from_url(possible_ytid):
-                if video := Video.objects.filter(provider_object_id=ytid):
-                    if not self.request.user.is_authenticated:
-                        helpers.unauthenticated_allow_view_video(self.request, ytid)
-                    return redirect(video.first())
+        if ret := self.get_existing_video(form.data.get("provider_object_id")):
+            return ret
         return super().form_invalid(form=form)
 
     def get_form_kwargs(self):
