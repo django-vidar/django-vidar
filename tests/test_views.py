@@ -1273,3 +1273,69 @@ class VideoListViewUnauthenticatedTests(TestCase):
         self.assertNotIn(video2, resp.context_data["object_list"])
 
         mock_download.assert_not_called()
+
+
+class ChannelDetailViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission = Permission.objects.get(codename="view_channel")
+        self.user.user_permissions.add(self.permission)
+
+        self.channel = models.Channel.objects.create(name="video 1")
+
+        self.url = self.channel.get_absolute_url()
+
+        self.client.force_login(self.user)
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_request_download_without_add_video_permission_returns_nothing(self, mock_download):
+        video = models.Video.objects.create(channel=self.channel)
+        self.client.post(self.url, {
+            f"video-{video.pk}": True,
+            "quality": "1080",
+        })
+        mock_download.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_request_download_quality_system_default_does_not_error(self, mock_download):
+        self.user.user_permissions.add(Permission.objects.get(codename="add_video"))
+
+        video = models.Video.objects.create(channel=self.channel)
+        resp = self.client.post(self.url, {
+            f"video-{video.pk}": True,
+            "quality": "",
+        })
+
+        mock_download.delay.assert_called_with(
+            pk=video.pk,
+            quality="",
+            task_source="Manual Download Selection",
+        )
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_request_download_quality_funky_value_does_not_error(self, mock_download):
+        self.user.user_permissions.add(Permission.objects.get(codename="add_video"))
+
+        video = models.Video.objects.create(channel=self.channel)
+        resp = self.client.post(self.url, {
+            f"video-{video.pk}": True,
+            "quality": "bad-value",
+        })
+
+        mock_download.delay.assert_called_with(
+            pk=video.pk,
+            quality=None,
+            task_source="Manual Download Selection",
+        )
