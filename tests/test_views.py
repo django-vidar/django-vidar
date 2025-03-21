@@ -1285,6 +1285,25 @@ class ChannelDetailViewTests(TestCase):
 
         self.channel = models.Channel.objects.create(name="video 1")
 
+        self.video1 = models.Video.objects.create(
+            channel=self.channel,
+            title="video 1",
+            provider_object_id="test-video-1",
+            date_added_to_system=date_to_aware_date('2025-01-01'),
+            date_downloaded=date_to_aware_date('2025-02-10'),
+            file_size=200,
+            duration=100,
+        )
+        self.video2 = models.Video.objects.create(
+            channel=self.channel,
+            title="video 2",
+            provider_object_id="test-video-2",
+            date_added_to_system=date_to_aware_date('2025-01-10'),
+            date_downloaded=date_to_aware_date('2025-02-01'),
+            file_size=100,
+            duration=100,
+        )
+
         self.url = self.channel.get_absolute_url()
 
         self.client.force_login(self.user)
@@ -1339,3 +1358,130 @@ class ChannelDetailViewTests(TestCase):
             quality=None,
             task_source="Manual Download Selection",
         )
+
+    def test_starred_watched_missing_archived(self):
+
+        video_starred = models.Video.objects.create(starred=timezone.now(), channel=self.channel)
+        video_watched = models.Video.objects.create(watched=timezone.now(), file='test.mp4', channel=self.channel)
+
+        resp = self.client.get(self.url + "?starred")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video_starred, queryset)
+
+        resp = self.client.get(self.url + "?watched")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video_watched, queryset)
+
+        resp = self.client.get(self.url + "?missing")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(3, queryset.count())
+        self.assertIn(video_starred, queryset)
+        self.assertIn(self.video1, queryset)
+        self.assertIn(self.video2, queryset)
+
+        resp = self.client.get(self.url + "?archived")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video_watched, queryset)
+
+    def test_date_filtering(self):
+        video = models.Video.objects.create(
+            upload_date=date_to_aware_date('2025-03-01'),
+            channel=self.channel,
+        )
+
+        resp = self.client.get(self.url + "?year=2025")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video, queryset)
+
+        resp = self.client.get(self.url + "?year=2025&month=3")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video, queryset)
+
+        resp = self.client.get(self.url + "?year=2025&month=2")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(0, queryset.count())
+
+    def test_quality_filtering(self):
+        video = models.Video.objects.create(quality=480, channel=self.channel)
+
+        resp = self.client.get(self.url + "?quality=480")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(1, queryset.count())
+        self.assertIn(video, queryset)
+
+    def test_ordering(self):
+
+        resp = self.client.get(self.url + "?o=date_added_to_system")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(self.video1, queryset[0])
+        self.assertEqual(self.video2, queryset[1])
+
+        resp = self.client.get(self.url + "?o=-date_added_to_system")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(self.video1, queryset[1])
+        self.assertEqual(self.video2, queryset[0])
+
+    def test_searching(self):
+        resp = self.client.get(self.url + "?q=1")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(1, queryset.count())
+        self.assertEqual(self.video1, queryset[0])
+
+        resp = self.client.get(self.url + "?q=title__exact:Video 1")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(0, queryset.count())
+
+        resp = self.client.get(self.url + "?q=title__iexact:Video 2")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(1, queryset.count())
+        self.assertEqual(self.video2, queryset[0])
+
+        resp = self.client.get(self.url + "?q=title:2")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(1, queryset.count())
+        self.assertEqual(self.video2, queryset[0])
+
+        resp = self.client.get(self.url + "?q=at_max_quality:true")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(0, queryset.count())
+
+        resp = self.client.get(self.url + "?q=at_max_quality:false&o=pk")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(2, queryset.count())
+        self.assertEqual(self.video1, queryset[0])
+        self.assertEqual(self.video2, queryset[1])
+
+        resp = self.client.get(self.url + "?q=bad-field:true")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(0, queryset.count())
+
+    def test_unwatched(self):
+
+        models.UserPlaybackHistory.objects.create(
+            user=self.user,
+            video=self.video1,
+            seconds=self.video1.duration-50,
+        )
+
+        resp = self.client.get(self.url + "?unwatched&o=pk")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(2, queryset.count())
+        self.assertEqual(self.video1, queryset[0])
+        self.assertEqual(self.video2, queryset[1])
+
+        models.UserPlaybackHistory.objects.create(
+            user=self.user,
+            video=self.video1,
+            seconds=self.video1.duration,
+        )
+
+        resp = self.client.get(self.url + "?unwatched")
+        queryset = resp.context_data["channel_videos"]
+        self.assertEqual(1, queryset.count())
+        self.assertEqual(self.video2, queryset[0])
+

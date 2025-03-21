@@ -238,7 +238,7 @@ class ChannelDetailView(PermissionRequiredMixin, UseProviderObjectIdMatchingMixi
     permission_required = ["vidar.view_channel"]
     paginate_by = 10
 
-    def get_paginate_by(self, queryset):
+    def get_paginate_by(self):
         return self.request.GET.get("limit") or self.paginate_by
 
     def get_context_data(self, **kwargs):
@@ -317,7 +317,7 @@ class ChannelDetailView(PermissionRequiredMixin, UseProviderObjectIdMatchingMixi
                 context_key="channel_videos",
                 queryset=qs,
                 request_params=self.request.GET,
-                limit=10,
+                limit=self.get_paginate_by(),
             )
         )
         return kwargs
