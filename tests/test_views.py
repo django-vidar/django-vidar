@@ -1485,3 +1485,112 @@ class ChannelDetailViewTests(TestCase):
         self.assertEqual(1, queryset.count())
         self.assertEqual(self.video2, queryset[0])
 
+
+class Download_video_tests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission = Permission.objects.get(codename="add_video")
+        self.user.user_permissions.add(self.permission)
+
+        self.video = models.Video.objects.create(title="Video 1")
+
+        self.url = reverse('vidar:video-download', args=[self.video.pk, 0])
+
+        self.client.force_login(self.user)
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_permission_required(self, mock_download):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+        mock_download.delay.assert_not_called()
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+        mock_download.delay.assert_called_once()
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_quality_zero_sets_max_quality(self, mock_download):
+        resp = self.client.get(reverse('vidar:video-download', args=[self.video.pk, 0]))
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(self.video.get_absolute_url(), resp.url)
+        mock_download.delay.assert_called_once()
+
+
+class Download_video_comments_tests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission = Permission.objects.get(codename="add_comment")
+        self.user.user_permissions.add(self.permission)
+
+        self.video = models.Video.objects.create(title="Video 1")
+
+        self.url = reverse('vidar:video-download-comments', args=[self.video.pk])
+
+        self.client.force_login(self.user)
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    def test_permission_required(self, mock_download):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        mock_download.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    def test_basics(self, mock_download):
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(self.video.get_absolute_url() + "#yt-comments", resp.url)
+        mock_download.delay.assert_not_called()
+
+        resp = self.client.post(self.url)
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(self.video.get_absolute_url() + "#yt-comments", resp.url)
+        mock_download.delay.assert_called_once()
+
+
+class Video_convert_to_mp3_tests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission = Permission.objects.get(codename="change_video")
+        self.user.user_permissions.add(self.permission)
+
+        self.video = models.Video.objects.create(title="Video 1")
+
+        self.url = reverse('vidar:video-convert-to-audio', args=[self.video.pk])
+
+        self.client.force_login(self.user)
+
+    @patch("vidar.tasks.convert_video_to_audio")
+    def test_permission_required(self, mock_task):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+        mock_task.delay.assert_not_called()
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+        mock_task.delay.assert_called_once()
+
+    @patch("vidar.tasks.convert_video_to_audio")
+    def test_basics(self, mock_task):
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(self.video.get_absolute_url(), resp.url)
+        mock_task.delay.assert_called_once()

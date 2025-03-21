@@ -1233,7 +1233,7 @@ class VideoVideoDownloadErrorDetailView(PermissionRequiredMixin, DetailView):
 
 @user_passes_test(lambda u: u.has_perms(["vidar.add_video"]))
 def download_video(request, pk, quality):
-    if isinstance(pk, Video):
+    if isinstance(pk, Video):  # pragma: no cover
         pk = pk.pk
 
     Video.objects.filter(pk=pk).update(force_download=True, requested_max_quality=quality == 0)
@@ -1247,19 +1247,19 @@ def download_video(request, pk, quality):
         task_source="Manual Download Selection",
     )
 
-    return helpers.redirect_next_or_obj(request, "vidar:video-index")
+    return helpers.redirect_next_or_obj(request, obj)
 
 
 @user_passes_test(lambda u: u.has_perms(["vidar.add_comment"]))
 def download_video_comments(request, pk):
-    if isinstance(pk, Video):
+    if isinstance(pk, Video):  # pragma: no cover
         pk = pk.pk
 
     obj = Video.objects.get(pk=pk)
 
     if request.method == "POST":
         messages.success(request, f"{obj} comments queued for download.")
-        all_comments = "Get All Comments" in request.POST.get("download-comments")
+        all_comments = "Get All Comments" in request.POST.get("download-comments", "")
         tasks.download_provider_video_comments.delay(pk=obj.pk, all_comments=all_comments)
 
     return HttpResponseRedirect(obj.get_absolute_url() + "#yt-comments")
