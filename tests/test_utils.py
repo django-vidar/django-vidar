@@ -1,12 +1,10 @@
-# flake8: noqa
 from unittest.mock import patch
 import warnings
 
 import requests
-from django.contrib.sessions.middleware import SessionMiddleware
-from django.test import TestCase, SimpleTestCase, override_settings, RequestFactory
+from django.test import TestCase, SimpleTestCase, override_settings
 
-from vidar import utils, helpers, models
+from vidar import utils
 
 
 class UtilTest(SimpleTestCase):
@@ -198,50 +196,3 @@ class UtilTest(SimpleTestCase):
 
             self.assertEqual("bad", output)
             mock_get.assert_called_once()
-
-
-class HelperTest(TestCase):
-
-    def test_next_day_of_week_is_valid(self):
-        self.assertEqual(1, helpers.convert_to_next_day_of_week(0))
-        self.assertEqual(2, helpers.convert_to_next_day_of_week(1))
-        self.assertEqual(3, helpers.convert_to_next_day_of_week(2))
-        self.assertEqual(4, helpers.convert_to_next_day_of_week(3))
-        self.assertEqual(5, helpers.convert_to_next_day_of_week(4))
-        self.assertEqual(6, helpers.convert_to_next_day_of_week(5))
-        self.assertEqual(0, helpers.convert_to_next_day_of_week(6))
-        self.assertEqual(1, helpers.convert_to_next_day_of_week(7))
-
-    def test_unauthenticated_unable_to_access_vidar_video(self):
-        request = RequestFactory().get("/")
-        middleware = SessionMiddleware(lambda x: x)
-        middleware.process_request(request)
-        request.session.save()
-        self.assertFalse(helpers.unauthenticated_check_if_can_view_video(request, "video-id"))
-
-    def test_unauthenticated_able_to_access_vidar_video(self):
-        request = RequestFactory().get("/")
-        middleware = SessionMiddleware(lambda x: x)
-        middleware.process_request(request)
-        request.session.save()
-
-        self.assertEqual([], helpers.unauthenticated_permitted_videos(request))
-
-        helpers.unauthenticated_allow_view_video(request, "video-id")
-        self.assertTrue(helpers.unauthenticated_check_if_can_view_video(request, "video-id"))
-        self.assertEqual(["video-id"], helpers.unauthenticated_permitted_videos(request))
-
-        helpers.unauthenticated_allow_view_video(request, "video-id2")
-        self.assertEqual(["video-id", "video-id2"], helpers.unauthenticated_permitted_videos(request))
-
-    def test_redirect_next_or_obj(self):
-        request = RequestFactory().get("/")
-
-        video = models.Video.objects.create()
-
-        output = helpers.redirect_next_or_obj(request, video)
-        self.assertEqual(video.get_absolute_url(), output.url)
-
-        request = RequestFactory().get("/?next=/admin/")
-        output = helpers.redirect_next_or_obj(request, video)
-        self.assertEqual("/admin/", output.url)

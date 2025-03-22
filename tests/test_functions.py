@@ -1,4 +1,15 @@
-import io
+"""
+    Not for actually testing functionality, it's for overridden
+    functions and functions only used to support tests.
+"""
+from django.utils import timezone
+
+
+def date_to_aware_date(value):
+    y, m, d = value.split('-')
+    y, m, d = int(y), int(m), int(d)
+
+    return timezone.make_aware(timezone.datetime(y, m, d))
 
 
 def get_cookies_user_func(video):

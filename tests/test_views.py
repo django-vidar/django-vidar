@@ -12,14 +12,9 @@ from django.contrib.auth.models import Permission, Group
 from vidar import models, forms
 from vidar.helpers import channel_helpers
 
+from tests.test_functions import date_to_aware_date
+
 User = get_user_model()
-
-
-def date_to_aware_date(value):
-    y, m, d = value.split('-')
-    y, m, d = int(y), int(m), int(d)
-
-    return timezone.make_aware(timezone.datetime(y, m, d))
 
 
 class Generate_crontab_tests(TestCase):
