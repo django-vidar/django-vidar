@@ -1,9 +1,12 @@
 import datetime
 import io
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+from celery import states
+from celery.exceptions import Ignore
 
 from django.test import TestCase
 from django.utils import timezone
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 
 from vidar import models, app_settings
@@ -63,6 +66,82 @@ class CeleryHelpersTests(TestCase):
 
         celery_helpers.object_lock_release(video)
         self.assertFalse(celery_helpers.is_object_locked(video))
+
+    def test_prevent_asynchronous_task_execution_basics(self):
+        celery_request = MagicMock()
+
+        @celery_helpers.prevent_asynchronous_task_execution()
+        def my_function(self):
+            pass
+
+        my_function(celery_request)
+
+        celery_request.retry.assert_not_called()
+        celery_request.update_state.assert_not_called()
+
+    def test_prevent_asynchronous_task_execution_with_custom_lock_key(self):
+        celery_request = MagicMock()
+
+        @celery_helpers.prevent_asynchronous_task_execution(lock_key="lock-key")
+        def my_function(self):
+            pass
+
+        my_function(celery_request)
+
+        celery_request.retry.assert_not_called()
+        celery_request.update_state.assert_not_called()
+
+    def test_prevent_asynchronous_task_execution_retries(self):
+
+        celery_request = MagicMock()
+
+        @celery_helpers.prevent_asynchronous_task_execution(lock_key="lock-key", retry=True, retry_countdown=1)
+        def my_function(self):
+            pass
+
+        cache.add("lock-key", True, 1)
+
+        my_function(celery_request)
+
+        cache.delete("lock-key")
+
+        celery_request.retry.assert_called_with(countdown=1)
+        celery_request.update_state.assert_not_called()
+
+    def test_prevent_asynchronous_task_execution_fails_ignore_result(self):
+
+        celery_request = MagicMock()
+
+        @celery_helpers.prevent_asynchronous_task_execution(lock_key="lock-key", retry=False)
+        def my_function(self):
+            pass
+
+        cache.add("lock-key", True, 1)
+
+        with self.assertRaises(Ignore):
+            my_function(celery_request)
+
+        cache.delete("lock-key")
+
+        celery_request.retry.assert_not_called()
+        celery_request.update_state.assert_called_with(state=states.FAILURE, meta="Task failed to acquire lock.")
+
+    def test_prevent_asynchronous_task_execution_fails_quietly(self):
+
+        celery_request = MagicMock()
+
+        @celery_helpers.prevent_asynchronous_task_execution(lock_key="lock-key", retry=False, mark_result_failed_on_lock_failure=False)
+        def my_function(self):
+            pass
+
+        cache.add("lock-key", True, 1)
+
+        self.assertIsNone(my_function(celery_request))
+
+        cache.delete("lock-key")
+
+        celery_request.retry.assert_not_called()
+        celery_request.update_state.assert_not_called()
 
 
 class VideoHelpersTests(TestCase):
