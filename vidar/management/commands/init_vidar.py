@@ -154,6 +154,7 @@ class Command(BaseCommand):
             app_settings.MEDIA_HARDLINK
             app_settings.MEDIA_ROOT
             app_settings.MEDIA_URL
+            app_settings.MEDIA_STORAGE_CLASS
             app_settings.METADATA_ALBUM
             app_settings.METADATA_ARTIST
             app_settings.MONTHLY_CHANNEL_UPDATE_BANNERS

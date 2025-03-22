@@ -7,7 +7,7 @@ from vidar import app_settings
 
 
 def is_field_using_local_storage(field):
-    return isinstance(field.storage, FileSystemStorage)
+    return isinstance(field.storage, FileSystemStorage) or getattr(field.storage, "vidar_is_local", None)
 
 
 def can_file_be_moved(field):

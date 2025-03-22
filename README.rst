@@ -357,6 +357,9 @@ Configurable Settings
 
 ``VIDAR_MEDIA_URL`` (default: ``settings.MEDIA_URL``)
 
+``VIDAR_MEDIA_STORAGE_CLASS`` (default: ``"vidar.storages.LocalFileSystemStorage"``)
+    Dot notation path to a class that's used as the base storage.
+
 ``VIDAR_METADATA_ALBUM`` (default: ``"vidar.services.video_services.metadata_album"``)
     Dot notation path to a function that accepts ``video`` and returns the album
     for ``navigator.mediaSession.metadata`` used on the video player.

@@ -207,11 +207,7 @@ if GITHUB_WORKFLOW:  # pragma: no cover
     CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
     VIDAR_REDIS_URL = CELERY_BROKER_URL
 
-    STORAGES = {
-        "default": {
-            "BACKEND": "django.core.files.storage.InMemoryStorage",
-        }
-    }
+    VIDAR_MEDIA_STORAGE_CLASS = "vidar.storages.TestFileSystemStorage"
 
 
 def my_ytdlp_initializer(action, instance=None, **kwargs):

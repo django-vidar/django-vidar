@@ -249,6 +249,12 @@ class AppSettings(object):
         return self._setting("MEDIA_URL", settings.MEDIA_URL)
 
     @property
+    def MEDIA_STORAGE_CLASS(self):
+        user_func = self._setting("MEDIA_STORAGE_CLASS", "vidar.storages.LocalFileSystemStorage")
+        func = import_callable(user_func)
+        return func
+
+    @property
     def METADATA_ALBUM(self):
         user_func = self._setting("METADATA_ALBUM", "vidar.services.video_services.metadata_album")
         func = import_callable(user_func)

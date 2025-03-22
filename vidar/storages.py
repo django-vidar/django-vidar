@@ -1,7 +1,7 @@
 import logging
 import pathlib
 
-from django.core.files.storage import FileSystemStorage
+from django.core.files.storage import FileSystemStorage, InMemoryStorage
 
 from vidar import app_settings
 
@@ -10,6 +10,8 @@ log = logging.getLogger(__name__)
 
 
 class LocalFileSystemStorage(FileSystemStorage):
+
+    vidar_is_local = True
 
     def move(self, old_path, new_path):
         old_full_filepath = pathlib.Path(self.path(old_path))
@@ -25,24 +27,30 @@ class LocalFileSystemStorage(FileSystemStorage):
         return new_full_filepath
 
 
-class OverwriteStorage(LocalFileSystemStorage):
-    def get_available_name(self, name, max_length=None):
-        self.delete(name)
-        return super().get_available_name(name, max_length)
+class TestFileSystemStorage(InMemoryStorage):
+    """ Testing purposes only. Github actions cannot write to storage system."""
+
+    vidar_is_local = True
+
+    def move(self, old_path, new_path):
+        return ""
 
 
-class DjangoStopMessingWithFinalFileName(OverwriteStorage):
-    def get_valid_name(self, name):
-        return name
+class VidarFileSystemStorage(app_settings.MEDIA_STORAGE_CLASS):
 
-
-class VidarFileSystemStorage(DjangoStopMessingWithFinalFileName):
     def __init__(self, *args, **kwargs):
         base_url = app_settings.MEDIA_URL
         location = app_settings.MEDIA_ROOT
         kwargs.setdefault("base_url", base_url)
         kwargs.setdefault("location", location)
         super().__init__(*args, **kwargs)
+
+    def get_valid_name(self, name):
+        return name
+
+    def get_available_name(self, name, max_length=None):
+        self.delete(name)
+        return super().get_available_name(name, max_length)
 
 
 vidar_storage = VidarFileSystemStorage()
