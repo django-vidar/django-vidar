@@ -1725,10 +1725,11 @@ class VideoManageView(PermissionRequiredMixin, DetailView):
         if "retry-processing" in request.POST:
             download_data = self.object.get_latest_download_stats()
 
-            tasks.post_download_processing.delay(
-                pk=self.object.pk,
-                filepath=download_data["raw_file_path"],
-            )
+            if "raw_file_path" in download_data:
+                tasks.post_download_processing.delay(
+                    pk=self.object.pk,
+                    filepath=download_data["raw_file_path"],
+                )
         if "unblock" in request.POST:
             video_services.unblock(self.object.provider_object_id)
         if "block" in request.POST:

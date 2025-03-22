@@ -8,9 +8,11 @@ from django.utils import timezone
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission, Group
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from vidar import models, forms
-from vidar.helpers import channel_helpers
+from vidar.helpers import channel_helpers, celery_helpers, model_helpers
+from vidar.services import video_services
 
 from tests.test_functions import date_to_aware_date
 
@@ -1589,3 +1591,278 @@ class Video_convert_to_mp3_tests(TestCase):
         self.assertEqual(302, resp.status_code)
         self.assertEqual(self.video.get_absolute_url(), resp.url)
         mock_task.delay.assert_called_once()
+
+
+class VideoManageViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission = Permission.objects.get(codename="change_video")
+        self.user.user_permissions.add(self.permission)
+
+        self.video = models.Video.objects.create(title="Video 1")
+
+        self.url = reverse('vidar:video-manage', args=[self.video.pk])
+
+        self.client.force_login(self.user)
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+        self.client.force_login(self.user)
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+    def test_manual_editor_form_fields_not_locked_does_not_allow_changed(self):
+        resp = self.client.get(self.url)
+        self.assertNotIn("title", resp.context_data["video_form"].fields)
+        self.assertNotIn("description", resp.context_data["video_form"].fields)
+
+    def test_manual_editor_form_fields_locked_allow_changes(self):
+        video = models.Video.objects.create(title_locked=True, description_locked=False)
+        resp = self.client.get(reverse('vidar:video-manage', args=[video.pk]))
+        self.assertIn("title", resp.context_data["video_form"].fields)
+        self.assertNotIn("description", resp.context_data["video_form"].fields)
+
+        video = models.Video.objects.create(title_locked=False, description_locked=True)
+        resp = self.client.get(reverse('vidar:video-manage', args=[video.pk]))
+        self.assertNotIn("title", resp.context_data["video_form"].fields)
+        self.assertIn("description", resp.context_data["video_form"].fields)
+
+        video = models.Video.objects.create(title_locked=True, description_locked=True)
+        resp = self.client.get(reverse('vidar:video-manage', args=[video.pk]))
+        self.assertIn("title", resp.context_data["video_form"].fields)
+        self.assertIn("description", resp.context_data["video_form"].fields)
+
+    def test_has_file_paths_dont_exist(self):
+        video = models.Video.objects.create()
+        resp = self.client.get(reverse('vidar:video-manage', args=[video.pk]))
+        self.assertIn("expected_video_filepath", resp.context_data)
+        self.assertEqual("No file attached to video", resp.context_data["expected_video_filepath"])
+
+        video = models.Video.objects.create(file="test.mp4", title="test video")
+        resp = self.client.get(reverse('vidar:video-manage', args=[video.pk]))
+        self.assertIn("expected_video_filepath", resp.context_data)
+        self.assertIn("current_video_filepath_already_exists", resp.context_data)
+        self.assertIn("expected_video_filepath_already_exists", resp.context_data)
+        self.assertFalse(resp.context_data["expected_video_filepath_already_exists"])
+        self.assertFalse(resp.context_data["current_video_filepath_already_exists"])
+        self.assertEqual(f"public/{timezone.now().year}/- test video [].mp4", str(resp.context_data["expected_video_filepath"]))
+
+    @patch("vidar.storages.vidar_storage")
+    def test_has_file_paths_exist(self, mock_storage):
+        mock_storage.exists.return_value = True
+
+        video = models.Video.objects.create(file="test.mp4", title="test video")
+        resp = self.client.get(reverse('vidar:video-manage', args=[video.pk]))
+        self.assertIn("expected_video_filepath", resp.context_data)
+        self.assertIn("current_video_filepath_already_exists", resp.context_data)
+        self.assertIn("expected_video_filepath_already_exists", resp.context_data)
+        self.assertTrue(resp.context_data["expected_video_filepath_already_exists"])
+        self.assertTrue(resp.context_data["current_video_filepath_already_exists"])
+
+    @patch("vidar.tasks.rename_video_files")
+    def test_fixing_filepaths_without_file(self, mock_task):
+        video = models.Video.objects.create()
+        url = reverse('vidar:video-manage', args=[video.pk])
+        resp = self.client.post(url, {"fix-filepaths": True})
+
+        mock_task.delay.assert_not_called()
+
+        msgs = messages.get_messages(resp.wsgi_request)
+        self.assertEqual(1, len(msgs))
+
+    @patch("vidar.tasks.rename_video_files")
+    def test_fixing_filepaths_with_file(self, mock_task):
+
+        video = models.Video.objects.create(file="test.mp4")
+        url = reverse('vidar:video-manage', args=[video.pk])
+        resp = self.client.post(url, {"fix-filepaths": True})
+
+        mock_task.delay.assert_called_once()
+
+        msgs = messages.get_messages(resp.wsgi_request)
+        self.assertFalse(msgs)
+
+    def test_expected_file_paths_are_already_correct(self):
+
+        video = models.Video.objects.create(file="test.mp4", title="test video 1")
+        url = reverse('vidar:video-manage', args=[video.pk])
+        resp = self.client.post(url, {"expected-filepaths-are-correct": True})
+        video.refresh_from_db()
+        self.assertEqual(f"public/{timezone.now().year}/- test video 1 [].mp4", video.file.name)
+
+    def test_release_object_lock(self):
+
+        video = models.Video.objects.create(file="test.mp4", title="test video 1")
+
+        celery_helpers.object_lock_acquire(obj=video, timeout=2)
+        self.assertTrue(celery_helpers.is_object_locked(obj=video))
+
+        url = reverse('vidar:video-manage', args=[video.pk])
+        resp = self.client.post(url, {"release-object-lock": True})
+
+        self.assertFalse(celery_helpers.is_object_locked(obj=video))
+
+        msgs = messages.get_messages(resp.wsgi_request)
+        self.assertEqual(1, len(msgs))
+        for msg in msgs:
+            self.assertIn("success", msg.message)
+            break
+        else:
+            self.fail("No message was logged in view.")
+
+    @patch("vidar.helpers.celery_helpers.object_lock_release")
+    def test_release_object_lock_fails(self, mock_release):
+
+        video = models.Video.objects.create(file="test.mp4", title="test video 1")
+
+        celery_helpers.object_lock_acquire(obj=video, timeout=2)
+        self.assertTrue(celery_helpers.is_object_locked(obj=video))
+
+        url = reverse('vidar:video-manage', args=[video.pk])
+        resp = self.client.post(url, {"release-object-lock": True})
+
+        self.assertTrue(celery_helpers.is_object_locked(obj=video))
+
+        msgs = messages.get_messages(resp.wsgi_request)
+        self.assertEqual(1, len(msgs))
+        for msg in msgs:
+            self.assertIn("fail", msg.message)
+            break
+        else:
+            self.fail("No message was logged in view.")
+
+    @patch("vidar.tasks.trigger_convert_video_to_mp4")
+    def test_convert_to_mp4(self, mock_task):
+
+        video = models.Video.objects.create(file="test.mp4")
+        url = reverse('vidar:video-manage', args=[video.pk])
+        resp = self.client.post(url, {"convert-to-mp4": True})
+
+        mock_task.delay.assert_called_once()
+
+    def test_block(self):
+        video = models.Video.objects.create(file="test.mp4")
+
+        self.assertFalse(video_services.is_blocked(video.provider_object_id))
+
+        url = reverse('vidar:video-manage', args=[video.pk])
+        resp = self.client.post(url, {"block": True})
+
+        self.assertTrue(video_services.is_blocked(video.provider_object_id))
+
+    def test_unblock(self):
+        video = models.Video.objects.create(file="test.mp4")
+
+        self.assertFalse(video_services.is_blocked(video.provider_object_id))
+
+        url = reverse('vidar:video-manage', args=[video.pk])
+        resp = self.client.post(url, {"block": True})
+
+        self.assertTrue(video_services.is_blocked(video.provider_object_id))
+
+        url = reverse('vidar:video-manage', args=[video.pk])
+        resp = self.client.post(url, {"unblock": True})
+
+        self.assertFalse(video_services.is_blocked(video.provider_object_id))
+
+    def test_extrafile(self):
+        content = SimpleUploadedFile("test.mp4", b"file_content", content_type="video/mp4")
+
+        video = models.Video.objects.create(file="test.mp4")
+
+        self.assertFalse(video.extra_files.exists())
+
+        url = reverse('vidar:video-manage', args=[video.pk])
+        self.client.post(url, {"extrafile": True, "file": content})
+
+        self.assertEqual(1, video.extra_files.count())
+
+        ef = video.extra_files.get()
+
+        url = reverse('vidar:video-manage', args=[video.pk])
+        self.client.post(url, {"extrafile-delete": True, "extrafile-id": ef.pk})
+
+        self.assertFalse(video.extra_files.exists())
+
+    def test_manualeditor_fields(self):
+
+        video = models.Video.objects.create(
+            title="Test Video",
+            description="Test Description",
+            playback_speed=model_helpers.PlaybackSpeed.NORMAL,
+            playback_volume=model_helpers.PlaybackVolume.FULL,
+            title_locked=False,
+            description_locked=False,
+        )
+
+        url = reverse('vidar:video-manage', args=[video.pk])
+        self.client.post(url, {
+            "save-fields": True,
+            "title": "New title",
+            "description": "New description",
+            "playback_speed": model_helpers.PlaybackSpeed.ONE_FIFTY,
+            "playback_volume": model_helpers.PlaybackVolume.FIFTY,
+        })
+
+        video.refresh_from_db()
+
+        self.assertEqual("Test Video", video.title)
+        self.assertEqual("Test Description", video.description)
+        self.assertEqual(model_helpers.PlaybackSpeed.ONE_FIFTY, video.playback_speed)
+        self.assertEqual(model_helpers.PlaybackVolume.FIFTY, video.playback_volume)
+
+    def test_manualeditor_fields_locked_fields(self):
+
+        video = models.Video.objects.create(
+            title="Test Video",
+            description="Test Description",
+            playback_speed=model_helpers.PlaybackSpeed.NORMAL,
+            playback_volume=model_helpers.PlaybackVolume.FULL,
+            title_locked=True,
+            description_locked=True,
+        )
+
+        url = reverse('vidar:video-manage', args=[video.pk])
+        self.client.post(url, {
+            "save-fields": True,
+            "title": "New title",
+            "description": "New description",
+            "playback_speed": model_helpers.PlaybackSpeed.ONE_FIFTY,
+            "playback_volume": model_helpers.PlaybackVolume.FIFTY,
+        })
+
+        video.refresh_from_db()
+
+        self.assertEqual("New title", video.title)
+        self.assertEqual("New description", video.description)
+        self.assertEqual(model_helpers.PlaybackSpeed.ONE_FIFTY, video.playback_speed)
+        self.assertEqual(model_helpers.PlaybackVolume.FIFTY, video.playback_volume)
+
+    @patch("vidar.tasks.post_download_processing")
+    def test_retry_processing(self, mock_task):
+        video = models.Video.objects.create()
+        url = reverse('vidar:video-manage', args=[video.pk])
+        resp = self.client.post(url, {"retry-processing": True})
+        mock_task.delay.assert_not_called()
+
+        video = models.Video.objects.create(
+            system_notes={
+                "downloads": [
+                    {
+                        "raw_file_path": "here"
+                    }
+                ]
+            }
+        )
+        url = reverse('vidar:video-manage', args=[video.pk])
+        resp = self.client.post(url, {"retry-processing": True})
+        mock_task.delay.assert_called_with(
+            pk=video.pk,
+            filepath="here",
+        )
