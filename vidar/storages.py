@@ -28,7 +28,7 @@ class LocalFileSystemStorage(FileSystemStorage):
 
 
 class TestFileSystemStorage(InMemoryStorage):
-    """ Testing purposes only. Github actions cannot write to storage system."""
+    # Testing purposes only. Github actions cannot write to storage system.
 
     vidar_is_local = True
 
