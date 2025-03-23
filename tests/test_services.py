@@ -5,6 +5,7 @@ import pathlib
 
 from unittest.mock import patch, call, MagicMock
 
+import requests.exceptions
 from django.conf import settings
 from django.test import TestCase, SimpleTestCase, override_settings
 from django.contrib.auth import get_user_model
@@ -19,7 +20,8 @@ from vidar.services import (
     crontab_services,
     playlist_services,
     image_services,
-    redis_services
+    redis_services,
+    notification_services,
 )
 from vidar.helpers import video_helpers
 
@@ -2530,3 +2532,317 @@ class ImageServicesTests(SimpleTestCase):
 
         self.assertEqual(file_ext, "jpg")
         self.assertEqual(self.WEBP_IMAGE_CONTENTS, output)
+
+
+@override_settings(VIDAR_GOTIFY_URL="url here", VIDAR_NOTIFICATIONS_SEND=True)
+class NotificationServicesTests(TestCase):
+
+    @override_settings(VIDAR_NOTIFICATIONS_SEND=False)
+    def test_send_message_disabled(self):
+        self.assertIsNone(notification_services.send_message("message", "title"))
+
+    @override_settings(VIDAR_GOTIFY_URL=None)
+    def test_send_message_without_url(self):
+        self.assertIsNone(notification_services.send_message("message", "title"))
+
+    @patch("requests.post")
+    @override_settings(VIDAR_GOTIFY_URL="here", VIDAR_GOTIFY_TITLE_PREFIX="[prefix] ")
+    def test_send_message_works(self, mock_post):
+        notification_services.send_message("test message", "test title")
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_GOTIFY_URL="here", VIDAR_GOTIFY_TITLE_PREFIX="[prefix] ")
+    def test_send_message_requests_exception_not_raise(self, mock_post):
+        mock_post.side_effect = requests.exceptions.RequestException()
+        notification_services.send_message("test message", "test title")
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_VIDEO_DOWNLOADED=True)
+    def test_video_downloaded(self, mock_post):
+        video = models.Video.objects.create(
+            upload_date=timezone.now().date(),
+            at_max_quality=True,
+            file_size=200,
+            duration=120,
+            system_notes={
+                "downloads": [
+                    {
+                        "convert_video_to_audio_started": timezone.now().isoformat(),
+                        "convert_video_to_audio_finished": (timezone.now() + timezone.timedelta(minutes=1)).isoformat(),
+                        "convert_video_to_mp4_started": timezone.now().isoformat(),
+                        "convert_video_to_mp4_finished": (timezone.now() + timezone.timedelta(minutes=1)).isoformat(),
+                        "processing_started": timezone.now().isoformat(),
+                        "processing_finished": (timezone.now() + timezone.timedelta(minutes=1)).isoformat(),
+                        "download_started": timezone.now().isoformat(),
+                        "download_finished": (timezone.now() + timezone.timedelta(minutes=1)).isoformat(),
+                    }
+                ]
+            }
+        )
+
+        notification_services.video_downloaded(video=video)
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_VIDEO_DOWNLOADED=True)
+    def test_video_downloaded_quality_zero(self, mock_post):
+        video = models.Video.objects.create(
+            upload_date=timezone.now().date(),
+            quality=0,
+            file_size=200,
+            duration=120,
+            system_notes={
+                "downloads": [
+                    {
+                        "convert_video_to_audio_started": timezone.now().isoformat(),
+                        "convert_video_to_audio_finished": (timezone.now() + timezone.timedelta(minutes=1)).isoformat(),
+                        "convert_video_to_mp4_started": timezone.now().isoformat(),
+                        "convert_video_to_mp4_finished": (timezone.now() + timezone.timedelta(minutes=1)).isoformat(),
+                        "processing_started": timezone.now().isoformat(),
+                        "processing_finished": (timezone.now() + timezone.timedelta(minutes=1)).isoformat(),
+                        "download_started": timezone.now().isoformat(),
+                        "download_finished": (timezone.now() + timezone.timedelta(minutes=1)).isoformat(),
+                    }
+                ]
+            }
+        )
+
+        notification_services.video_downloaded(video=video)
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_VIDEO_DOWNLOADED=True)
+    def test_video_downloaded_channel_disables(self, mock_post):
+        channel = models.Channel.objects.create(send_download_notification=False)
+        video = models.Video.objects.create(channel=channel, upload_date=timezone.now().date())
+
+        notification_services.video_downloaded(video=video)
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_VIDEO_DOWNLOADED=False)
+    def test_video_downloaded_disabled(self, mock_post):
+        video = models.Video.objects.create(upload_date=timezone.now().date())
+
+        notification_services.video_downloaded(video=video)
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_VIDEO_REMOVED_FROM_PLAYLIST=True)
+    def test_video_removed_from_playlist(self, mock_post):
+        video = models.Video.objects.create()
+        playlist = models.Playlist.objects.create()
+
+        notification_services.video_removed_from_playlist(video=video, playlist=playlist)
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_VIDEO_REMOVED_FROM_PLAYLIST=False)
+    def test_video_removed_from_playlist_disabled(self, mock_post):
+        video = models.Video.objects.create()
+        playlist = models.Playlist.objects.create()
+
+        notification_services.video_removed_from_playlist(video=video, playlist=playlist)
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_VIDEO_ADDED_TO_PLAYLIST=True)
+    def test_video_added_to_playlist(self, mock_post):
+        video = models.Video.objects.create()
+        playlist = models.Playlist.objects.create()
+
+        notification_services.video_added_to_playlist(video=video, playlist=playlist)
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_VIDEO_ADDED_TO_PLAYLIST=False)
+    def test_video_added_to_playlist_disabled(self, mock_post):
+        video = models.Video.objects.create()
+        playlist = models.Playlist.objects.create()
+
+        notification_services.video_added_to_playlist(video=video, playlist=playlist)
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_VIDEO_READDED_TO_PLAYLIST=True)
+    def test_video_readded_to_playlist(self, mock_post):
+        video = models.Video.objects.create()
+        playlist = models.Playlist.objects.create()
+
+        notification_services.video_readded_to_playlist(video=video, playlist=playlist)
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_VIDEO_READDED_TO_PLAYLIST=False)
+    def test_video_readded_to_playlist_disabled(self, mock_post):
+        video = models.Video.objects.create()
+        playlist = models.Playlist.objects.create()
+
+        notification_services.video_readded_to_playlist(video=video, playlist=playlist)
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_FULL_INDEXING_COMPLETE=True)
+    def test_full_indexing_complete(self, mock_post):
+        channel = models.Channel.objects.create()
+        notification_services.full_indexing_complete(
+            channel=channel,
+            target="target",
+            new_videos_count=10,
+            total_videos_count=12
+        )
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_FULL_INDEXING_COMPLETE=False)
+    def test_full_indexing_complete_disabled(self, mock_post):
+        channel = models.Channel.objects.create()
+        notification_services.full_indexing_complete(
+            channel=channel,
+            target="target",
+            new_videos_count=10,
+            total_videos_count=12
+        )
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_FULL_ARCHIVING_STARTED=True)
+    def test_full_archiving_started(self, mock_post):
+        channel = models.Channel.objects.create()
+        notification_services.full_archiving_started(channel=channel)
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_FULL_ARCHIVING_STARTED=False)
+    def test_full_archiving_started_disabled(self, mock_post):
+        channel = models.Channel.objects.create()
+        notification_services.full_archiving_started(channel=channel)
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_FULL_ARCHIVING_COMPLETED=True)
+    def test_full_archiving_completed(self, mock_post):
+        channel = models.Channel.objects.create()
+        notification_services.full_archiving_completed(channel=channel)
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_FULL_ARCHIVING_COMPLETED=False)
+    def test_full_archiving_completed_disabled(self, mock_post):
+        channel = models.Channel.objects.create()
+        notification_services.full_archiving_completed(channel=channel)
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_CHANNEL_STATUS_CHANGED=True)
+    def test_channel_status_changed(self, mock_post):
+        channel = models.Channel.objects.create()
+        notification_services.channel_status_changed(channel=channel)
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_CHANNEL_STATUS_CHANGED=False)
+    def test_channel_status_changed_disabled(self, mock_post):
+        channel = models.Channel.objects.create()
+        notification_services.channel_status_changed(channel=channel)
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_PLAYLIST_DISABLED_DUE_TO_STRING=True)
+    def test_playlist_disabled_due_to_string(self, mock_post):
+        playlist = models.Playlist.objects.create()
+        notification_services.playlist_disabled_due_to_string(playlist=playlist)
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_PLAYLIST_DISABLED_DUE_TO_STRING=False)
+    def test_playlist_disabled_due_to_string_disabled(self, mock_post):
+        playlist = models.Playlist.objects.create()
+        notification_services.playlist_disabled_due_to_string(playlist=playlist)
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_PLAYLIST_DISABLED_DUE_TO_ERRORS=True)
+    def test_playlist_disabled_due_to_errors(self, mock_post):
+        playlist = models.Playlist.objects.create()
+        notification_services.playlist_disabled_due_to_errors(playlist=playlist)
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_PLAYLIST_DISABLED_DUE_TO_ERRORS=False)
+    def test_playlist_disabled_due_to_errors_disabled(self, mock_post):
+        playlist = models.Playlist.objects.create()
+        notification_services.playlist_disabled_due_to_errors(playlist=playlist)
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_PLAYLIST_ADDED_BY_MIRROR=True)
+    def test_playlist_added_from_mirror(self, mock_post):
+        playlist = models.Playlist.objects.create()
+        channel = models.Channel.objects.create()
+        notification_services.playlist_added_from_mirror(playlist=playlist, channel=channel)
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_PLAYLIST_ADDED_BY_MIRROR=False)
+    def test_playlist_added_from_mirror_disabled(self, mock_post):
+        playlist = models.Playlist.objects.create()
+        channel = models.Channel.objects.create()
+        notification_services.playlist_added_from_mirror(playlist=playlist, channel=channel)
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_NO_VIDEOS_ARCHIVED_TODAY=True)
+    def test_no_videos_archived_today(self, mock_post):
+        notification_services.no_videos_archived_today()
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_NO_VIDEOS_ARCHIVED_TODAY=False)
+    def test_no_videos_archived_today_disabled(self, mock_post):
+        notification_services.no_videos_archived_today()
+
+        mock_post.assert_not_called()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_CONVERT_TO_MP4_COMPLETED=True)
+    def test_convert_to_mp4_complete(self, mock_post):
+        video = models.Video.objects.create()
+        notification_services.convert_to_mp4_complete(video=video, task_started=timezone.now())
+
+        mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_CONVERT_TO_MP4_COMPLETED=False)
+    def test_convert_to_mp4_complete_disabled(self, mock_post):
+        video = models.Video.objects.create()
+        notification_services.convert_to_mp4_complete(video=video, task_started=timezone.now())
+
+        mock_post.assert_not_called()

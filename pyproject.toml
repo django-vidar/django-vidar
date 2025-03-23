@@ -116,3 +116,8 @@ omit = [
 
 [tool.coverage.html]
 directory = "coverage_html_report"
+
+[tool.coverage.report]
+exclude_also = [
+    "pragma: no cover",
+]

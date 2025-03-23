@@ -1,4 +1,3 @@
-import datetime
 import logging
 import requests
 
@@ -74,15 +73,11 @@ def video_downloaded(video):
     if file_size:
         try:
             file_size = filesizeformat(file_size)
-        except:  # noqa: E722
+        except:  # noqa: E722 ; pragma: no cover
             pass
 
     def isoformat_or_now(value):
-        if not value:
-            return timezone.now()
-        if isinstance(value, datetime.datetime):
-            return value
-        return timezone.datetime.fromisoformat(value)
+        return timezone.datetime.fromisoformat(value) or timezone.now()
 
     def calculate_timer(started, finished):
         timer = None
@@ -114,7 +109,7 @@ def video_downloaded(video):
 
     try:
         video_duration = video.duration_as_timedelta()
-    except TypeError:
+    except TypeError:  # pragma: no cover
         video_duration = None
 
     msg_output = [
@@ -127,10 +122,8 @@ def video_downloaded(video):
         msg_output.append(f"Convert Audio: {convert_to_audio_timer}")
     if convert_to_mp4_timer:
         msg_output.append(f"Convert Video: {convert_to_mp4_timer}")
-
-    processing_completed = processing_finished - processing_started
-    if processing_completed >= datetime.timedelta(seconds=1):
-        msg_output.append(f"Processing: {processing_completed}")
+    if processing_timer:
+        msg_output.append(f"Processing: {processing_timer}")
 
     msg_output.extend(
         [
