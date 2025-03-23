@@ -420,10 +420,18 @@ Configurable Settings
     the number of videos to scan that day based on the number of pending videos divided by the range of check
 
 ``VIDAR_PROXIES`` (default: ``[]``)
-    A list of proxies to select from.
+    A selection of proxies to use::
 
-    Supply a callable function and it will be called with the previous proxies,
-    the current video being attempted, and the number of attempt the system is on.
+        VIDAR_PROXIES = ['proxy1', 'proxy2']
+        # or
+        VIDAR_PROXIES = "prox1,proxy2"
+        # or
+        VIDAR_PROXIES = "myproj.proxies.get_proxy"
+        # or
+        VIDAR_PROXIES = my_custom_vidar_get_proxy
+
+    Supplying a callable or a dot notation path to a function and it will be called with the
+    previous proxies, the current video being attempted, and the number of attempt the system is on.
     The callable must return a string containing the connection string for a ``proxy`` to use,
     or return None to not use a proxy.::
 
