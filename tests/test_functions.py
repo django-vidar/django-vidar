@@ -26,3 +26,11 @@ def video_metadata_artist(video):
 
 def video_metadata_album(video):
     return "user assigned func for album"
+
+
+def ytdlp_initializer_test(action, instance=None, **kwargs):
+    return f'inside tests.test_functions.ytdlp_initializer_test {action=} {instance=} {kwargs=}'
+
+
+def proxies_user_defined(**kwargs):
+    return kwargs

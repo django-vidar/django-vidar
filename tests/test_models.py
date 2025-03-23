@@ -504,9 +504,9 @@ class VideoTests(TestCase):
         self.assertEqual("video desc", video.description)
 
     def test_set_details_from_yt_dlp_response(self):
-        with open('tests/dlp_response.json') as fo:
+        with open('tests/fixtures/dlp_response.json') as fo:
             data = json.load(fo)
-        with open('tests/dlp_formats.json') as fo:
+        with open('tests/fixtures/dlp_formats.json') as fo:
             dlp_formats = json.load(fo)['formats']
             data['formats'] = dlp_formats
 
@@ -607,7 +607,7 @@ class VideoTests(TestCase):
         self.assertTrue(video.is_video)
 
     def test_qualities_available(self):
-        with open('tests/dlp_formats.json') as fo:
+        with open('tests/fixtures/dlp_formats.json') as fo:
             dlp_formats = json.load(fo)['formats']
 
         video = models.Video.objects.create(dlp_formats=dlp_formats)
@@ -620,7 +620,7 @@ class VideoTests(TestCase):
         self.assertEqual([480], video.qualities_available())
 
     def test_qualities_upgradable(self):
-        with open('tests/dlp_formats.json') as fo:
+        with open('tests/fixtures/dlp_formats.json') as fo:
             dlp_formats = json.load(fo)['formats']
 
         video = models.Video.objects.create(quality=480, dlp_formats=dlp_formats)
@@ -707,7 +707,7 @@ class VideoTests(TestCase):
         video = models.Video.objects.create(at_max_quality=True)
         self.assertTrue(video.is_at_max_quality())
 
-        with open('tests/dlp_formats.json') as fo:
+        with open('tests/fixtures/dlp_formats.json') as fo:
             dlp_formats = json.load(fo)['formats']
         video = models.Video.objects.create(dlp_formats=dlp_formats, quality=2160)
         self.assertFalse(video.at_max_quality)

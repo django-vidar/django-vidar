@@ -15,6 +15,8 @@ from example import settings
 from vidar import models, forms, renamers, json_encoders, exceptions, app_settings, interactor, utils
 from vidar.helpers import channel_helpers, video_helpers
 
+from . import test_functions
+
 UserModel = get_user_model()
 
 
@@ -597,10 +599,6 @@ class RenamerTests(TestCase):
         mock_move.assert_not_called()
 
 
-def ytdlp_initializer_test(action, instance=None, **kwargs):
-    return f'inside tests.test_general.ytdlp_initializer_test {action=} {instance=} {kwargs=}'
-
-
 class InteractorTests(SimpleTestCase):
 
     @patch('yt_dlp.YoutubeDL')
@@ -627,7 +625,7 @@ class InteractorTests(SimpleTestCase):
 
     @patch('yt_dlp.YoutubeDL')
     @patch('vidar.utils.get_proxy')
-    @override_settings(VIDAR_YTDLP_INITIALIZER='tests.test_general.ytdlp_initializer_test')
+    @override_settings(VIDAR_YTDLP_INITIALIZER='tests.test_functions.ytdlp_initializer_test')
     def test_get_ytdlp_with_user_set_initializer(self, mock_proxy, mock_ytdlp):
         mock_ytdlp.side_effect = ValueError('yt_dlp.YoutubeDL should NOT be called while testing. Patching failed.')
         kwargs = dict(
@@ -636,7 +634,7 @@ class InteractorTests(SimpleTestCase):
             extra='field',
         )
         output = interactor.get_ytdlp(kwargs=kwargs)
-        expected = "inside tests.test_general.ytdlp_initializer_test action='test_get_ytdlp action' instance='test_get_ytdlp instance' kwargs={'extra': 'field'}"
+        expected = "inside tests.test_functions.ytdlp_initializer_test action='test_get_ytdlp action' instance='test_get_ytdlp instance' kwargs={'extra': 'field'}"
         self.assertEqual(expected, output)
         self.assertNotIn("instance", kwargs)
         self.assertNotIn("action", kwargs)
@@ -809,10 +807,6 @@ class InteractorTests(SimpleTestCase):
         self.assertEqual("channel_playlists", first_call_args["action"])
 
 
-def proxies_user_defined(**kwargs):
-    return kwargs
-
-
 class UtilsTests(TestCase):
 
     @override_settings(
@@ -841,16 +835,16 @@ class UtilsTests(TestCase):
         self.assertEqual("proxy3", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy4']))
         self.assertEqual("default proxy", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy3', 'proxy4']))
 
-    @override_settings(VIDAR_PROXIES=proxies_user_defined)
+    @override_settings(VIDAR_PROXIES=test_functions.proxies_user_defined)
     def test_get_proxy_with_proxies_user_defined_function(self):
-        self.assertEqual(proxies_user_defined, app_settings.PROXIES)
+        self.assertEqual(test_functions.proxies_user_defined, app_settings.PROXIES)
 
         output = utils.get_proxy(previous_proxies=['passed into utils.get_proxy'])
         self.assertEqual(dict(previous_proxies=["passed into utils.get_proxy"], instance=None, attempt=None), output)
 
-    @override_settings(VIDAR_PROXIES=proxies_user_defined)
+    @override_settings(VIDAR_PROXIES=test_functions.proxies_user_defined)
     def test_get_proxy_with_proxies_user_defined_function_always_called(self):
-        self.assertEqual(proxies_user_defined, app_settings.PROXIES)
+        self.assertEqual(test_functions.proxies_user_defined, app_settings.PROXIES)
 
         output = utils.get_proxy(previous_proxies=['passed into utils.get_proxy'], attempt=100)
         self.assertEqual(dict(previous_proxies=["passed into utils.get_proxy"], instance=None, attempt=100), output)
