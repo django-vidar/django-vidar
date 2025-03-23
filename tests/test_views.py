@@ -1872,3 +1872,321 @@ class VideoManageViewTests(TestCase):
             pk=video.pk,
             filepath="here",
         )
+
+
+class VideoChaptersListViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="view_video"),
+            Permission.objects.get(codename="view_highlight")
+        )
+
+        self.client.force_login(self.user)
+
+        self.video = models.Video.objects.create(title="Video 1")
+
+        self.chapter1 = self.video.highlights.create(
+            source=models.Highlight.Sources.CHAPTERS,
+            point=1,
+            note="test chapter 1"
+        )
+        self.chapter2 = self.video.highlights.create(
+            source=models.Highlight.Sources.CHAPTERS,
+            point=60,
+            note="test chapter 1"
+        )
+
+        self.url = reverse('vidar:video-chapter-list', args=[self.video.pk])
+
+    def get_chapters(self):
+        return self.video.highlights.filter(source=models.Highlight.Sources.CHAPTERS).order_by('pk')
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+    def test_delete_chapter(self):
+        self.client.post(self.url, {
+            "chapter": self.chapter2.pk,
+        })
+        qs = self.get_chapters()
+        self.assertEqual(1, qs.count())
+        self.assertIn(self.chapter1, qs)
+
+    def test_create_chapter_seconds(self):
+        self.client.post(self.url, {
+            "point": 5,
+            "note": "here in tests",
+        })
+        qs = self.get_chapters()
+        self.assertEqual(3, qs.count())
+
+    def test_create_chapter_timestamp(self):
+        self.client.post(self.url, {
+            "point": "20:45",
+            "note": "here in tests",
+        })
+        qs = self.get_chapters()
+        self.assertEqual(3, qs.count())
+
+        last = qs.last()
+        self.assertEqual(1245, last.point)
+        self.assertEqual("here in tests", last.note)
+        self.assertEqual(self.user, last.user)
+
+
+class VideoChaptersUpdateViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="view_video"),
+            Permission.objects.get(codename="change_chapter")
+        )
+
+        self.client.force_login(self.user)
+
+        self.video = models.Video.objects.create(title="Video 1")
+
+        self.chapter1 = self.video.highlights.create(
+            source=models.Highlight.Sources.CHAPTERS,
+            point=1,
+            note="test chapter 1"
+        )
+
+        self.highlight1 = self.video.highlights.create(
+            source=models.Highlight.Sources.USER,
+            point=1,
+            note="test highlight 1"
+        )
+
+        self.url = reverse('vidar:chapters-update', args=[self.chapter1.pk])
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+    def get_chapters(self):
+        return self.video.highlights.filter(source=models.Highlight.Sources.CHAPTERS).order_by('pk')
+
+    def test_basics(self):
+        resp = self.client.post(self.url, {
+            "point": 10,
+        })
+        self.chapter1.refresh_from_db()
+        self.assertEqual(10, self.chapter1.point)
+
+    def test_cannot_update_highlights(self):
+        resp = self.client.post(
+            reverse('vidar:chapters-update', args=[self.highlight1.pk]),{
+                "point": 10,
+            }
+        )
+        self.assertEqual(404, resp.status_code)
+
+
+class VideoHighlightsListViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="view_video"),
+            Permission.objects.get(codename="view_highlight")
+        )
+
+        self.client.force_login(self.user)
+
+        self.video = models.Video.objects.create(title="Video 1")
+
+        self.highlight1 = self.video.highlights.create(
+            source=models.Highlight.Sources.USER,
+            point=1,
+            note="test highlight 1"
+        )
+        self.highlight2 = self.video.highlights.create(
+            source=models.Highlight.Sources.USER,
+            point=60,
+            note="test highlight 1"
+        )
+
+        self.url = reverse('vidar:video-highlight-list', args=[self.video.pk])
+
+    def get_highlights(self):
+        return self.video.highlights.filter(source=models.Highlight.Sources.USER).order_by('pk')
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+    def test_delete_highlight(self):
+        self.client.post(self.url, {
+            "highlight": self.highlight2.pk,
+        })
+        qs = self.get_highlights()
+        self.assertEqual(1, qs.count())
+        self.assertIn(self.highlight1, qs)
+
+    def test_create_highlight_seconds(self):
+        self.client.post(self.url, {
+            "point": 5,
+            "note": "here in tests",
+        })
+        qs = self.get_highlights()
+        self.assertEqual(3, qs.count())
+
+    def test_create_highlight_timestamp(self):
+        self.client.post(self.url, {
+            "point": "20:45",
+            "note": "here in tests",
+        })
+        qs = self.get_highlights()
+        self.assertEqual(3, qs.count())
+
+        last = qs.last()
+        self.assertEqual(1245, last.point)
+        self.assertEqual("here in tests", last.note)
+        self.assertEqual(self.user, last.user)
+
+
+class VideoHighlightsUpdateViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="view_video"),
+            Permission.objects.get(codename="change_highlight")
+        )
+
+        self.client.force_login(self.user)
+
+        self.video = models.Video.objects.create(title="Video 1")
+
+        self.highlight1 = self.video.highlights.create(
+            source=models.Highlight.Sources.USER,
+            point=1,
+            note="test highlight 1"
+        )
+
+        self.chapter1 = self.video.highlights.create(
+            source=models.Highlight.Sources.CHAPTERS,
+            point=1,
+            note="test chapter 1"
+        )
+
+        self.url = reverse('vidar:highlights-update', args=[self.highlight1.pk])
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+    def get_highlights(self):
+        return self.video.highlights.filter(source=models.Highlight.Sources.USER).order_by('pk')
+
+    def test_basics(self):
+        resp = self.client.post(self.url, {
+            "point": 10,
+        })
+        self.highlight1.refresh_from_db()
+        self.assertEqual(10, self.highlight1.point)
+
+    def test_cannot_update_chapters(self):
+        resp = self.client.post(
+            reverse('vidar:highlights-update', args=[self.chapter1.pk]),{
+                "point": 10,
+            }
+        )
+        self.assertEqual(404, resp.status_code)
+
+
+class PlaylistDetailViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="view_playlist"),
+        )
+
+        self.client.force_login(self.user)
+
+        self.playlist = models.Playlist.objects.create(
+            title="Playlist 1",
+            provider_object_id="test-id",
+        )
+
+        self.video1 = self.playlist.videos.create(title="test video 1")
+        self.video2 = self.playlist.videos.create(title="test video 2")
+
+        self.url = self.playlist.get_absolute_url()
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+    def test_convert_to_custom(self):
+        self.client.post(self.url, {
+            "convert-to-custom": True
+        })
+
+        self.playlist.refresh_from_db()
+
+        self.assertIn(f"Old YouTube ID: test-id", self.playlist.description)
+        self.assertEqual("test-id", self.playlist.provider_object_id_old)
+        self.assertEqual("", self.playlist.provider_object_id)
+
+        for item in self.playlist.playlistitem_set.all():
+            self.assertTrue(item.manually_added)
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    def test_download_comments(self, mock_task):
+        self.client.post(self.url, {
+            "download-video-comments": True
+        })
+
+        mock_task.apply_async.assert_has_calls([
+            call(args=[self.video1.pk, False], countdown=67),
+            call(args=[self.video2.pk, False], countdown=0),
+        ], any_order=True)
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    def test_download_comments_all_comments(self, mock_task):
+        self.client.post(self.url, {
+            "download-video-comments": True,
+            "download_all_comments": True,
+        })
+
+        mock_task.apply_async.assert_has_calls([
+            call(args=[self.video1.pk, True], countdown=67),
+            call(args=[self.video2.pk, True], countdown=0),
+        ], any_order=True)
