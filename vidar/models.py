@@ -1634,6 +1634,9 @@ class Highlight(models.Model):
 
     class Meta:
         ordering = ["video", "point"]
+        permissions = [
+            ("change_chapter", "Can change chapters"),
+        ]
 
     def get_absolute_url(self):
         if self.source == Highlight.Sources.CHAPTERS:
