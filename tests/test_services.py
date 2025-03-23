@@ -1674,9 +1674,12 @@ class YtdlpServicesTests(TestCase):
             video=video,
             retries=0,
             get_comments=False,
+            cache_folder="tests-here",
         )
         self.assertIn('proxy', output)
         self.assertNotIn('getcomments', output)
+        self.assertIn("outtmpl", output)
+        self.assertIn("tests-here/", output["outtmpl"])
 
     @override_settings(VIDAR_PROXIES=['here'])
     def test_get_video_downloader_args_many_retries(self):
@@ -1705,6 +1708,116 @@ class YtdlpServicesTests(TestCase):
 
         output = ytdlp_services.get_video_downloader_args(video=video, retries=3)
         self.assertEqual('default proxy', output['proxy'])
+
+    @patch("vidar.app_settings.AppSettings.COOKIES_CHECKER")
+    @patch("vidar.app_settings.AppSettings.COOKIES_GETTER")
+    def test_get_ytdlp_args_includes_cookies(self, mock_get, mock_check):
+        mock_check.return_value = True
+        mock_get.return_value = "here in tests"
+        video = models.Video.objects.create(title='video 1')
+        output = ytdlp_services.get_ytdlp_args(
+            video=video
+        )
+        mock_check.assert_called_once()
+        mock_get.assert_called_once()
+        self.assertIn("cookies", output)
+        self.assertEqual("here in tests", output["cookies"].read())
+
+    def test_fix_quality_values(self):
+        self.assertEqual(360, ytdlp_services.fix_quality_values(352))
+        self.assertEqual(720, ytdlp_services.fix_quality_values(640))
+        self.assertEqual(720, ytdlp_services.fix_quality_values(720))
+        self.assertEqual(1852, ytdlp_services.fix_quality_values(1852))
+
+    def test_get_banner_art(self):
+        with open('tests/fixtures/channel_thumbnails.json', "rb") as fo:
+            thumbnails = json.load(fo)
+
+        self.assertEqual("//=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", ytdlp_services.get_banner_art(thumbnails=thumbnails))
+
+    def test_get_banner_art_empty(self):
+        self.assertFalse(ytdlp_services.get_banner_art(thumbnails=[]))
+
+    def test_get_banner_art_missing_width(self):
+        self.assertFalse(ytdlp_services.get_banner_art(thumbnails=[
+            {"url": "//=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 175,
+             "preference": -10, "id": "0", "resolution": "1060x175"},
+        ]))
+
+    def test_get_banner_art_height_width_differential(self):
+        self.assertEqual(
+            "//=w1138-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj",
+            ytdlp_services.get_banner_art(thumbnails=[
+                {"url": "//=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 175,
+                 "preference": -10, "id": "0", "resolution": "1060x175"},
+                {"url": "//=w1138-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 188, "width": 1138,
+                 "preference": -10, "id": "1", "resolution": "1138x188"},
+            ])
+        )
+
+    def test_get_thumb_art(self):
+        with open('tests/fixtures/channel_thumbnails.json', "rb") as fo:
+            thumbnails = json.load(fo)
+
+        self.assertEqual("//=s0-avatar", ytdlp_services.get_thumb_art(thumbnails=thumbnails))
+
+    def test_get_thumb_art_empty(self):
+        self.assertFalse(ytdlp_services.get_thumb_art(thumbnails=[]))
+
+    def test_get_thumb_art_missing_width(self):
+        self.assertFalse(ytdlp_services.get_thumb_art(thumbnails=[
+            {"url": "//=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 175,
+             "preference": -10, "id": "0", "resolution": "1060x175"},
+        ]))
+
+    def test_get_thumb_art_height_width_matching(self):
+        self.assertEqual(
+            "//=w1138-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj",
+            ytdlp_services.get_thumb_art(thumbnails=[
+                {"url": "//=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 175,
+                 "preference": -10, "id": "0", "resolution": "1060x175"},
+                {"url": "//=w1138-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 1138, "width": 1138,
+                 "preference": -10, "id": "1", "resolution": "1138x188"},
+            ])
+        )
+
+    def test_get_tv_art(self):
+        with open('tests/fixtures/channel_thumbnails.json', "rb") as fo:
+            thumbnails = json.load(fo)
+
+        self.assertEqual("//=s0-banner", ytdlp_services.get_tv_art(thumbnails=thumbnails))
+
+    def test_get_tv_art_empty(self):
+        self.assertFalse(ytdlp_services.get_tv_art(thumbnails=[]))
+
+    def test_get_tv_art_missing_width(self):
+        self.assertFalse(ytdlp_services.get_tv_art(thumbnails=[
+            {"url": "//=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 175,
+             "preference": -10, "id": "0", "resolution": "1060x175"},
+        ]))
+
+    def test_get_tv_art_height_width_matching(self):
+        self.assertEqual(
+            "//=w1138-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj",
+            ytdlp_services.get_tv_art(thumbnails=[
+                {"url": "//=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 175,
+                 "preference": -10, "id": "0", "resolution": "1060x175"},
+                {"url": "//=w1138-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 1280, "width": 720,
+                 "preference": -10, "id": "1", "resolution": "1138x188"},
+            ])
+        )
+
+    def test_get_comment_downloader_extractor_args(self):
+        expected = {
+            "extractor_args": {
+                "youtube": {
+                    "comment_sort": ["top"],
+                    "max_comments": ["100", "all", "100", "10"],
+                }
+            }
+        }
+        output = ytdlp_services.get_comment_downloader_extractor_args()
+        self.assertDictEqual(expected, output)
 
 
 class SchemaServicesTests(TestCase):
