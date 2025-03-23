@@ -393,11 +393,19 @@ class AppSettings(object):
             [],
         )
 
-        # Disabled to allow PROXIES to be a callable function
-        # if not isinstance(proxies, (list, tuple, set)):
-        #     raise ImproperlyConfigured(f'{self.prefix}PROXIES must be a list, tuple, or set.')
+        if isinstance(proxies, (list, tuple, set)):
+            return proxies
 
-        return proxies
+        if callable(proxies):
+            return proxies
+
+        if isinstance(proxies, str):
+            for k in ",|;":
+                if k in proxies:
+                    return proxies.split(k)
+            return import_callable(proxies)
+
+        raise ValueError("VIDAR_PROXIES must be: Iterable, a callable, or a dot notation path to a function.")
 
     @property
     def PROXIES_DEFAULT(self):

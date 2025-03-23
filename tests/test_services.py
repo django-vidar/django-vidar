@@ -1678,7 +1678,7 @@ class YtdlpServicesTests(TestCase):
         self.assertIn('proxy', output)
         self.assertNotIn('getcomments', output)
 
-    @override_settings(VIDAR_PROXIES='here')
+    @override_settings(VIDAR_PROXIES=['here'])
     def test_get_video_downloader_args_many_retries(self):
         video = models.Video.objects.create(title='video 1')
 
@@ -1692,7 +1692,7 @@ class YtdlpServicesTests(TestCase):
         output = ytdlp_services.get_video_downloader_args(video=video, retries=3)
         self.assertEqual('', output['proxy'])
 
-    @override_settings(VIDAR_PROXIES='here', VIDAR_PROXIES_DEFAULT='default proxy')
+    @override_settings(VIDAR_PROXIES=['here'], VIDAR_PROXIES_DEFAULT='default proxy')
     def test_get_video_downloader_args_many_retries_with_different_default(self):
         video = models.Video.objects.create(title='video 1')
 

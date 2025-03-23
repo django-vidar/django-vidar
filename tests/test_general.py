@@ -835,12 +835,32 @@ class UtilsTests(TestCase):
         self.assertEqual("proxy3", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy4']))
         self.assertEqual("default proxy", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy3', 'proxy4']))
 
+    @override_settings(
+        VIDAR_PROXIES_DEFAULT="default proxy",
+        VIDAR_PROXIES='proxy1;proxy2;proxy3;proxy4'
+    )
+    def test_get_proxy_proxies_supplied_as_semicolon_delim_string(self):
+        self.assertEqual("proxy3", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy4']))
+        self.assertEqual("default proxy", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy3', 'proxy4']))
+
     @override_settings(VIDAR_PROXIES=test_functions.proxies_user_defined)
     def test_get_proxy_with_proxies_user_defined_function(self):
         self.assertEqual(test_functions.proxies_user_defined, app_settings.PROXIES)
 
         output = utils.get_proxy(previous_proxies=['passed into utils.get_proxy'])
         self.assertEqual(dict(previous_proxies=["passed into utils.get_proxy"], instance=None, attempt=None), output)
+
+    @override_settings(VIDAR_PROXIES="tests.test_functions.proxies_user_defined")
+    def test_get_proxy_with_proxies_user_defined_function_dot_notation(self):
+        self.assertEqual(test_functions.proxies_user_defined, app_settings.PROXIES)
+
+        output = utils.get_proxy(previous_proxies=['passed into utils.get_proxy'])
+        self.assertEqual(dict(previous_proxies=["passed into utils.get_proxy"], instance=None, attempt=None), output)
+
+    @override_settings(VIDAR_PROXIES="invalid_function.dot.pathway")
+    def test_get_proxy_with_proxies_user_defined_function_dot_notation_invalid_path(self):
+        with self.assertRaises(ImportError):
+            self.assertEqual(test_functions.proxies_user_defined, app_settings.PROXIES)
 
     @override_settings(VIDAR_PROXIES=test_functions.proxies_user_defined)
     def test_get_proxy_with_proxies_user_defined_function_always_called(self):
