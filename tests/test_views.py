@@ -1429,30 +1429,36 @@ class ChannelDetailViewTests(TestCase):
         self.assertEqual(1, queryset.count())
         self.assertEqual(self.video1, queryset[0])
 
+    def test_searching_custom_filter_exact_no_match(self):
         resp = self.client.get(self.url + "?q=title__exact:Video 1")
         queryset = resp.context_data["channel_videos"]
         self.assertEqual(0, queryset.count())
 
+    def test_searching_custom_filter_iexact_matches(self):
         resp = self.client.get(self.url + "?q=title__iexact:Video 2")
         queryset = resp.context_data["channel_videos"]
         self.assertEqual(1, queryset.count())
         self.assertEqual(self.video2, queryset[0])
 
+    def test_searching_default_filtering_matches_one(self):
         resp = self.client.get(self.url + "?q=title:2")
         queryset = resp.context_data["channel_videos"]
         self.assertEqual(1, queryset.count())
         self.assertEqual(self.video2, queryset[0])
 
+    def test_searching_custom_boolean_field(self):
         resp = self.client.get(self.url + "?q=at_max_quality:true")
         queryset = resp.context_data["channel_videos"]
         self.assertEqual(0, queryset.count())
 
+    def test_searching_custom_boolean_field_with_ordering(self):
         resp = self.client.get(self.url + "?q=at_max_quality:false&o=pk")
         queryset = resp.context_data["channel_videos"]
         self.assertEqual(2, queryset.count())
         self.assertEqual(self.video1, queryset[0])
         self.assertEqual(self.video2, queryset[1])
 
+    def test_searching_invalid_field_returns_zero(self):
         resp = self.client.get(self.url + "?q=bad-field:true")
         queryset = resp.context_data["channel_videos"]
         self.assertEqual(0, queryset.count())
