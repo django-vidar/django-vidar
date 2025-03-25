@@ -360,44 +360,45 @@ class CrontabServicesTests(SimpleTestCase):
         output = crontab_services.generate_daily(minute=10, hour=2)
         self.assertEqual('10 2 * * *', output)
         output = crontab_services.generate_daily(minute=10, hour=[2,3])
-        self.assertRegex(output, r'10 ([2,3]) \* \* \*')
+        self.assertRegex(output, r'^10 [2,3] \* \* \*$')
 
     def test_generate_every_other_day(self):
         output = crontab_services.generate_every_other_day(minute=10, hour=2)
-        self.assertRegex(output, r'10 2 \* \* (0-7\/2|1-7\/2)')
+        self.assertRegex(output, r'^10 2 \* \* (0-7\/2|1-7\/2)$')
         output = crontab_services.generate_every_other_day(minute=10, hour=[2,3])
-        self.assertRegex(output, r'10 ([2,3]) \* \* (0-7\/2|1-7\/2)')
+        self.assertRegex(output, r'^10 [2,3] \* \* (0-7\/2|1-7\/2)$')
 
     def test_generate_weekly(self):
         output = crontab_services.generate_weekly(minute=10, hour=2, day_of_week=6)
         self.assertEqual('10 2 * * 6', output)
 
         output = crontab_services.generate_weekly(minute=10, hour=[2, 3], day_of_week=6)
-        self.assertRegex(output, r'10 ([2,3]) \* \* 6')
+        self.assertRegex(output, r'^10 [2,3] \* \* 6$')
 
         output = crontab_services.generate_weekly(minute=10, hour=[2, 3], day_of_week=None)
-        self.assertRegex(output, r'10 ([2,3]) \* \* ([0-7])')
+        self.assertRegex(output, r'^10 [2,3] \* \* [0-7]$')
 
     def test_generate_monthly(self):
         output = crontab_services.generate_monthly(minute=10, hour=2, day=4)
         self.assertEqual('10 2 4 * *', output)
 
         output = crontab_services.generate_monthly(minute=10, hour=[2, 3], day=4)
-        self.assertRegex(output, r'10 ([2,3]) 4 \* \*')
+        self.assertRegex(output, r'^10 [2,3] 4 \* \*$')
 
     def test_generate_biyearly(self):
         output = crontab_services.generate_biyearly(minute=10, hour=2, day=4)
-        self.assertRegex(output, r'10 2 4 (\d+){1,2},(\d+){,2} \*')
+        print(output)
+        self.assertRegex(output, r'^10 2 4 \d{1,2},\d{1,2} \*$')
 
         output = crontab_services.generate_biyearly(minute=10, hour=[2, 3], day=4)
-        self.assertRegex(output, r'10 ([2,3]) 4 (\d+){1,2},(\d+){,2} \*')
+        self.assertRegex(output, r'^10 [2,3] 4 \d{1,2},\d{1,2} \*$')
 
     def test_generate_yearly(self):
         output = crontab_services.generate_yearly(minute=10, hour=2, day=4)
-        self.assertRegex(output, r'10 2 4 (\d+){1,2} *')
+        self.assertRegex(output, r'^10 2 4 \d+ \*$')
 
         output = crontab_services.generate_yearly(minute=10, hour=[2, 3], day=4)
-        self.assertRegex(output, r'10 ([2,3]) 4 (\d+){1,2} *')
+        self.assertRegex(output, r'^10 [2,3] 4 \d+ \*$')
 
     def test_generate_selection_monthly_crontabs(self):
         output = crontab_services.generate_selection_monthly_crontabs(length=8)
