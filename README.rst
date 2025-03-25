@@ -207,6 +207,9 @@ and within one of your template files add the following::
 Configurable Settings
 =====================
 
+Note: ``VIDAR_SETTING_GETTER`` and ``VIDAR_MEDIA_STORAGE_CLASS`` must be placed in your projects
+settings.py and will bypass the settings getter system.
+
 
 ``VIDAR_AUTOMATED_DOWNLOADS_DAILY_LIMIT`` (default: ``400``)
 
@@ -359,6 +362,9 @@ Configurable Settings
 
 ``VIDAR_MEDIA_STORAGE_CLASS`` (default: ``"vidar.storages.LocalFileSystemStorage"``)
     Dot notation path to a class that's used as the base storage.
+
+    Note: ``VIDAR_MEDIA_STORAGE_CLASS`` does not use settings getter, it uses ``django.conf.settings`` directly.
+    Place your configuration within your projects ``settings.py``.
 
 ``VIDAR_METADATA_ALBUM`` (default: ``"vidar.services.video_services.metadata_album"``)
     Dot notation path to a function that accepts ``video`` and returns the album
@@ -517,6 +523,9 @@ Configurable Settings
                 return getattr(settings, name)
 
             return Setting.get_value(name=name, default=default)
+
+    Note: ``VIDAR_SETTING_GETTER`` does not use settings getter as that causes infinite loops, it
+    uses ``django.conf.settings`` directly. Place your configuration within your projects ``settings.py``.
 
 ``VIDAR_SHORTS_FORCE_MAX_QUALITY`` (default: ``True``)
     When downloading shorts, grab max quality available?

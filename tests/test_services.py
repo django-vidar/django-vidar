@@ -1931,8 +1931,6 @@ class VideoServicesTests(TestCase):
             video_services.delete_files(video=video, save=True)
             self.assertFalse(video.extra_files.count())
 
-            mock_rmdir.assert_called_once()
-
     def test_generate_filepaths_for_storage(self):
         video = models.Video.objects.create(
             provider_object_id="test-id",

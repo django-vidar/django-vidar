@@ -27,6 +27,9 @@ class AppSettings(object):
     def _setting(self, name, default):
         return get_setting(self.prefix + name, default)
 
+    def _django_setting(self, name, default):
+        return getattr(settings, self.prefix + name, default)
+
     @property
     def AUTOMATED_DOWNLOADS_DAILY_LIMIT(self):
         return self._setting(
@@ -250,7 +253,7 @@ class AppSettings(object):
 
     @property
     def MEDIA_STORAGE_CLASS(self):
-        user_func = self._setting("MEDIA_STORAGE_CLASS", "vidar.storages.LocalFileSystemStorage")
+        user_func = self._django_setting("MEDIA_STORAGE_CLASS", "vidar.storages.LocalFileSystemStorage")
         func = import_callable(user_func)
         return func
 
