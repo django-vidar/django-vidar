@@ -298,31 +298,31 @@ def can_delete(video, skip_playlist_ids=None):
     return True
 
 
-def delete_files(video):
+def delete_files(video, save=False):
 
     # Prepare necessary variables to remove video directory after removing the files.
-    deletable_directories = set()
+    deletable_directories = {}
     for x in [video.file, video.thumbnail, video.audio, video.info_json]:
         if x and x.storage.exists(x.name):
+            if x.storage not in deletable_directories:
+                deletable_directories[x.storage] = set()
             parent_dir = pathlib.Path(x.path).parent
-            deletable_directories.add(parent_dir)
-            x.delete(save=False)
+            deletable_directories[x.storage].add(parent_dir)
+            x.delete(save=save)
 
     for ef in video.extra_files.all():
         x = ef.file
         if x and x.storage.exists(x.name):
+            if x.storage not in deletable_directories:
+                deletable_directories[x.storage] = set()
             parent_dir = pathlib.Path(x.path).parent
-            deletable_directories.add(parent_dir)
-            x.delete(save=False)
+            deletable_directories[x.storage].add(parent_dir)
+            x.delete(save=save)
+            ef.delete()
 
-    for directory in deletable_directories:
-        try:
-            directory.rmdir()
-        except (OSError, TypeError) as exc:
-            if "not empty" not in str(exc):
-                log.exception("Failure to delete video directory")
-            else:
-                log.info(f"Failure to delete video {directory=}")
+    for storage, directories in deletable_directories.items():
+        for directory in directories:
+            storage.delete(directory)
 
 
 def delete_video(video, keep_record=False):
@@ -446,7 +446,7 @@ def load_thumbnail_from_info_json(video, info_json_data=None):
             set_thumbnail(video=video, url=thumbnail_url)
             return True
         except:  # noqa: E722
-            log.exception(f"Thumbnail failure {thumbnail_url=} on {video.channel=}")
+            log.debug(f"Thumbnail failure {thumbnail_url=} on {video.channel=}")
 
 
 def is_too_old(video):

@@ -2,6 +2,7 @@
 import json
 import logging
 import pathlib
+import os
 
 from unittest.mock import patch, call, MagicMock, mock_open
 
@@ -11,6 +12,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, SimpleTestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+
+from tests.test_functions import date_to_aware_date
 
 from vidar import models, exceptions, app_settings
 from vidar.services import (
@@ -24,6 +27,7 @@ from vidar.services import (
     redis_services,
     notification_services,
 )
+from vidar.storages import vidar_storage
 from vidar.helpers import video_helpers
 
 UserModel = get_user_model()
@@ -1581,7 +1585,7 @@ class VideoServicesTests(TestCase):
 
         first_timestamp = timezone.now()
         with patch.object(timezone, 'now', return_value=first_timestamp):
-            video_services.log_update_video_details_called(video=video, commit=False)
+            video_services.log_update_video_details_called(video=video)
 
         self.assertIn('update_video_details_automated', video.system_notes)
         logs = video.system_notes['update_video_details_automated']
@@ -1593,7 +1597,7 @@ class VideoServicesTests(TestCase):
 
         second_timestamp = first_timestamp + timezone.timedelta(hours=1)
         with patch.object(timezone, 'now', return_value=second_timestamp):
-            video_services.log_update_video_details_called(video=video, result='result here', commit=False)
+            video_services.log_update_video_details_called(video=video, result='result here')
 
         self.assertIn('update_video_details_automated', video.system_notes)
         logs = video.system_notes['update_video_details_automated']
@@ -1877,6 +1881,85 @@ class VideoServicesTests(TestCase):
         qs = video.highlights.filter(source=models.Highlight.Sources.CHAPTERS).order_by('pk')
         self.assertEqual(2, qs.count())
 
+    @patch("vidar.services.video_services.set_thumbnail")
+    def test_load_thumbnail_from_info_json(self, mock_set):
+        video = models.Video.objects.create()
+        self.assertTrue(video_services.load_thumbnail_from_info_json(
+            video=video,
+            info_json_data={"thumbnail": "here"},
+        ))
+        mock_set.assert_called_once()
+
+    @patch("vidar.services.video_services.set_thumbnail")
+    def test_load_thumbnail_from_info_json_fails_setter_raises(self, mock_set):
+        mock_set.side_effect = requests.exceptions.RequestException()
+        video = models.Video.objects.create()
+        self.assertIsNone(video_services.load_thumbnail_from_info_json(
+            video=video,
+            info_json_data={"thumbnail": "here"},
+        ))
+
+    @patch("vidar.services.video_services.set_thumbnail")
+    def test_load_thumbnail_from_info_json_as_file(self, mock_set):
+        video = models.Video.objects.create()
+
+        video.info_json = SimpleUploadedFile(
+            "info.json",
+            json.dumps({"thumbnail": "here"}).encode('utf8')
+        )
+        self.assertTrue(video_services.load_thumbnail_from_info_json(video=video))
+        mock_set.assert_called_once()
+
+    @patch("vidar.services.video_services.set_thumbnail")
+    def test_load_thumbnail_from_info_json_fails_no_source(self, mock_set):
+        video = models.Video.objects.create()
+        self.assertIsNone(video_services.load_thumbnail_from_info_json(video=video))
+        mock_set.assert_not_called()
+
+    def test_delete_files(self):
+        video = models.Video.objects.create()
+        video.info_json.save("valid/info.json", SimpleUploadedFile("valid/info.json", b"info.json"))
+        video_services.delete_files(video=video, save=True)
+        self.assertFalse(video.info_json)
+
+    def test_delete_files_includes_extra_files(self):
+        video = models.Video.objects.create()
+        video.extra_files.create(
+            file=SimpleUploadedFile("valid/info.json", b"extra.file")
+        )
+        with patch.object(os, "rmdir") as mock_rmdir:
+            video_services.delete_files(video=video, save=True)
+            self.assertFalse(video.extra_files.count())
+
+            mock_rmdir.assert_called_once()
+
+    def test_generate_filepaths_for_storage(self):
+        video = models.Video.objects.create(
+            provider_object_id="test-id",
+            title="video 1",
+            upload_date=date_to_aware_date('2007-03-14'),
+        )
+
+        with patch.object(pathlib.Path, "mkdir") as mock_mkdir:
+            new_full_filepath, new_storage_path = video_services.generate_filepaths_for_storage(
+                video=video,
+                ext = 'mp4',
+                ensure_new_dir_exists=True,
+            )
+
+            mock_mkdir.assert_called_once()
+
+            self.assertEqual("public/2007/2007-03-14 - video 1 [test-id].mp4", str(new_storage_path))
+
+    @patch("vidar.services.image_services.download_and_convert_to_jpg")
+    def test_set_thumbnail(self, mock_func):
+        mock_func.return_value = (b"blah", "jpg")
+
+        video = models.Video.objects.create()
+
+        video_services.set_thumbnail(video=video, url="test")
+
+        mock_func.assert_called_once()
 
 
 class YtdlpServicesTests(TestCase):
