@@ -55,7 +55,7 @@ def _load_downloaded_infojson_file(downloaded_file_data):
         try:
             infojson_filepath.unlink()
         except OSError:
-            log.exception(f"Failure to delete .info.json file {infojson_filepath=}")
+            log.debug(f"Failure to delete .info.json file {infojson_filepath=}")
 
 
 def save_infojson_file(video, downloaded_file_data, save=True, overwrite_formats=True):
@@ -71,8 +71,8 @@ def save_infojson_file(video, downloaded_file_data, save=True, overwrite_formats
     if video.info_json:
         try:
             video.info_json.delete()
-        except OSError:
-            log.exception("Failed to delete existing info_json before replacement.")
+        except OSError:  # pragma: no cover
+            log.debug("Failed to delete existing info_json before replacement.")
 
     infojson_final_filename = schema_services.video_file_name(video=video, ext="info.json")
     video.info_json.save(infojson_final_filename, ContentFile(json.dumps(infojson_data)), save=save)

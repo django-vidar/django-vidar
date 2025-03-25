@@ -3,10 +3,11 @@ import json
 import logging
 import pathlib
 
-from unittest.mock import patch, call, MagicMock
+from unittest.mock import patch, call, MagicMock, mock_open
 
 import requests.exceptions
 from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, SimpleTestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -1330,6 +1331,38 @@ class VideoServicesTests(TestCase):
         self.assertEqual(1, video.duration_skips.count())
         self.assertEqual(0, len(newly_made2))
 
+    @patch('vidar.utils.get_sponsorblock_video_data')
+    def test_sponsorblock_skips_poi_highlight(self, mock_sbdata):
+
+        mock_sbdata.return_value = [{
+            'category': 'poi_highlight',
+            'actionType': 'skip',
+            'segment': [1416.941, 1503.441],
+            'UUID': '9b9619d8a194b5b2448254f6fffde062856e81604e28fe3673c75954703476c67',
+            'videoDuration': 1503.441,
+            'locked': 1,
+            'votes': 5,
+            'description': ''
+        }]
+
+        video = models.Video.objects.create(
+            title='Test Video',
+            provider_object_id='Zce-V0YVzeI',
+        )
+
+        self.assertEqual(0, video.duration_skips.count())
+
+        newly_made = video_services.load_live_sponsorblock_video_data_into_duration_skips(video=video)
+
+        mock_sbdata.assert_called_with('Zce-V0YVzeI', categories=None)
+        self.assertEqual(0, video.duration_skips.count())
+        self.assertEqual(1, video.highlights.count())
+
+        poi = video.highlights.get()
+        self.assertEqual("POI", poi.source)
+        self.assertEqual(1416, poi.point)
+        self.assertEqual("SponsorBlock Highlight", poi.note)
+
     def test_is_too_old_now(self):
 
         video = models.Video.objects.create(
@@ -1664,6 +1697,186 @@ class VideoServicesTests(TestCase):
 
         self.assertEqual("", video_services.metadata_album(video=v1))
         self.assertEqual(str(c1), video_services.metadata_album(video=v2))
+
+    def test_correct_format_data_in_infojson_data(self):
+        video = models.Video.objects.create(
+            quality=720,
+            format_id="612",
+            format_note="720p",
+        )
+
+        infojson_data = {"formats": [{"format_id": "612", "format_note": "1080p",}]}
+
+        output = video_services._correct_format_data_in_infojson_data(video=video, infojson_data=infojson_data)
+
+        self.assertIn("format_id", output)
+        self.assertIn("format_note", output)
+        self.assertEqual("612", output["format_id"])
+        self.assertEqual("720p", output["format_note"])
+
+        self.assertIn("format", output)
+        self.assertEqual("1080p", output["format"])
+
+    def test_load_downloaded_infojson_file(self):
+        dfd = {"filepath": "", "infojson_filename": "info.json"}
+
+        with self.assertRaises(exceptions.DownloadedInfoJsonFileNotFoundError):
+            video_services._load_downloaded_infojson_file(downloaded_file_data=dfd)
+
+        opener = mock_open(read_data='{"inside": "tests"}')
+        def mocked_open(self, *args, **kwargs):
+            return opener(self, *args, **kwargs)
+
+        with patch.object(pathlib.Path, "open", mocked_open), patch.object(pathlib.Path, "unlink") as mock_unlink:
+            output = video_services._load_downloaded_infojson_file(downloaded_file_data=dfd)
+
+        mock_unlink.assert_called_once()
+
+        self.assertIn("inside", output)
+        self.assertEqual("tests", output["inside"])
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=False)
+    def test_save_infojson_file_disabled(self):
+        video = models.Video.objects.create(
+            quality=720,
+            format_id="612",
+            format_note="720p",
+            info_json="info.json",
+        )
+
+        self.assertIsNone(video_services.save_infojson_file(video=video, downloaded_file_data={}))
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    def test_save_infojson_file(self):
+        video = models.Video.objects.create(
+            provider_object_id="test-id",
+            title="video 1",
+            quality=720,
+            format_id="612",
+            format_note="720p",
+            info_json="info.json",
+        )
+
+        dfd = {
+            "filepath": "",
+            "infojson_filename": "info.json",
+        }
+
+        with self.assertRaises(exceptions.DownloadedInfoJsonFileNotFoundError):
+            video_services.save_infojson_file(video=video, downloaded_file_data=dfd, save=False)
+
+        opener = mock_open(read_data='{"formats": [{"format_id": "612", "format_note": "1080p"}]}')
+        def mocked_open(self, *args, **kwargs):
+            return opener(self, *args, **kwargs)
+
+        with patch.object(pathlib.Path, "open", mocked_open), patch.object(pathlib.Path, "unlink") as mock_unlink:
+            video_services.save_infojson_file(video=video, downloaded_file_data=dfd, save=False)
+
+        self.assertEqual("public/2025/- video 1 [test-id].info.json", video.info_json.name)
+
+    def test_load_chapters_from_info_json_as_file(self):
+        video = models.Video.objects.create()
+
+        self.assertFalse(video.highlights.exists())
+
+        info_json_data = {
+            "chapters": [
+                {"title": "Chapter 1", "start_time": 1, "end_time": 2},
+                {"title": "Chapter 2", "start_time": 5, "end_time": 10}
+            ]
+        }
+
+        video.info_json = SimpleUploadedFile(
+            "info.json",
+            json.dumps(info_json_data).encode('utf8')
+        )
+
+        video_services.load_chapters_from_info_json(video=video)
+
+        qs = video.highlights.filter(source=models.Highlight.Sources.CHAPTERS).order_by('pk')
+        self.assertEqual(2, qs.count())
+
+        c1 = qs[0]
+        self.assertEqual("Chapter 1", c1.note)
+        self.assertEqual(1, c1.point)
+        self.assertEqual(2, c1.end_point)
+
+        c2 = qs[1]
+        self.assertEqual("Chapter 2", c2.note)
+        self.assertEqual(5, c2.point)
+        self.assertEqual(10, c2.end_point)
+
+    def test_load_chapters_from_info_json_as_direct(self):
+        video = models.Video.objects.create()
+
+        self.assertFalse(video.highlights.exists())
+
+        info_json_data = {
+            "chapters": [
+                {"title": "Chapter 1", "start_time": 1, "end_time": 2},
+                {"title": "Chapter 2", "start_time": 5, "end_time": 10}
+            ]
+        }
+
+        output = video_services.load_chapters_from_info_json(video=video, info_json_data=info_json_data)
+        self.assertEqual(2, output)
+
+        qs = video.highlights.filter(source=models.Highlight.Sources.CHAPTERS).order_by('pk')
+        self.assertEqual(2, qs.count())
+
+        c1 = qs[0]
+        self.assertEqual("Chapter 1", c1.note)
+        self.assertEqual(1, c1.point)
+        self.assertEqual(2, c1.end_point)
+
+        c2 = qs[1]
+        self.assertEqual("Chapter 2", c2.note)
+        self.assertEqual(5, c2.point)
+        self.assertEqual(10, c2.end_point)
+
+    def test_load_chapters_from_info_json_fails_no_data(self):
+        video = models.Video.objects.create()
+
+        self.assertIsNone(video_services.load_chapters_from_info_json(video=video))
+
+        qs = video.highlights.filter(source=models.Highlight.Sources.CHAPTERS).order_by('pk')
+        self.assertFalse(qs.exists())
+
+    def test_load_chapters_from_info_json_fails_no_chapters(self):
+        video = models.Video.objects.create()
+
+        self.assertIsNone(video_services.load_chapters_from_info_json(video=video, info_json_data={"data": "here"}))
+
+        qs = video.highlights.filter(source=models.Highlight.Sources.CHAPTERS).order_by('pk')
+        self.assertFalse(qs.exists())
+
+    def test_load_chapters_from_info_json_fails_chapters_exists_not_reloading(self):
+        video = models.Video.objects.create()
+
+        video.highlights.create(
+            source=models.Highlight.Sources.CHAPTERS,
+            note="Chapter 1",
+            point=2,
+            end_point=5,
+        )
+
+        video.highlights.create(
+            source=models.Highlight.Sources.CHAPTERS,
+            note="Chapter 2",
+            point=10,
+            end_point=15,
+        )
+
+        info_json_data = {
+            "chapters": [
+                {"title": "Chapter 1", "start_time": 1, "end_time": 2},
+            ]
+        }
+        self.assertIsNone(video_services.load_chapters_from_info_json(video=video, info_json_data=info_json_data))
+
+        qs = video.highlights.filter(source=models.Highlight.Sources.CHAPTERS).order_by('pk')
+        self.assertEqual(2, qs.count())
+
 
 
 class YtdlpServicesTests(TestCase):
