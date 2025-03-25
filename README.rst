@@ -2,7 +2,7 @@
 Welcome to django-vidar
 =======================
 
-.. |ci| image:: https://github.com/django-vidar/django-vidar/actions/workflows/django.yml/badge.svg
+.. |ci| image:: https://github.com/django-vidar/django-vidar/actions/workflows/django-vidar-tests.yml/badge.svg
     :target: https://github.com/django-vidar/django-vidar/actions
 .. |cov| image:: https://coveralls.io/repos/github/django-vidar/django-vidar/badge.svg?branch=master
     :target: https://coveralls.io/github/django-vidar/django-vidar?branch=master

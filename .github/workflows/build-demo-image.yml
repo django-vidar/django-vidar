@@ -1,8 +1,10 @@
 name: Build Demo Docker Image
 
 on:
-  workflow_call:
   workflow_dispatch:
+  push:
+    tags:
+      - '20*'
 
 jobs:
   build_demo_docker_image:
