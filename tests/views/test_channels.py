@@ -442,3 +442,128 @@ class ChannelDetailViewTests(TestCase):
         self.assertEqual(1, queryset.count())
         self.assertEqual(self.video2, queryset[0])
 
+
+class ChannelLivePlaylistsViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="view_channel"),
+            Permission.objects.get(codename="view_playlist")
+        )
+
+        self.channel = models.Channel.objects.create(name="video 1")
+
+        self.url = reverse('vidar:channel-playlists-live', args=[self.channel.pk])
+
+        self.client.force_login(self.user)
+
+    @patch("vidar.interactor.channel_playlists")
+    def test_permission_required(self, mock_func):
+        mock_func.return_value = {"entries": []}
+        """Ensure users without the necessary permissions cannot access the view."""
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+    @patch("vidar.interactor.channel_playlists")
+    def test_failure_to_obtain_live_playlists_redirects_to_object(self, mock_func):
+        mock_func.return_value = False
+
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(self.channel.get_absolute_url(), resp.url)
+
+    @patch("vidar.tasks.mirror_live_playlist")
+    @patch("vidar.interactor.channel_playlists")
+    def test_mirroring_form(self, mock_func, mock_task):
+        mock_func.return_value = {"entries": []}
+
+        resp = self.client.post(self.url, {
+            "mirror_playlists": True,
+            "mirror_playlists_hidden": True,
+            "mirror_playlists_crontab": "DAILY",
+            "mirror_playlists_restrict": True,
+            "force_mirror_now": True,
+        })
+
+        mock_task.delay.assert_called_once()
+
+
+class ChannelIndexOnlyViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission = Permission.objects.get(codename="view_channel")
+        self.user.user_permissions.add(self.permission)
+
+        self.channel = models.Channel.objects.create(index_videos=True)
+
+        self.url = reverse('vidar:channel-indexing-only', args=[self.channel.pk])
+
+        self.client.force_login(self.user)
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+    @patch("vidar.tasks.fully_index_channel")
+    def test_task_called(self, mock_task):
+
+        self.client.post(self.url, {
+            "limit": 10,
+        })
+
+        mock_task.delay.assert_called_with(pk=self.channel.pk, limit=10)
+
+    @patch("vidar.tasks.fully_index_channel")
+    def test_task_not_called(self, mock_task):
+        self.channel.index_videos = False
+        self.channel.save()
+
+        self.client.post(self.url, {
+            "limit": 10,
+        })
+
+        mock_task.delay.assert_not_called()
+
+
+class ChannelRescanViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission = Permission.objects.get(codename="view_channel")
+        self.user.user_permissions.add(self.permission)
+
+        self.channel = models.Channel.objects.create(index_videos=True)
+
+        self.url = reverse('vidar:channel-rescan', args=[self.channel.pk])
+
+        self.client.force_login(self.user)
+
+    @patch("vidar.tasks.trigger_channel_scanner_tasks")
+    def test_task_called(self, mock_task):
+
+        self.client.get(self.url)
+
+        mock_task.assert_called_with(channel=self.channel)
+
+    @patch("vidar.tasks.trigger_channel_scanner_tasks")
+    def test_task_not_called(self, mock_task):
+        self.channel.index_videos = False
+        self.channel.save()
+
+        self.client.get(self.url)
+
+        mock_task.assert_not_called()
