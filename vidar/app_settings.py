@@ -406,6 +406,8 @@ class AppSettings(object):
             for k in ",|;":
                 if k in proxies:
                     return proxies.split(k)
+            if proxies.startswith(("http:", "https:")):
+                return proxies
             return import_callable(proxies)
 
         raise ValueError("VIDAR_PROXIES must be: Iterable, a callable, or a dot notation path to a function.")

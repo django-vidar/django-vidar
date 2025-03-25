@@ -1,15 +1,9 @@
-import json
 import logging
 import pathlib
-import re
-import requests
 import shutil
 
-from django.conf import settings
 from django.core.files.base import ContentFile
 from django.utils import timezone
-
-from bs4 import BeautifulSoup
 
 from vidar import app_settings, exceptions, storages
 from vidar.helpers import channel_helpers
@@ -54,10 +48,6 @@ def cleanup_storage(channel, dry_run=False):
         channel_directory_name = schema_services.channel_directory_name(channel=channel).strip()
     except exceptions.DirectorySchemaInvalidError:
         log.info("Skipping channel directory cleanup, name is invalid")
-        return
-
-    if not channel_directory_name:
-        log.info(f"Skipping channel directory cleanup, name is invalid {channel_directory_name=}")
         return
 
     if channel_directory_name in ("/", "\\"):
@@ -190,147 +180,15 @@ def recently_scanned(channel):
 def delete_files(channel):
 
     # Prepare necessary variables to remove channel directory after removing the files.
-    deletable_directories = set()
+    deletable_directories = {}
     for x in [channel.thumbnail, channel.banner, channel.tvart]:
         if x and x.storage.exists(x.name):
+            if x.storage not in deletable_directories:
+                deletable_directories[x.storage] = set()
             parent_dir = pathlib.Path(x.path).parent
-            deletable_directories.add(parent_dir)
+            deletable_directories[x.storage].add(parent_dir)
             x.delete(save=False)
 
-    for directory in deletable_directories:
-        try:
-            directory.rmdir()
-        except (OSError, TypeError) as exc:
-            if "not empty" not in str(exc):
-                log.exception("Failure to delete channel directory")
-            else:
-                log.info(f"Failure to delete channel {directory=}")
-
-
-class ChannelScraper:
-
-    def __init__(self, channel_id):
-        self.channel_id = channel_id
-        self.soup = False
-        self.yt_json = False
-        self.json_data = False
-
-    def __str__(self):
-        return f"ChannelScraper({self.channel_id})"
-
-    def get_json(self):
-        """main method to return channel dict"""
-        self.get_soup()
-        self._extract_yt_json()
-        self._parse_channel_main()
-        self._parse_channel_meta()
-        return self.json_data
-
-    def get_soup(self):
-        """return soup from youtube"""
-        log.info(f"{self.channel_id}: scrape channel data from youtube")
-        url = f"https://www.youtube.com/channel/{self.channel_id}/about?hl=en"
-        requests_args = {
-            "cookies": {"CONSENT": "YES+xxxxxxxxxxxxxxxxxxxxxxxxxxx"},
-        }
-        if user_agent := getattr(settings, "REQUESTS_USER_AGENT", None):
-            requests_args["headers"] = {"User-Agent": user_agent}
-        if user_set_proxy := getattr(settings, "REQUESTS_PROXIES", None):
-            requests_args["proxies"] = user_set_proxy
-        response = requests.get(url, **requests_args)
-        if response.ok:
-            channel_page = response.text
-        else:
-            log.info(f"{self.channel_id}: failed to extract channel info")
-            raise ConnectionError
-        self.soup = BeautifulSoup(channel_page, "html.parser")
-
-    def _extract_yt_json(self):
-        """parse soup and get ytInitialData json"""
-        all_scripts = self.soup.find("body").find_all("script")
-        script_content = None
-        for script in all_scripts:
-            if "var ytInitialData = " in str(script):
-                script_content = str(script)
-                break
-        # extract payload
-        script_content = script_content.split("var ytInitialData = ")[1]
-        json_raw = script_content.rstrip(";</script>")
-        self.yt_json = json.loads(json_raw)
-
-    def _parse_channel_main(self):
-        """extract maintab values from scraped channel json data"""
-        main_tab = self.yt_json["header"]["c4TabbedHeaderRenderer"]
-        # build and return dict
-        self.json_data = {
-            "channel_active": True,
-            "channel_last_refresh": int(timezone.now().timestamp()),
-            "channel_subs": self._get_channel_subs(main_tab),
-            "channel_name": main_tab["title"],
-            "channel_banner_url": self._get_thumbnails(main_tab, "banner"),
-            "channel_tvart_url": self._get_thumbnails(main_tab, "tvBanner"),
-            "channel_id": self.channel_id,
-            "channel_subscribed": False,
-        }
-
-    @staticmethod
-    def _get_thumbnails(main_tab, thumb_name):
-        """extract banner url from main_tab"""
-        try:
-            all_banners = main_tab[thumb_name]["thumbnails"]
-            banner = sorted(all_banners, key=lambda k: k["width"])[-1]["url"]
-        except KeyError:
-            banner = False
-
-        return banner
-
-    @staticmethod
-    def _get_channel_subs(main_tab):
-        """process main_tab to get channel subs as int"""
-        channel_subs = 0
-        try:
-            sub_text_simple = main_tab["subscriberCountText"]["simpleText"]
-            sub_text = sub_text_simple.split(" ")[0]
-            if sub_text[-1] == "K":
-                channel_subs = int(float(sub_text.replace("K", "")) * 1000)
-            elif sub_text[-1] == "M":
-                channel_subs = int(float(sub_text.replace("M", "")) * 1000000)
-            elif int(sub_text) >= 0:
-                channel_subs = int(sub_text)
-            else:
-                message = f"{sub_text} not dealt with"
-                print(message)
-        except KeyError:
-            pass
-
-        return channel_subs
-
-    def _parse_channel_meta(self):
-        """extract meta tab values from channel payload"""
-        # meta tab
-        meta_tab = self.yt_json["metadata"]["channelMetadataRenderer"]
-        all_thumbs = meta_tab["avatar"]["thumbnails"]
-        thumb_url = sorted(all_thumbs, key=lambda k: k["width"])[-1]["url"]
-        # stats tab
-        renderer = "twoColumnBrowseResultsRenderer"
-        all_tabs = self.yt_json["contents"][renderer]["tabs"]
-        for tab in all_tabs:
-            if "tabRenderer" in tab.keys():
-                if tab["tabRenderer"]["title"] == "About":
-                    about_tab = tab["tabRenderer"]["content"]["sectionListRenderer"]["contents"][0][
-                        "itemSectionRenderer"
-                    ]["contents"][0]["channelAboutFullMetadataRenderer"]
-                    break
-        try:
-            channel_views_text = about_tab["viewCountText"]["simpleText"]
-            channel_views = int(re.sub(r"\D", "", channel_views_text))
-        except (KeyError, UnboundLocalError):
-            channel_views = None
-
-        self.json_data.update(
-            {
-                "channel_description": meta_tab["description"],
-                "channel_thumb_url": thumb_url,
-                "channel_views": channel_views,
-            }
-        )
+    for storage, directories in deletable_directories.items():
+        for directory in directories:
+            storage.delete(directory)

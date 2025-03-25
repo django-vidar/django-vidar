@@ -27,8 +27,7 @@ from vidar.services import (
     redis_services,
     notification_services,
 )
-from vidar.storages import vidar_storage
-from vidar.helpers import video_helpers
+from vidar.helpers import video_helpers, channel_helpers
 
 UserModel = get_user_model()
 
@@ -555,15 +554,29 @@ class ChannelServicesTests(TestCase):
             self.assertIsNone(does_not_exist)
             mock_info.assert_called_with('Channel directory does not exist')
 
-    def test_cleanup_storage_directory_successful(self):
+    @patch("shutil.rmtree")
+    def test_cleanup_storage_directory_successful(self, mock_rmtree):
         channel = models.Channel.objects.create(name='test channel')
 
         logger = logging.getLogger('vidar.services.channel_services')
         with patch.object(logger, 'info') as mock_info, patch.object(pathlib.Path, 'exists') as mock_path:
             mock_path.return_value = True
-            returns_true = channel_services.cleanup_storage(channel=channel, dry_run=True)
+            returns_true = channel_services.cleanup_storage(channel=channel)
             self.assertTrue(returns_true)
             mock_info.assert_called_with('Channel directory exists, deleting remaining data.')
+            mock_rmtree.assert_called_once()
+
+    def test_cleanup_storage_directory_slash_schema_does_not_remove(self):
+        channel = models.Channel.objects.create(
+            name='test channel',
+            directory_schema="/",
+        )
+
+        logger = logging.getLogger('vidar.services.channel_services')
+        with patch.object(logger, 'info') as mock_info, patch.object(pathlib.Path, 'exists') as mock_path:
+            mock_path.return_value = True
+            self.assertIsNone(channel_services.cleanup_storage(channel=channel, dry_run=True))
+            mock_info.assert_called_with('Skipping channel directory cleanup, it may remove other data')
 
     def test_set_channel_details_from_ytdlp(self):
         response_data = {
@@ -676,6 +689,161 @@ class ChannelServicesTests(TestCase):
         obj = c.scan_history.create()
 
         self.assertEqual(obj, channel_services.recently_scanned(channel=c))
+
+    def test_recalculate_video_sort_ordering(self):
+        channel = models.Channel.objects.create(
+            provider_object_id='tests',
+        )
+
+        video1 = models.Video.objects.create(
+            channel=channel,
+            upload_date=date_to_aware_date('2024-05-06'),
+        )
+        self.assertEqual(1, video1.sort_ordering)
+        video2 = models.Video.objects.create(
+            channel=channel,
+            upload_date=date_to_aware_date('2012-05-06'),
+        )
+        self.assertEqual(1, video1.sort_ordering)
+
+        channel_services.recalculate_video_sort_ordering(channel=channel)
+
+        video1.refresh_from_db()
+        video2.refresh_from_db()
+
+        self.assertEqual(2, video1.sort_ordering)
+        self.assertEqual(1, video2.sort_ordering)
+
+    def test_no_longer_active(self):
+        channel = models.Channel.objects.create()
+        channel_services.no_longer_active(channel=channel)
+
+        self.assertEqual("Banned", channel.status)
+        self.assertEqual("", channel.scanner_crontab)
+        self.assertFalse(channel.index_videos)
+        self.assertFalse(channel.index_shorts)
+        self.assertFalse(channel.index_livestreams)
+        self.assertFalse(channel.full_archive)
+        self.assertIsNone(channel.full_archive_after)
+        self.assertFalse(channel.mirror_playlists)
+        self.assertIsNone(channel.swap_index_videos_after)
+        self.assertIsNone(channel.swap_index_shorts_after)
+        self.assertIsNone(channel.swap_index_livestreams_after)
+
+    def test_apply_exception_status_terminated(self):
+        channel = models.Channel.objects.create()
+
+        channel_services.apply_exception_status(channel=channel, exc="This account was terminated")
+        self.assertEqual(channel_helpers.ChannelStatuses.TERMINATED, channel.status)
+        self.assertEqual("", channel.scanner_crontab)
+        self.assertFalse(channel.index_videos)
+        self.assertFalse(channel.index_shorts)
+        self.assertFalse(channel.index_livestreams)
+        self.assertFalse(channel.full_archive)
+        self.assertIsNone(channel.full_archive_after)
+        self.assertFalse(channel.mirror_playlists)
+        self.assertIsNone(channel.swap_index_videos_after)
+        self.assertIsNone(channel.swap_index_shorts_after)
+        self.assertIsNone(channel.swap_index_livestreams_after)
+
+    def test_apply_exception_status_terminated(self):
+        channel = models.Channel.objects.create()
+
+        channel_services.apply_exception_status(channel=channel, exc="This account was terminated")
+        self.assertEqual(channel_helpers.ChannelStatuses.TERMINATED, channel.status)
+        self.assertEqual("", channel.scanner_crontab)
+        self.assertFalse(channel.index_videos)
+        self.assertFalse(channel.index_shorts)
+        self.assertFalse(channel.index_livestreams)
+        self.assertFalse(channel.full_archive)
+        self.assertIsNone(channel.full_archive_after)
+        self.assertFalse(channel.mirror_playlists)
+        self.assertIsNone(channel.swap_index_videos_after)
+        self.assertIsNone(channel.swap_index_shorts_after)
+        self.assertIsNone(channel.swap_index_livestreams_after)
+
+    def test_apply_exception_status_removed(self):
+        channel = models.Channel.objects.create()
+
+        channel_services.apply_exception_status(channel=channel, exc="This account violated community guidelines")
+        self.assertEqual(channel_helpers.ChannelStatuses.REMOVED, channel.status)
+        self.assertEqual("", channel.scanner_crontab)
+        self.assertFalse(channel.index_videos)
+        self.assertFalse(channel.index_shorts)
+        self.assertFalse(channel.index_livestreams)
+        self.assertFalse(channel.full_archive)
+        self.assertIsNone(channel.full_archive_after)
+        self.assertFalse(channel.mirror_playlists)
+        self.assertIsNone(channel.swap_index_videos_after)
+        self.assertIsNone(channel.swap_index_shorts_after)
+        self.assertIsNone(channel.swap_index_livestreams_after)
+
+    def test_apply_exception_status_does_not_exist(self):
+        channel = models.Channel.objects.create()
+
+        channel_services.apply_exception_status(channel=channel, exc="This channel does not exist")
+        self.assertEqual(channel_helpers.ChannelStatuses.NO_LONGER_EXISTS, channel.status)
+        self.assertEqual("", channel.scanner_crontab)
+        self.assertFalse(channel.index_videos)
+        self.assertFalse(channel.index_shorts)
+        self.assertFalse(channel.index_livestreams)
+        self.assertFalse(channel.full_archive)
+        self.assertIsNone(channel.full_archive_after)
+        self.assertFalse(channel.mirror_playlists)
+        self.assertIsNone(channel.swap_index_videos_after)
+        self.assertIsNone(channel.swap_index_shorts_after)
+        self.assertIsNone(channel.swap_index_livestreams_after)
+
+    def test_delete_files(self):
+        channel = models.Channel.objects.create(name="channel 1")
+        channel.thumbnail.save("valid/thumbnail.jpg", SimpleUploadedFile("valid/thumbnail.jpg", b"thumbnail.jpg"))
+        channel_services.delete_files(channel=channel)
+        self.assertFalse(channel.thumbnail)
+
+    def test_generate_filepaths_for_storage(self):
+        channel = models.Channel.objects.create(name="channel 1")
+
+        new_full_filepath, new_storage_path = channel_services.generate_filepaths_for_storage(
+            channel=channel,
+            field=channel.thumbnail,
+            filename="thumbnail.jpg",
+            upload_to=channel_helpers.upload_to_thumbnail,
+        )
+
+        self.assertEqual("channel 1/thumbnail.jpg", str(new_storage_path))
+
+    @patch("vidar.services.image_services.download_and_convert_to_jpg")
+    def test_set_thumbnail(self, mock_func):
+        mock_func.return_value = (b"blah", "jpg")
+
+        channel = models.Channel.objects.create(name="channel 1")
+        channel_services.set_thumbnail(channel=channel, url="test")
+
+        mock_func.assert_called_once()
+
+        self.assertEqual("channel 1/channel 1.jpg", channel.thumbnail.name)
+
+    @patch("vidar.services.image_services.download_and_convert_to_jpg")
+    def test_set_banner(self, mock_func):
+        mock_func.return_value = (b"blah", "jpg")
+
+        channel = models.Channel.objects.create(name="channel 1")
+        channel_services.set_banner(channel=channel, url="test")
+
+        mock_func.assert_called_once()
+
+        self.assertEqual("channel 1/banner.jpg", channel.banner.name)
+
+    @patch("vidar.services.image_services.download_and_convert_to_jpg")
+    def test_set_tvart(self, mock_func):
+        mock_func.return_value = (b"blah", "jpg")
+
+        channel = models.Channel.objects.create(name="channel 1")
+        channel_services.set_tvart(channel=channel, url="test")
+
+        mock_func.assert_called_once()
+
+        self.assertEqual("channel 1/tvart.jpg", channel.tvart.name)
 
 
 class VideoServicesTests(TestCase):
