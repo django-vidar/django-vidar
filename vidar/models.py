@@ -136,7 +136,7 @@ class Channel(models.Model):
     delete_videos_after_days = models.PositiveIntegerField(default=0)
 
     swap_index_shorts_after = models.DateTimeField(null=True, blank=True)
-    index_shorts = models.BooleanField(default=True, help_text="Should shorts be indexed?")
+    index_shorts = models.BooleanField(default=False, help_text="Should shorts be indexed?")
     download_shorts = models.BooleanField(default=False, help_text="Should shorts be downloaded?")
     last_scanned_shorts = models.DateTimeField(null=True, blank=True)
     scanner_limit_shorts = models.PositiveIntegerField(

@@ -51,7 +51,7 @@ class Migration(migrations.Migration):
                 ('download_livestreams', models.BooleanField(default=False, help_text='Should Livestreams be downloaded?')),
                 ('download_shorts', models.BooleanField(default=False, help_text='Should shorts be downloaded?')),
                 ('index_livestreams', models.BooleanField(default=False, help_text='Should livestreams be indexed?')),
-                ('index_shorts', models.BooleanField(default=True, help_text='Should shorts be indexed?')),
+                ('index_shorts', models.BooleanField(default=False, help_text='Should shorts be indexed?')),
                 ('last_scanned_livestreams', models.DateTimeField(blank=True, null=True)),
                 ('last_scanned_shorts', models.DateTimeField(blank=True, null=True)),
                 ('index_videos', models.BooleanField(default=True, help_text='Should videos be indexed?')),
