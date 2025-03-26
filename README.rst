@@ -20,6 +20,10 @@ Requirements
 You will need to **use django v5.1.0 or greater** as the template files make use of the
 `querystring <https://docs.djangoproject.com/en/5.1/ref/templates/builtins/#querystring>`_ templatetag.
 
+I develop and run my site on postgresql 15, the tests all run on the same version 15. I've tried running the
+tests on sqlite and some fail due to true/false type differences related to user
+watch history and its calculations.
+
 Python::
 
     django>=5.1
@@ -454,6 +458,10 @@ settings.py and will bypass the settings getter system.
 
 ``VIDAR_REDIS_URL`` (default: ``None``)
     URL to connect to redis, will use ``settings.CELERY_BROKER_URL`` if it exists
+
+    Note: ``VIDAR_REDIS_URL`` does not use settings getter, it uses ``django.conf.settings``
+    directly. Place your configuration within your projects ``settings.py``.
+
 
 ``VIDAR_REDIS_CHANNEL_INDEXING`` (default: ``True``)
     Update redis messaging when a Channel is being indexed

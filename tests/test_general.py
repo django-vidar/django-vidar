@@ -3,6 +3,7 @@ import json
 import pathlib
 
 from unittest.mock import patch, call
+from django_celery_beat.models import PeriodicTask
 
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.shortcuts import reverse
@@ -10,6 +11,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission, Group
 from django.utils import timezone
 from django.db.models import Case
+from django.core.management import call_command
 
 from example import settings
 from vidar import models, forms, renamers, json_encoders, exceptions, app_settings, interactor, utils
@@ -837,6 +839,14 @@ class UtilsTests(TestCase):
 
     @override_settings(
         VIDAR_PROXIES_DEFAULT="default proxy",
+        VIDAR_PROXIES='http://example.com'
+    )
+    def test_get_proxy_proxies_supplied_as_single_string(self):
+        self.assertEqual("http://example.com", utils.get_proxy())
+        self.assertEqual("default proxy", utils.get_proxy(previous_proxies=['http://example.com']))
+
+    @override_settings(
+        VIDAR_PROXIES_DEFAULT="default proxy",
         VIDAR_PROXIES='proxy1;proxy2;proxy3;proxy4'
     )
     def test_get_proxy_proxies_supplied_as_semicolon_delim_string(self):
@@ -902,3 +912,46 @@ class UtilsTests(TestCase):
         self.assertEqual(channel1, channels[0])
         self.assertEqual(channel3, channels[1])
         self.assertEqual(channel2, channels[2])
+
+
+class CommandTests(TestCase):
+    def test_init_command(self):
+        self.assertFalse(PeriodicTask.objects.exists())
+        call_command('init_vidar', '--init-settings')
+        self.assertTrue(PeriodicTask.objects.exists())
+
+        original_name = "changed in tests"
+
+        pt = PeriodicTask.objects.first()
+        pt.name = original_name
+        pt.save()
+
+        call_command('init_vidar', '--update-tasks')
+
+        pt.refresh_from_db()
+
+        self.assertNotEqual(original_name, pt.name)
+
+    def test_init_command_user_added_another(self):
+        self.assertFalse(PeriodicTask.objects.exists())
+        call_command('init_vidar', '--init-settings')
+        self.assertTrue(PeriodicTask.objects.exists())
+
+        original_name = "changed in tests"
+
+        pt = PeriodicTask.objects.first()
+        pt.name = original_name
+        pt.save()
+
+        pt.pk = None
+        pt.name = f"{original_name} second"
+        pt.save(force_insert=True)
+
+        call_command('init_vidar', '--update-tasks')
+
+        values = ['changed in tests', 'changed in tests second']
+        for pt in PeriodicTask.objects.filter(task=pt.task):
+            self.assertIn(pt.name, values)
+            values.remove(pt.name)
+
+        self.assertFalse(values)

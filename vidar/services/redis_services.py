@@ -29,9 +29,9 @@ def _is_permitted_cached(name):
     _CALL_COUNTER[name]["count"] += 1
 
     if _CALL_COUNTER[name]["previous"] is None:
-        _CALL_COUNTER[name]["previous"] = getattr(app_settings, name)
+        _CALL_COUNTER[name]["previous"] = bool(getattr(app_settings, name))
     elif _CALL_COUNTER[name]["count"] % 100 == 0:
-        _CALL_COUNTER[name]["previous"] = getattr(app_settings, name)
+        _CALL_COUNTER[name]["previous"] = bool(getattr(app_settings, name))
     return _CALL_COUNTER[name]["previous"]
 
 
@@ -58,7 +58,7 @@ class RedisMessaging:
         self.conn = None
         if url := getattr(settings, "VIDAR_REDIS_URL", None):
             self.conn = redis.from_url(url)
-        elif url := getattr(settings, "CELERY_BROKER_URL", None):
+        elif url := getattr(settings, "CELERY_BROKER_URL", None):  # pragma: no cover
             self.conn = redis.from_url(url)
 
     CHANNELS = [
@@ -96,39 +96,6 @@ class RedisMessaging:
 
         return json_str
 
-    def list_items(self, query):
-        """list all matches"""
-        reply = self.conn.execute_command("KEYS", self.NAME_SPACE + query + "*")
-        all_matches = [i.decode().lstrip(self.NAME_SPACE) for i in reply]
-        all_results = []
-        for match in all_matches:
-            json_str = self.get_message(match)
-            all_results.append(json_str)
-
-        return all_results
-
-    def del_message(self, key):
-        """delete key from redis"""
-        response = self.conn.execute_command("DEL", self.NAME_SPACE + key)
-        return response
-
-    def get_lock(self, lock_key):
-        """handle lock for task management"""
-        redis_lock = self.conn.lock(self.NAME_SPACE + lock_key)
-        return redis_lock
-
-    def get_progress(self):
-        """get a list of all progress messages"""
-        all_messages = []
-        for channel in self.CHANNELS:
-            key = "message:" + channel
-            reply = self.conn.execute_command("GET", self.NAME_SPACE + key)
-            if reply:
-                json_str = json.loads(reply)
-                all_messages.append(json_str)
-
-        return all_messages
-
     def get_all_messages(self):
         messages = []
         for key in self.conn.scan_iter(f"{self.NAME_SPACE}*"):
@@ -148,12 +115,6 @@ class RedisMessaging:
                 messages.append(reply)
 
         return messages
-
-    def exists(self, key):
-        return self.exists_direct(self.NAME_SPACE + key)
-
-    def exists_direct(self, key):
-        return self.conn.exists(key)
 
     def flushdb(self):
         return self.conn.execute_command("FLUSHDB")

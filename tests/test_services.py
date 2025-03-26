@@ -382,6 +382,10 @@ class CrontabServicesTests(SimpleTestCase):
         output = crontab_services.generate_weekly(minute=10, hour=[2, 3], day_of_week=None)
         self.assertRegex(output, r'^10 [2,3] \* \* [0-7]$')
 
+    def test_generate_weekly_multiple_days(self):
+        output = crontab_services.generate_weekly(minute=10, hour=[2, 3], day_of_week=[3,6])
+        self.assertRegex(output, r'^10 [2,3] \* \* [3,6]$')
+
     def test_generate_monthly(self):
         output = crontab_services.generate_monthly(minute=10, hour=2, day=4)
         self.assertEqual('10 2 4 * *', output)
@@ -391,7 +395,6 @@ class CrontabServicesTests(SimpleTestCase):
 
     def test_generate_biyearly(self):
         output = crontab_services.generate_biyearly(minute=10, hour=2, day=4)
-        print(output)
         self.assertRegex(output, r'^10 2 4 \d{1,2},\d{1,2} \*$')
 
         output = crontab_services.generate_biyearly(minute=10, hour=[2, 3], day=4)
@@ -553,6 +556,16 @@ class ChannelServicesTests(TestCase):
             does_not_exist = channel_services.cleanup_storage(channel=channel, dry_run=True)
             self.assertIsNone(does_not_exist)
             mock_info.assert_called_with('Channel directory does not exist')
+
+    @patch("vidar.storages.vidar_storage.path")
+    def test_cleanup_storage_directory_cancelled_matches_root_media_path(self, mock_path):
+        mock_path.return_value = pathlib.Path(settings.VIDAR_MEDIA_ROOT)
+        channel = models.Channel.objects.create(name='test channel')
+
+        logger = logging.getLogger('vidar.services.channel_services')
+        with patch.object(logger, 'info') as mock_info:
+            self.assertIsNone(channel_services.cleanup_storage(channel=channel, dry_run=True))
+            mock_info.assert_called_with('Skipping channel directory cleanup, directory path returned same as primary storage path.')
 
     @patch("shutil.rmtree")
     def test_cleanup_storage_directory_successful(self, mock_rmtree):
@@ -2504,6 +2517,10 @@ class YtdlpServicesDLPFormatsTest(SimpleTestCase):
     def test_get_highest_quality_from_video_dlp_formats(self):
         self.assertEqual(2160, ytdlp_services.get_highest_quality_from_video_dlp_formats(self.dlp_formats))
 
+    def test_get_highest_quality_from_video_dlp_formats_no_formats_raises(self):
+        with self.assertRaises(ValueError):
+            ytdlp_services.get_highest_quality_from_video_dlp_formats([])
+
     def test_is_quality_at_higher_quality_than_possible_from_dlp_formats(self):
         self.assertFalse(ytdlp_services.is_quality_at_higher_quality_than_possible_from_dlp_formats(self.dlp_formats, 144))
         self.assertFalse(ytdlp_services.is_quality_at_higher_quality_than_possible_from_dlp_formats(self.dlp_formats, 240))
@@ -2600,6 +2617,10 @@ class YtdlpServicesDLPResponseTest(SimpleTestCase):
         self.assertEqual({2160}, ytdlp_services.get_higher_qualities_from_video_dlp_response(dlp_response, 1440))
         self.assertEqual(set(), ytdlp_services.get_higher_qualities_from_video_dlp_response(dlp_response, 2160))
 
+    def test_fixture_get_higher_qualities_from_video_dlp_response_no_formats_raises_error(self):
+        with self.assertRaises(ValueError):
+            ytdlp_services.get_higher_qualities_from_video_dlp_response({"formats": [], "format_id": ""})
+
     def test_fixture_get_video_downloaded_quality_from_dlp_response(self):
         dlp_response = self.get_fixture_data()
         self.assertEqual(144, ytdlp_services.get_video_downloaded_quality_from_dlp_response(dlp_response))
@@ -2621,6 +2642,13 @@ class YtdlpServicesDLPResponseTest(SimpleTestCase):
             ]
         }
         self.assertFalse(ytdlp_services.is_video_at_highest_quality_from_dlp_response(lower_quality_response))
+
+    def test_is_video_at_highest_quality_from_dlp_response_raises_without_formats(self):
+        with self.assertRaises(ValueError):
+            ytdlp_services.is_video_at_highest_quality_from_dlp_response({
+                "format_id": "612+614",
+                "formats": [],
+            })
 
     def test_get_possible_qualities_from_dlp_formats(self):
         dlp_formats = [
@@ -2763,6 +2791,13 @@ class RedisServicesMockedTests(TestCase):
     def test_progress_hook_download_status_receives_invalid_value(self):
         with override_settings(VIDAR_REDIS_VIDEO_DOWNLOADING=True):
             self.assertIsNone(redis_services.progress_hook_download_status({}))
+
+    @patch("vidar.app_settings.AppSettings.REDIS_ENABLED")
+    def test_is_permitted_cached(self, mock_property):
+        mock_property.__bool__.return_value = True
+        for x in range(105):
+            self.assertTrue(redis_services._is_permitted_cached("REDIS_ENABLED"))
+        self.assertEqual(2, mock_property.__bool__.call_count)
 
 
 @override_settings(VIDAR_REDIS_ENABLED=True)
@@ -2917,6 +2952,46 @@ class RedisServicesLiveTests(TestCase):
             },
         ]
         self.assertCountEqual(expected, output)
+
+    def test_multiple_messages_in_redis_single_app(self):
+        channel = models.Channel.objects.create(name='test channel')
+        playlist = models.Playlist.objects.create(title='test playlist')
+
+        self.assertTrue(redis_services.channel_indexing('[download] msg', channel=channel))
+        self.assertTrue(redis_services.playlist_indexing('[download] msg', playlist=playlist))
+
+        output = self.redis.get_app_messages("vidar:channel-index")
+
+        self.assertEqual(1, len(output))
+
+        expected = [
+            {
+                'status': 'message:vidar',
+                'level': 'info',
+                'title': 'Processing Channel Index',
+                'message': f'{channel}: [download] msg',
+                'url': channel.get_absolute_url(),
+                'url_text': 'Channel'
+            },
+        ]
+        self.assertCountEqual(expected, output)
+
+    def test_get_message_invalid_key(self):
+        output = self.redis.get_message("in-tests")
+        self.assertDictEqual({"status": False}, output)
+
+        output = self.redis.get_direct_message("in-tests")
+        self.assertDictEqual({"status": False}, output)
+
+    def test_set_get_message(self):
+        value = {"message": "value"}
+        self.redis.set_message("test-id", value)
+
+        output = self.redis.get_message("test-id")
+        self.assertDictEqual(value, output)
+
+        output = self.redis.get_direct_message("vidar:test-id")
+        self.assertDictEqual(value, output)
 
 
 class ImageServicesTests(SimpleTestCase):

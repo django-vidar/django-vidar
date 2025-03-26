@@ -90,6 +90,7 @@ class Command(BaseCommand):
 
                 pt = PeriodicTask.objects.get(task=item["task"])
                 self.stdout.write(f"Updating {item['task']}")
+                pt.name = item['name']
                 pt.enabled = item.get("enabled", True)
                 pt.crontab.minute = minute
                 pt.crontab.hour = hour
