@@ -165,8 +165,7 @@ def count_crontab_used():
 
 
 def convert_timestamp_to_datetime(timestamp, tz=datetime.timezone.utc):
-    timestamp = timezone.datetime.fromtimestamp(timestamp)
-    return timezone.make_aware(timestamp, tz)
+    return timezone.datetime.fromtimestamp(timestamp, tz)
 
 
 def get_proxy(previous_proxies: list = None, instance=None, attempt: int = None):

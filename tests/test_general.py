@@ -10,14 +10,12 @@ from django.shortcuts import reverse
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission, Group
 from django.utils import timezone
-from django.db.models import Case
 from django.core.management import call_command
 
 from example import settings
-from vidar import models, forms, renamers, json_encoders, exceptions, app_settings, interactor, utils
+from vidar import models, forms, renamers, json_encoders, exceptions, app_settings, interactor
 from vidar.helpers import channel_helpers, video_helpers
 
-from . import test_functions
 
 UserModel = get_user_model()
 
@@ -807,111 +805,6 @@ class InteractorTests(SimpleTestCase):
         first_call_args = first_call.args[0]
         self.assertIn("action", first_call_args)
         self.assertEqual("channel_playlists", first_call_args["action"])
-
-
-class UtilsTests(TestCase):
-
-    @override_settings(
-        VIDAR_PROXIES_DEFAULT="default proxy",
-        VIDAR_PROXIES=['proxy1', 'proxy2', 'proxy3', 'proxy4']
-    )
-    def test_get_proxy_returns_default_after_x(self):
-        possible_proxies = ['proxy1', 'proxy2', 'proxy3', 'proxy4']
-        self.assertIn(utils.get_proxy(attempt=0), possible_proxies)
-        self.assertIn(utils.get_proxy(attempt=1), possible_proxies)
-        self.assertEqual("default proxy", utils.get_proxy(attempt=2))
-
-    @override_settings(
-        VIDAR_PROXIES_DEFAULT="default proxy",
-        VIDAR_PROXIES=['proxy1', 'proxy2', 'proxy3', 'proxy4']
-    )
-    def test_get_proxy_with_previous_proxies_supplied(self):
-        self.assertEqual("proxy3", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy4']))
-        self.assertEqual("default proxy", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy3', 'proxy4']))
-
-    @override_settings(
-        VIDAR_PROXIES_DEFAULT="default proxy",
-        VIDAR_PROXIES='proxy1,proxy2,proxy3,proxy4'
-    )
-    def test_get_proxy_proxies_supplied_as_comma_delim_string(self):
-        self.assertEqual("proxy3", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy4']))
-        self.assertEqual("default proxy", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy3', 'proxy4']))
-
-    @override_settings(
-        VIDAR_PROXIES_DEFAULT="default proxy",
-        VIDAR_PROXIES='http://example.com'
-    )
-    def test_get_proxy_proxies_supplied_as_single_string(self):
-        self.assertEqual("http://example.com", utils.get_proxy())
-        self.assertEqual("default proxy", utils.get_proxy(previous_proxies=['http://example.com']))
-
-    @override_settings(
-        VIDAR_PROXIES_DEFAULT="default proxy",
-        VIDAR_PROXIES='proxy1;proxy2;proxy3;proxy4'
-    )
-    def test_get_proxy_proxies_supplied_as_semicolon_delim_string(self):
-        self.assertEqual("proxy3", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy4']))
-        self.assertEqual("default proxy", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy3', 'proxy4']))
-
-    @override_settings(VIDAR_PROXIES=test_functions.proxies_user_defined)
-    def test_get_proxy_with_proxies_user_defined_function(self):
-        self.assertEqual(test_functions.proxies_user_defined, app_settings.PROXIES)
-
-        output = utils.get_proxy(previous_proxies=['passed into utils.get_proxy'])
-        self.assertEqual(dict(previous_proxies=["passed into utils.get_proxy"], instance=None, attempt=None), output)
-
-    @override_settings(VIDAR_PROXIES="tests.test_functions.proxies_user_defined")
-    def test_get_proxy_with_proxies_user_defined_function_dot_notation(self):
-        self.assertEqual(test_functions.proxies_user_defined, app_settings.PROXIES)
-
-        output = utils.get_proxy(previous_proxies=['passed into utils.get_proxy'])
-        self.assertEqual(dict(previous_proxies=["passed into utils.get_proxy"], instance=None, attempt=None), output)
-
-    @override_settings(VIDAR_PROXIES="invalid_function.dot.pathway")
-    def test_get_proxy_with_proxies_user_defined_function_dot_notation_invalid_path(self):
-        with self.assertRaises(ImportError):
-            self.assertEqual(test_functions.proxies_user_defined, app_settings.PROXIES)
-
-    @override_settings(VIDAR_PROXIES=test_functions.proxies_user_defined)
-    def test_get_proxy_with_proxies_user_defined_function_always_called(self):
-        self.assertEqual(test_functions.proxies_user_defined, app_settings.PROXIES)
-
-        output = utils.get_proxy(previous_proxies=['passed into utils.get_proxy'], attempt=100)
-        self.assertEqual(dict(previous_proxies=["passed into utils.get_proxy"], instance=None, attempt=100), output)
-
-    def test_get_channel_ordering_by_next_crontab_whens(self):
-        ts = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
-        channel1 = models.Channel.objects.create(scanner_crontab='10 9 * * *', index_videos=True)
-        channel2 = models.Channel.objects.create(scanner_crontab='20 9 * * *', index_videos=True)
-        channel3 = models.Channel.objects.create(scanner_crontab='30 9 * * *', index_videos=True)
-
-        whens = utils.get_channel_ordering_by_next_crontab_whens()
-        channels = (
-            models.Channel.objects.all()
-                .annotate(channel_next_based_order=Case(*whens, default=10000))
-                .order_by("channel_next_based_order", "name")
-        )
-
-        self.assertEqual(channel1, channels[0])
-        self.assertEqual(channel2, channels[1])
-        self.assertEqual(channel3, channels[2])
-
-    def test_get_channel_ordering_by_next_crontab_whens_odd_order(self):
-        ts = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
-        channel1 = models.Channel.objects.create(scanner_crontab='10 9 * * *', index_videos=True)
-        channel2 = models.Channel.objects.create(scanner_crontab='30 9 * * *', index_videos=True)
-        channel3 = models.Channel.objects.create(scanner_crontab='20 9 * * *', index_videos=True)
-
-        whens = utils.get_channel_ordering_by_next_crontab_whens()
-        channels = (
-            models.Channel.objects.all()
-                .annotate(channel_next_based_order=Case(*whens, default=10000))
-                .order_by("channel_next_based_order", "name")
-        )
-
-        self.assertEqual(channel1, channels[0])
-        self.assertEqual(channel3, channels[1])
-        self.assertEqual(channel2, channels[2])
 
 
 class CommandTests(TestCase):

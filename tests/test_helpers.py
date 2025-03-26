@@ -287,7 +287,7 @@ class VideoHelpersTests(TestCase):
     def test_video_upload_to_side_by_side(self):
         video = models.Video.objects.create(title="Test Video 1")
         output = video_helpers.video_upload_to_side_by_side(instance=video, filename="test.mp4")
-        self.assertEqual("public/2025/test.mp4", str(output))
+        self.assertEqual(f"public/{timezone.now().year}/test.mp4", str(output))
 
         channel = models.Channel.objects.create(name="test channel")
         video = models.Video.objects.create(

@@ -1957,7 +1957,7 @@ class VideoServicesTests(TestCase):
         with patch.object(pathlib.Path, "open", mocked_open), patch.object(pathlib.Path, "unlink") as mock_unlink:
             video_services.save_infojson_file(video=video, downloaded_file_data=dfd, save=False)
 
-        self.assertEqual("public/2025/- video 1 [test-id].info.json", video.info_json.name)
+        self.assertEqual(f"public/{timezone.now().year}/- video 1 [test-id].info.json", video.info_json.name)
 
     def test_load_chapters_from_info_json_as_file(self):
         video = models.Video.objects.create()
