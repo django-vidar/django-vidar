@@ -156,7 +156,6 @@ def check_missed_channel_scans_since_last_ran(start=None, end=None, delta=None, 
     processed_playlists = []
 
     while start <= end:
-        print(start)
 
         output = trigger_crontab_scans(
             now=start,
