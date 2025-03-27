@@ -1183,7 +1183,7 @@ def download_provider_video_comments(self, pk, all_comments=False):
     default_retry_delay=5,
     queue="queue-vidar",
 )
-def subscribe_to_channel(self, channel_id):
+def subscribe_to_channel(self, channel_id, sleep=True):
 
     obj = Channel.objects.get(provider_object_id=channel_id)
 
@@ -1196,7 +1196,8 @@ def subscribe_to_channel(self, channel_id):
 
     update_channel_banners.delay(obj.pk)
 
-    time.sleep(1)
+    if sleep:  # pragma: no cover
+        time.sleep(1)
 
     Playlist.objects.filter(channel_provider_object_id=obj.provider_object_id).update(channel=obj)
     Video.objects.filter(channel_provider_object_id=obj.provider_object_id, channel__isnull=True).update(channel=obj)
