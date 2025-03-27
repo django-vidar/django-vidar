@@ -176,14 +176,14 @@ class VideoListViewTests(TestCase):
         self.video1 = models.Video.objects.create(
             title="video 1",
             provider_object_id="test-video-1",
-            date_added_to_system=date_to_aware_date('2025-01-01'),
+            starred=date_to_aware_date('2025-01-01'),
             date_downloaded=date_to_aware_date('2025-02-10'),
             file_size=200,
         )
         self.video2 = models.Video.objects.create(
             title="video 2",
             provider_object_id="test-video-2",
-            date_added_to_system=date_to_aware_date('2025-01-10'),
+            starred=date_to_aware_date('2025-01-10'),
             date_downloaded=date_to_aware_date('2025-02-01'),
             file_size=100
         )
@@ -204,12 +204,12 @@ class VideoListViewTests(TestCase):
 
     def test_ordering(self):
 
-        resp = self.client.get(self.url + "?o=date_added_to_system")
+        resp = self.client.get(self.url + "?o=starred")
         queryset = resp.context_data["object_list"]
         self.assertEqual(self.video1, queryset[0])
         self.assertEqual(self.video2, queryset[1])
 
-        resp = self.client.get(self.url + "?o=-date_added_to_system")
+        resp = self.client.get(self.url + "?o=-starred")
         queryset = resp.context_data["object_list"]
         self.assertEqual(self.video1, queryset[1])
         self.assertEqual(self.video2, queryset[0])
@@ -221,8 +221,9 @@ class VideoListViewTests(TestCase):
 
         resp = self.client.get(self.url + "?starred")
         queryset = resp.context_data["object_list"]
-        self.assertEqual(1, queryset.count())
+        self.assertEqual(3, queryset.count())
         self.assertIn(video_starred, queryset)
+        self.assertNotIn(video_watched, queryset)
 
         resp = self.client.get(self.url + "?watched")
         queryset = resp.context_data["object_list"]
