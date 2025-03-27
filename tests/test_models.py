@@ -606,6 +606,27 @@ class VideoTests(TestCase):
         self.assertFalse(video.is_livestream)
         self.assertTrue(video.is_video)
 
+    def test_set_details_from_yt_dlp_response_type_video_flag_direct_params(self):
+        video = models.Video.objects.create()
+        video.set_details_from_yt_dlp_response(data={}, is_video=True)
+        self.assertTrue(video.is_video)
+        self.assertFalse(video.is_short)
+        self.assertFalse(video.is_livestream)
+
+    def test_set_details_from_yt_dlp_response_type_short_flag_direct_params(self):
+        video = models.Video.objects.create()
+        video.set_details_from_yt_dlp_response(data={}, is_short=True)
+        self.assertFalse(video.is_video)
+        self.assertTrue(video.is_short)
+        self.assertFalse(video.is_livestream)
+
+    def test_set_details_from_yt_dlp_response_type_livestream_flag_direct_params(self):
+        video = models.Video.objects.create()
+        video.set_details_from_yt_dlp_response(data={}, is_livestream=True)
+        self.assertFalse(video.is_video)
+        self.assertFalse(video.is_short)
+        self.assertTrue(video.is_livestream)
+
     def test_qualities_available(self):
         with open('tests/fixtures/dlp_formats.json') as fo:
             dlp_formats = json.load(fo)['formats']

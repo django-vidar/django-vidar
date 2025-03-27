@@ -1,5 +1,6 @@
+import datetime
+
 import yt_dlp
-from pprint import pprint
 
 from unittest.mock import patch
 
@@ -558,7 +559,7 @@ class Subscribe_to_channel_tests(TestCase):
         self.channel = models.Channel.objects.create(
             provider_object_id="channel-id",
         )
-    
+
     @patch("vidar.tasks.trigger_channel_scanner_tasks")
     @patch("vidar.tasks.rename_video_files")
     @patch("vidar.tasks.update_channel_banners")
@@ -819,3 +820,833 @@ class Trigger_crontab_scans_tests(TestCase):
         mock_sync.assert_not_called()
 
         self.assertDictEqual({"channels": [], "playlists": []}, output)
+
+
+class Scan_channel_for_new_videos_tests(TestCase):
+
+    def setUp(self) -> None:
+        self.channel = models.Channel.objects.create(
+            provider_object_id="channel-id",
+            name="test channel",
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            uploader_id="channel-uploader-id",
+            index_videos=True,
+            download_videos=True,
+        )
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_fails_account_terminated(self, mock_inter):
+        mock_inter.side_effect = yt_dlp.DownloadError("account terminated")
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_inter.assert_called_once()
+        self.channel.refresh_from_db()
+        self.assertEqual(channel_helpers.ChannelStatuses.TERMINATED, self.channel.status)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_fails_invalid_status(self, mock_inter):
+        mock_inter.side_effect = yt_dlp.DownloadError("invalid status")
+        with self.assertRaises(yt_dlp.DownloadError):
+            tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_inter.assert_called_once()
+        self.channel.refresh_from_db()
+        self.assertEqual(channel_helpers.ChannelStatuses.ACTIVE, self.channel.status)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_returns_nothing(self, mock_inter):
+        mock_inter.return_value = None
+        output = tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        self.assertIsNone(output)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_returns_no_entries(self, mock_inter):
+        mock_inter.return_value = {"entries": []}
+        output = tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        self.assertIsNone(output)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_returns_premiering_video_with_blank_entry(self, mock_inter):
+        mock_inter.return_value = {"entries": [[],]}
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        self.assertFalse(self.channel.videos.exists())
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_video_id_is_blocked(self, mock_inter):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "id": "video-id",
+        },]}
+        models.VideoBlocked.objects.create(
+            provider_object_id="video-id",
+        )
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        self.assertFalse(self.channel.videos.exists())
+        self.channel.refresh_from_db()
+        self.assertEqual("channel-uploader-id", self.channel.uploader_id)
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_video_created(self, mock_inter, mock_download, mock_comments):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_called_once()
+        mock_comments.delay.assert_not_called()
+
+        self.assertEqual(1, self.channel.videos.count())
+        self.channel.refresh_from_db()
+        video = self.channel.videos.get()
+        self.assertEqual(self.channel, video.channel)
+        self.assertEqual(datetime.date(2025, 4, 5), video.upload_date)
+        self.assertTrue(video.is_video)
+        self.assertFalse(video.is_short)
+        self.assertFalse(video.is_livestream)
+        self.assertEqual("video title", video.title)
+        self.assertEqual("video description", video.description)
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_video_created_sets_channel_uploader_id(self, mock_inter, mock_download, mock_comments):
+        self.channel.uploader_id = ""
+        self.channel.save()
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": "video-uploader-id",
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_called_once()
+        mock_comments.delay.assert_not_called()
+
+        self.assertEqual(1, self.channel.videos.count())
+        self.channel.refresh_from_db()
+        video = self.channel.videos.get()
+        self.assertEqual(self.channel, video.channel)
+        self.assertEqual(self.channel.uploader_id, "video-uploader-id")
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_video_exists_permit_download_false_skipped(self, mock_inter, mock_download, mock_comments):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+
+        models.Video.objects.create(provider_object_id="video-id", permit_download=False)
+
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_new_video_not_downloaded_upload_date_is_too_old(self, mock_inter, mock_download, mock_comments):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "19810112",
+        },]}
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+        self.assertEqual(1, self.channel.videos.count())
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_video_not_downloaded_when_channel_download_is_false(self, mock_inter, mock_download, mock_comments):
+        self.channel.download_videos = False
+        self.channel.save()
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+        self.assertEqual(1, self.channel.videos.count())
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_video_force_downloaded_when_channel_download_is_false(self, mock_inter, mock_download, mock_comments):
+        self.channel.download_videos = False
+        self.channel.save()
+
+        self.channel.videos.create(
+            provider_object_id="video-id",
+            force_download=True
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        }, ]}
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_called_once()
+        mock_comments.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_video_not_downloaded_when_channel_skip_next(self, mock_inter, mock_download, mock_comments):
+        self.channel.skip_next_downloads = 1
+        self.channel.save()
+
+        self.channel.videos.create(
+            provider_object_id="video-id",
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        }, ]}
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_video_has_file_do_nothing(self, mock_inter, mock_download, mock_comments):
+        self.channel.videos.create(
+            provider_object_id="video-id",
+            file="test.mp4",
+            force_download=True,
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_video_has_file_download_comments(self, mock_inter, mock_download, mock_comments):
+        self.channel.download_comments_during_scan = True
+        self.channel.save()
+
+        self.channel.videos.create(
+            provider_object_id="video-id",
+            file="test.mp4",
+            force_download=True,
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_called_once()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_video_exists_not_downloaded(self, mock_inter, mock_download, mock_comments):
+
+        self.channel.videos.create(
+            provider_object_id="video-id",
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        }, ]}
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+
+class Scan_channel_for_new_shorts_tests(TestCase):
+
+    def setUp(self) -> None:
+        self.channel = models.Channel.objects.create(
+            provider_object_id="channel-id",
+            name="test channel",
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            uploader_id="channel-uploader-id",
+            index_shorts=True,
+            download_shorts=True,
+        )
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_fails_account_terminated(self, mock_inter):
+        mock_inter.side_effect = yt_dlp.DownloadError("account terminated")
+        tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        mock_inter.assert_called_once()
+        self.channel.refresh_from_db()
+        self.assertEqual(channel_helpers.ChannelStatuses.TERMINATED, self.channel.status)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_fails_no_shorts_tab(self, mock_inter):
+        mock_inter.side_effect = yt_dlp.DownloadError("This channel does not have a shorts tab")
+        with self.assertRaises(yt_dlp.DownloadError):
+            tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        mock_inter.assert_called_once()
+        self.channel.refresh_from_db()
+        self.assertFalse(self.channel.index_shorts)
+        self.assertFalse(self.channel.download_shorts)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_fails_invalid_status(self, mock_inter):
+        mock_inter.side_effect = yt_dlp.DownloadError("invalid status")
+        with self.assertRaises(yt_dlp.DownloadError):
+            tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        mock_inter.assert_called_once()
+        self.channel.refresh_from_db()
+        self.assertEqual(channel_helpers.ChannelStatuses.ACTIVE, self.channel.status)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_returns_nothing(self, mock_inter):
+        mock_inter.return_value = None
+        output = tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        self.assertIsNone(output)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_returns_no_entries(self, mock_inter):
+        mock_inter.return_value = {"entries": []}
+        output = tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        self.assertIsNone(output)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_returns_premiering_video_with_blank_entry(self, mock_inter):
+        mock_inter.return_value = {"entries": [[],]}
+        tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        self.assertFalse(self.channel.videos.exists())
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_short_id_is_blocked(self, mock_inter):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "id": "video-id",
+        },]}
+        models.VideoBlocked.objects.create(
+            provider_object_id="video-id",
+        )
+        tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        self.assertFalse(self.channel.videos.exists())
+        self.channel.refresh_from_db()
+        self.assertEqual("channel-uploader-id", self.channel.uploader_id)
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_short_created(self, mock_inter, mock_download, mock_comments):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+            "original_url": "https://www.youtube.com/shorts/video-id/",
+        },]}
+        tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_called_once()
+        mock_comments.delay.assert_not_called()
+
+        self.assertEqual(1, self.channel.videos.count())
+        self.channel.refresh_from_db()
+        video = self.channel.videos.get()
+        self.assertEqual(self.channel, video.channel)
+        self.assertEqual(datetime.date(2025, 4, 5), video.upload_date)
+        self.assertTrue(video.is_short)
+        self.assertFalse(video.is_video)
+        self.assertFalse(video.is_livestream)
+        self.assertEqual("video title", video.title)
+        self.assertEqual("video description", video.description)
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_short_exists_permit_download_false_skipped(self, mock_inter, mock_download, mock_comments):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+
+        models.Video.objects.create(provider_object_id="video-id", permit_download=False)
+
+        tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_new_video_not_downloaded_upload_date_is_too_old(self, mock_inter, mock_download, mock_comments):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "19810112",
+        },]}
+        tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+        self.assertEqual(1, self.channel.videos.count())
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_short_not_downloaded_when_channel_download_is_false(self, mock_inter, mock_download, mock_comments):
+        self.channel.download_shorts = False
+        self.channel.save()
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+        tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+        self.assertEqual(1, self.channel.videos.count())
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_short_force_downloaded_when_channel_download_is_false(self, mock_inter, mock_download, mock_comments):
+        self.channel.download_shorts = False
+        self.channel.save()
+
+        self.channel.videos.create(
+            provider_object_id="video-id",
+            force_download=True
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        }, ]}
+        tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_called_once()
+        mock_comments.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_short_not_downloaded_when_channel_skip_next(self, mock_inter, mock_download, mock_comments):
+        self.channel.skip_next_downloads = 1
+        self.channel.save()
+
+        self.channel.videos.create(
+            provider_object_id="video-id",
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        }, ]}
+        tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_short_has_file_do_nothing(self, mock_inter, mock_download, mock_comments):
+        self.channel.videos.create(
+            provider_object_id="video-id",
+            file="test.mp4",
+            force_download=True,
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+        tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_short_has_file_download_comments(self, mock_inter, mock_download, mock_comments):
+        self.channel.download_comments_during_scan = True
+        self.channel.save()
+
+        self.channel.videos.create(
+            provider_object_id="video-id",
+            file="test.mp4",
+            force_download=True,
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+        tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_called_once()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_short_exists_not_downloaded(self, mock_inter, mock_download, mock_comments):
+
+        self.channel.videos.create(
+            provider_object_id="video-id",
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        }, ]}
+        tasks.scan_channel_for_new_shorts.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+
+class Scan_channel_for_new_livestreams_tests(TestCase):
+
+    def setUp(self) -> None:
+        self.channel = models.Channel.objects.create(
+            provider_object_id="channel-id",
+            name="test channel",
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            uploader_id="channel-uploader-id",
+            index_livestreams=True,
+            download_livestreams=True,
+        )
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_fails_account_terminated(self, mock_inter):
+        mock_inter.side_effect = yt_dlp.DownloadError("account terminated")
+        tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        mock_inter.assert_called_once()
+        self.channel.refresh_from_db()
+        self.assertEqual(channel_helpers.ChannelStatuses.TERMINATED, self.channel.status)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_fails_not_currently_live(self, mock_inter):
+        mock_inter.side_effect = yt_dlp.DownloadError("not currently live")
+        with self.assertRaises(yt_dlp.DownloadError):
+            tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        mock_inter.assert_called_once()
+        self.channel.refresh_from_db()
+        self.assertFalse(self.channel.index_livestreams)
+        self.assertFalse(self.channel.download_livestreams)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_fails_invalid_status(self, mock_inter):
+        mock_inter.side_effect = yt_dlp.DownloadError("invalid status")
+        with self.assertRaises(yt_dlp.DownloadError):
+            tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        mock_inter.assert_called_once()
+        self.channel.refresh_from_db()
+        self.assertEqual(channel_helpers.ChannelStatuses.ACTIVE, self.channel.status)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_returns_nothing(self, mock_inter):
+        mock_inter.return_value = None
+        output = tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        self.assertIsNone(output)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_returns_no_entries(self, mock_inter):
+        mock_inter.return_value = {"entries": []}
+        output = tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        self.assertIsNone(output)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_yt_dlp_returns_premiering_video_with_blank_entry(self, mock_inter):
+        mock_inter.return_value = {"entries": [[],]}
+        tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        self.assertFalse(self.channel.videos.exists())
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_livestream_id_is_blocked(self, mock_inter):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "id": "video-id",
+        },]}
+        models.VideoBlocked.objects.create(
+            provider_object_id="video-id",
+        )
+        tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        self.assertFalse(self.channel.videos.exists())
+        self.channel.refresh_from_db()
+        self.assertEqual("channel-uploader-id", self.channel.uploader_id)
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_livestream_created(self, mock_inter, mock_download, mock_comments):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+            "was_live": True,
+        },]}
+        tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_called_once()
+        mock_comments.delay.assert_not_called()
+
+        self.assertEqual(1, self.channel.videos.count())
+        self.channel.refresh_from_db()
+        video = self.channel.videos.get()
+        self.assertEqual(self.channel, video.channel)
+        self.assertEqual(datetime.date(2025, 4, 5), video.upload_date)
+        self.assertFalse(video.is_short)
+        self.assertFalse(video.is_video)
+        self.assertTrue(video.is_livestream)
+        self.assertEqual("video title", video.title)
+        self.assertEqual("video description", video.description)
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_livestream_exists_permit_download_false_skipped(self, mock_inter, mock_download, mock_comments):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+
+        models.Video.objects.create(provider_object_id="video-id", permit_download=False)
+
+        tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_new_video_not_downloaded_upload_date_is_too_old(self, mock_inter, mock_download, mock_comments):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "19810112",
+        },]}
+        tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+        self.assertEqual(1, self.channel.videos.count())
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_livestream_not_downloaded_when_channel_download_is_false(self, mock_inter, mock_download, mock_comments):
+        self.channel.download_livestreams = False
+        self.channel.save()
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+        tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+        self.assertEqual(1, self.channel.videos.count())
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_livestream_force_downloaded_when_channel_download_is_false(self, mock_inter, mock_download, mock_comments):
+        self.channel.download_livestreams = False
+        self.channel.save()
+
+        self.channel.videos.create(
+            provider_object_id="video-id",
+            force_download=True
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        }, ]}
+        tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_called_once()
+        mock_comments.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_livestream_not_downloaded_when_channel_skip_next(self, mock_inter, mock_download, mock_comments):
+        self.channel.skip_next_downloads = 1
+        self.channel.save()
+
+        self.channel.videos.create(
+            provider_object_id="video-id",
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        }, ]}
+        tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_livestream_has_file_do_nothing(self, mock_inter, mock_download, mock_comments):
+        self.channel.videos.create(
+            provider_object_id="video-id",
+            file="test.mp4",
+            force_download=True,
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+        tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_livestream_has_file_download_comments(self, mock_inter, mock_download, mock_comments):
+        self.channel.download_comments_during_scan = True
+        self.channel.save()
+
+        self.channel.videos.create(
+            provider_object_id="video-id",
+            file="test.mp4",
+            force_download=True,
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+        tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_called_once()
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_livestream_exists_not_downloaded(self, mock_inter, mock_download, mock_comments):
+
+        self.channel.videos.create(
+            provider_object_id="video-id",
+        )
+
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        }, ]}
+        tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
+        mock_download.delay.assert_not_called()
+        mock_comments.delay.assert_not_called()

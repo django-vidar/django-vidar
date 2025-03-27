@@ -377,18 +377,13 @@ def scan_channel_for_new_content(
         if video_services.is_blocked(video_data["id"]):
             continue
 
-        video, created = Video.get_or_create_from_ytdlp_response(video_data)
+        video, created = Video.get_or_create_from_ytdlp_response(
+            data=video_data,
+            is_video=is_video,
+            is_short=is_short,
+            is_livestream=is_livestream,
+        )
         log.info(f"Checking video {video=}")
-
-        if not video.is_video and not video.is_short and not video.is_livestream:
-            if is_video:
-                video.is_video = True
-            if is_short:
-                video.is_short = True
-            if is_livestream:
-                video.is_livestream = True
-
-            video.save()
 
         if video.file:
             log.info("Video already has file, skipping.")
@@ -398,7 +393,7 @@ def scan_channel_for_new_content(
 
         try:
             video.check_and_add_video_to_playlists_based_on_title_matching()
-        except:  # noqa: E722
+        except:  # noqa: E722 ; pragma: no cover
             log.exception("Failure to check and add video to playlists based on title matching")
 
         if not video.permit_download:
@@ -453,7 +448,7 @@ def scan_channel_for_new_videos(self, pk, limit=None):
         channel.last_scanned = timezone.now()
         channel.save(update_fields=["last_scanned"])
 
-    return True
+    return output
 
 
 @shared_task(bind=True, queue="queue-vidar")
@@ -472,7 +467,7 @@ def scan_channel_for_new_shorts(self, pk, limit=None):
             is_short=True,
         )
     except yt_dlp.DownloadError as e:
-        if "This channel does not have a shorts tab" in str(e):
+        if "does not have a shorts tab" in str(e):
             channel.index_shorts = False
             channel.download_shorts = False
             channel.save(update_fields=["index_shorts", "download_shorts"])
@@ -482,7 +477,7 @@ def scan_channel_for_new_shorts(self, pk, limit=None):
         channel.last_scanned_shorts = timezone.now()
         channel.save(update_fields=["last_scanned_shorts"])
 
-    return True
+    return output
 
 
 @shared_task(bind=True, queue="queue-vidar")
@@ -511,7 +506,7 @@ def scan_channel_for_new_livestreams(self, pk, limit=None):
         channel.last_scanned_livestreams = timezone.now()
         channel.save(update_fields=["last_scanned_livestreams"])
 
-    return True
+    return output
 
 
 @shared_task(queue="queue-vidar")
