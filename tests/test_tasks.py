@@ -1944,3 +1944,156 @@ class Video_downloaded_successfully_tests(TestCase):
         mock_sb.delay.assert_called_once()
         mock_signal.send.assert_called_once()
         mock_notif.assert_called_once()
+
+
+class Download_provider_video_comments_tests(TestCase):
+
+    def setUp(self) -> None:
+        self.video = models.Video.objects.create(
+            title="video 1",
+            privacy_status=models.Video.VideoPrivacyStatuses.PUBLIC,
+        )
+
+    def test_privacy_status_not_public_does_nothing(self):
+        self.video.privacy_status = models.Video.VideoPrivacyStatuses.PRIVATE
+        self.video.save()
+
+        with self.assertLogs("vidar.tasks") as logger:
+            output = tasks.download_provider_video_comments.delay(self.video.pk).get()
+
+        self.assertIsNone(output)
+        self.assertEqual(1, len(logger.output))
+        log = logger.output[0]
+        self.assertIn("Video is not publicly visible", log)
+
+    @patch("vidar.interactor.video_comments")
+    def test_ytdlp_returns_nothing(self, mock_inter):
+        mock_inter.return_value = None
+
+        tasks.download_provider_video_comments.delay(self.video.pk).get()
+
+        mock_inter.assert_called_once()
+
+        self.video.refresh_from_db()
+
+        self.assertIn("comments_downloaded", self.video.system_notes)
+
+    @patch("vidar.interactor.video_comments")
+    def test_ytdlp_downloaderror(self, mock_inter):
+        mock_inter.side_effect = yt_dlp.DownloadError("tests failure")
+
+        with self.assertRaises(yt_dlp.DownloadError):
+            tasks.download_provider_video_comments.delay(self.video.pk).get()
+
+        self.assertEqual(4, mock_inter.call_count)
+
+        self.video.refresh_from_db()
+
+        self.assertIn("proxies_attempted_comment_grabber", self.video.system_notes)
+
+    @patch("vidar.interactor.video_comments")
+    def test_creates_comments(self, mock_inter):
+        mock_inter.return_value = {
+            "comments": [
+                {
+                    "id": "comment-id-1",
+                    "parent": "root",
+                    "timestamp": str(int(timezone.now().timestamp())),
+
+                    "author": "Author",
+                    "author_id": "author-id",
+                    "author_is_uploader": False,
+                    "author_thumbnail": "author-url",
+                    "is_favorited": False,
+                    "like_count": 0,
+                    "text": "comment here in tests",
+                },
+            ]
+        }
+
+        tasks.download_provider_video_comments.delay(self.video.pk).get()
+
+        self.assertEqual(1, self.video.comments.count())
+
+    @patch("vidar.interactor.video_comments")
+    def test_child_comment_without_parent_in_local_system_is_not_created(self, mock_inter):
+        mock_inter.return_value = {
+            "comments": [
+                {
+                    "id": "comment-id-1",
+                    "parent": "root",
+                    "timestamp": str(int(timezone.now().timestamp())),
+
+                    "author": "Author",
+                    "author_id": "author-id",
+                    "author_is_uploader": False,
+                    "author_thumbnail": "author-url",
+                    "is_favorited": False,
+                    "like_count": 0,
+                    "text": "comment here in tests",
+                },
+                {
+                    "id": "comment-id-2",
+                    "parent": "comment-id-15",
+                    "timestamp": str(int(timezone.now().timestamp())),
+
+                    "author": "Author",
+                    "author_id": "author-id",
+                    "author_is_uploader": False,
+                    "author_thumbnail": "author-url",
+                    "is_favorited": False,
+                    "like_count": 0,
+                    "text": "comment here in tests",
+                },
+            ]
+        }
+
+        tasks.download_provider_video_comments.delay(self.video.pk).get()
+
+        self.assertEqual(1, self.video.comments.count())
+        comment = self.video.comments.get()
+        self.assertEqual("comment-id-1", comment.pk)
+
+    @patch("vidar.interactor.video_comments")
+    def test_child_comment_with_parent_in_local_system_is_created(self, mock_inter):
+        mock_inter.return_value = {
+            "comments": [
+                {
+                    "id": "comment-id-1",
+                    "parent": "root",
+                    "timestamp": str(int(timezone.now().timestamp())),
+
+                    "author": "Author",
+                    "author_id": "author-id",
+                    "author_is_uploader": False,
+                    "author_thumbnail": "author-url",
+                    "is_favorited": False,
+                    "like_count": 0,
+                    "text": "comment here in tests",
+                },
+                {
+                    "id": "comment-id-2",
+                    "parent": "comment-id-1",
+                    "timestamp": str(int(timezone.now().timestamp())),
+
+                    "author": "Author",
+                    "author_id": "author-id",
+                    "author_is_uploader": False,
+                    "author_thumbnail": "author-url",
+                    "is_favorited": False,
+                    "like_count": 0,
+                    "text": "comment here in tests",
+                },
+            ]
+        }
+
+        tasks.download_provider_video_comments.delay(self.video.pk).get()
+
+        self.assertEqual(2, self.video.comments.count())
+        comment1 = self.video.comments.order_by('pk').first()
+        comment2 = self.video.comments.order_by('pk').last()
+        self.assertEqual("comment-id-1", comment1.pk)
+        self.assertEqual("comment-id-2", comment2.pk)
+
+        self.assertEqual(comment1.pk, comment2.parent_youtube_id)
+
