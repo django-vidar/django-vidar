@@ -6,11 +6,12 @@ from unittest.mock import patch
 
 from django.test import TestCase
 from django.utils import timezone
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from django_celery_results.models import TaskResult
 
 from vidar import models, tasks, app_settings
-from vidar.helpers import channel_helpers
+from vidar.helpers import channel_helpers, celery_helpers
 from vidar.services import crontab_services
 
 
@@ -1911,3 +1912,35 @@ class Fully_index_channel_test(TestCase):
 
         self.channel.refresh_from_db()
         self.assertEqual(ts, self.channel.last_scanned_livestreams)
+
+
+class Video_downloaded_successfully_tests(TestCase):
+
+    def setUp(self) -> None:
+        self.video = models.Video.objects.create(
+            title="video 1",
+            download_comments_on_index=True,
+        )
+
+    @patch("vidar.services.notification_services.video_downloaded")
+    @patch("vidar.signals.video_download_successful")
+    @patch("vidar.tasks.load_sponsorblock_data")
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.load_video_thumbnail")
+    def test_successful(self, mock_load, mock_comments, mock_sb, mock_signal, mock_notif):
+
+        self.video.info_json = SimpleUploadedFile("info.json", b"{}")
+        self.video.save()
+
+        celery_helpers.object_lock_acquire(obj=self.video, timeout=2)
+
+        tasks.video_downloaded_successfully(pk=self.video.pk)
+
+        self.assertFalse(celery_helpers.is_object_locked(obj=self.video))
+
+        mock_load.apply_async.assert_called_once()
+        mock_comments.delay.assert_called_once()
+
+        mock_sb.delay.assert_called_once()
+        mock_signal.send.assert_called_once()
+        mock_notif.assert_called_once()

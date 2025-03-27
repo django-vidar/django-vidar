@@ -1051,21 +1051,21 @@ def video_downloaded_successfully(self, pk):
 
     video = Video.objects.get(pk=pk)
 
-    info_json_data = None
+    info_json_data = {}
     if video.info_json:
         with video.info_json.open() as fo:
             info_json_data = json.load(fo)
 
     try:
         video_services.load_chapters_from_info_json(video=video, reload=True, info_json_data=info_json_data)
-    except:  # noqa: E722
+    except:  # noqa: E722 ; pragma: no cover
         log.exception(f"Failure to load chapters on {video=}")
 
     load_video_thumbnail.apply_async(args=[pk, info_json_data.get("thumbnail")], countdown=30)
 
     try:
         video.search_description_for_related_videos()
-    except:  # noqa: E722
+    except:  # noqa: E722 ; pragma: no cover
         log.exception("Failed to search description for related videos.")
 
     video.log_to_scanhistory()
