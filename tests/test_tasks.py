@@ -4,8 +4,11 @@ from pprint import pprint
 from unittest.mock import patch
 
 from django.test import TestCase
+from django.utils import timezone
 
-from vidar import models, tasks
+from django_celery_results.models import TaskResult
+
+from vidar import models, tasks, app_settings
 from vidar.helpers import channel_helpers
 from vidar.services import crontab_services
 
@@ -198,11 +201,75 @@ class Check_missed_channel_scans_since_last_ran_tests(TestCase):
             provider_object_id="channel-id",
             name="test channel",
             status=channel_helpers.ChannelStatuses.ACTIVE,
+            scanner_crontab="*/5 * * * *"
         )
 
     def test_no_task_history_returns_none(self):
         output = tasks.check_missed_channel_scans_since_last_ran()
         self.assertEqual((None, None), output)
+
+    @patch("vidar.tasks.trigger_crontab_scans")
+    def test_no_history_scans_selected_range(self, mock_trig):
+        mock_trig.return_value = {"channels": [], "playlists": []}
+
+        start = timezone.now().replace(minute=0)
+        end = start + timezone.timedelta(minutes=9)
+
+        pc, pp = tasks.check_missed_channel_scans_since_last_ran(
+            start=start,
+            end=end,
+            delta=timezone.timedelta(minutes=5),
+            force=True,
+        )
+        self.assertEqual(2, mock_trig.call_count)
+        self.assertEqual([], pc)
+        self.assertEqual([], pp)
+
+    @patch("vidar.tasks.trigger_crontab_scans")
+    def test_with_task_history_returns_none_too_soon(self, mock_trig):
+        ts = timezone.now()
+        with patch.object(timezone, "now", return_value=ts):
+            TaskResult.objects.create(
+                task_id="asd-asd-asd",
+                task_name="vidar.tasks.trigger_crontab_scans",
+                status="SUCCESS",
+            )
+        output = tasks.check_missed_channel_scans_since_last_ran()
+        self.assertEqual((None, None), output)
+
+        mock_trig.assert_not_called()
+
+    @patch("vidar.tasks.trigger_crontab_scans")
+    def test_with_task_history_returns_none_too_old(self, mock_trig):
+        ts = timezone.now() - timezone.timedelta(days=app_settings.CRONTAB_CHECK_INTERVAL_MAX_IN_DAYS+1)
+        with patch.object(timezone, "now", return_value=ts):
+            TaskResult.objects.create(
+                task_id="asd-asd-asd",
+                task_name="vidar.tasks.trigger_crontab_scans",
+                status="SUCCESS",
+            )
+        output = tasks.check_missed_channel_scans_since_last_ran()
+        self.assertEqual((None, None), output)
+
+        mock_trig.assert_not_called()
+
+
+    @patch("vidar.tasks.trigger_crontab_scans")
+    def test_with_task_history_returns_correctly(self, mock_trig):
+        mock_trig.return_value = {"channels": ["test-1"], "playlists": []}
+        end = timezone.now().replace(minute=0)
+        ts = end - timezone.timedelta(minutes=app_settings.CRONTAB_CHECK_INTERVAL*2)
+        with patch.object(timezone, "now", return_value=ts):
+            TaskResult.objects.create(
+                task_id="asd-asd-asd",
+                task_name="vidar.tasks.trigger_crontab_scans",
+                status="SUCCESS",
+            )
+        channels, playlists = tasks.check_missed_channel_scans_since_last_ran(end=end)
+        self.assertEqual(5, mock_trig.call_count)
+        self.assertFalse(playlists)
+        self.assertEqual(1, len(channels))
+        self.assertIn("test-1", channels)
 
 
 class Trigger_mirror_live_playlists_tests(TestCase):
