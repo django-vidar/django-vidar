@@ -47,7 +47,7 @@ jobs:
         pip install -r requirements-dev.txt
         pip install coveralls tox-gh-actions
     - name: Run tox
-      run: tox
+      run: tox -- -v
     - name: Coveralls
       run: coveralls
       env:
