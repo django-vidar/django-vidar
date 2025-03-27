@@ -890,7 +890,12 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
             self.last_privacy_status_check = timezone.now()
 
-        if any([is_video, is_short, is_livestream]):
+        if (
+            any([is_video, is_short, is_livestream])
+            and not self.is_video
+            and not self.is_short
+            and not self.is_livestream
+        ):
             if is_video:
                 self.is_video = True
             if is_short:

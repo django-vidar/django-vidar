@@ -297,11 +297,9 @@ def fully_index_channel(self, pk, limit=None):
 
             video_services.unblock(video_data["id"])
 
-            video, created = Video.get_or_create_from_ytdlp_response(video_data)
+            params = {target_data["video_field"]: True}
 
-            if not video.is_video and not video.is_short and not video.is_livestream:
-                setattr(video, target_data["video_field"], True)
-                video.save()
+            video, created = Video.get_or_create_from_ytdlp_response(video_data, **params)
 
             if video.upload_date:
                 video.inserted = video.inserted.replace(

@@ -1650,3 +1650,264 @@ class Scan_channel_for_new_livestreams_tests(TestCase):
         tasks.scan_channel_for_new_livestreams.delay(pk=self.channel.pk).get()
         mock_download.delay.assert_not_called()
         mock_comments.delay.assert_not_called()
+
+
+class Fully_index_channel_test(TestCase):
+
+    def setUp(self) -> None:
+        self.channel = models.Channel.objects.create(
+            provider_object_id="channel-id",
+            name="test channel",
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+        )
+
+    def test_no_indexings_returns_none(self):
+        self.channel.index_videos = False
+        self.channel.index_shorts = False
+        self.channel.index_livestreams = False
+        self.channel.save()
+
+        output = tasks.fully_index_channel(pk=self.channel.pk)
+        self.assertIsNone(output)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_ytdlp_returns_nothing(self, mock_inter):
+        mock_inter.return_value = None
+
+        self.channel.index_videos = True
+        self.channel.index_shorts = True
+        self.channel.index_livestreams = True
+        self.channel.save()
+
+        output = tasks.fully_index_channel(pk=self.channel.pk)
+        self.assertIsNone(output)
+
+        self.assertEqual(3, mock_inter.call_count)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_ytdlp_returns_premiering_video(self, mock_inter):
+        mock_inter.return_value = {
+            "entries": [
+                []
+            ]
+        }
+
+        self.channel.index_videos = True
+        self.channel.index_shorts = False
+        self.channel.index_livestreams = False
+        self.channel.save()
+
+        output = tasks.fully_index_channel(pk=self.channel.pk)
+        self.assertIsNone(output)
+
+        self.assertEqual(1, mock_inter.call_count)
+
+        self.assertFalse(models.Video.objects.exists())
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_creates_videos_and_sets_fully_indexed_flag(self, mock_inter):
+        self.channel.index_videos = True
+        self.channel.index_shorts = False
+        self.channel.index_livestreams = False
+        self.channel.save()
+
+        mock_inter.return_value = {
+            "entries": [
+                {
+                    "uploader_id": self.channel.uploader_id,
+                    "channel_id": self.channel.provider_object_id,
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ]
+        }
+
+        tasks.fully_index_channel(pk=self.channel.pk)
+
+        self.assertEqual(1, models.Video.objects.filter(is_video=True).count())
+
+        self.channel.refresh_from_db()
+        self.assertTrue(self.channel.fully_indexed)
+        self.assertFalse(self.channel.fully_indexed_shorts)
+        self.assertFalse(self.channel.fully_indexed_livestreams)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_creates_shorts_and_sets_fully_indexed_flag(self, mock_inter):
+        self.channel.index_videos = False
+        self.channel.index_shorts = True
+        self.channel.index_livestreams = False
+        self.channel.save()
+
+        mock_inter.return_value = {
+            "entries": [
+                {
+                    "uploader_id": self.channel.uploader_id,
+                    "channel_id": self.channel.provider_object_id,
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                    "original_url": "https://www.youtube.com/shorts/video-id"
+                }
+            ]
+        }
+
+        tasks.fully_index_channel(pk=self.channel.pk)
+
+        self.assertEqual(1, models.Video.objects.filter(is_short=True).count())
+
+        self.channel.refresh_from_db()
+        self.assertFalse(self.channel.fully_indexed)
+        self.assertTrue(self.channel.fully_indexed_shorts)
+        self.assertFalse(self.channel.fully_indexed_livestreams)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_creates_livestreams_and_sets_fully_indexed_flag(self, mock_inter):
+        self.channel.index_videos = False
+        self.channel.index_shorts = False
+        self.channel.index_livestreams = True
+        self.channel.save()
+
+        mock_inter.return_value = {
+            "entries": [
+                {
+                    "uploader_id": self.channel.uploader_id,
+                    "channel_id": self.channel.provider_object_id,
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                    "was_live": True
+                }
+            ]
+        }
+
+        tasks.fully_index_channel(pk=self.channel.pk)
+
+        self.assertEqual(1, models.Video.objects.filter(is_livestream=True).count())
+
+        self.channel.refresh_from_db()
+        self.assertFalse(self.channel.fully_indexed)
+        self.assertFalse(self.channel.fully_indexed_shorts)
+        self.assertTrue(self.channel.fully_indexed_livestreams)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_unblock_video(self, mock_inter):
+        mock_inter.return_value = {
+            "entries": [
+                {
+                    "uploader_id": self.channel.uploader_id,
+                    "channel_id": self.channel.provider_object_id,
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ]
+        }
+
+        models.VideoBlocked.objects.create(provider_object_id="video-id")
+
+        tasks.fully_index_channel(pk=self.channel.pk)
+
+        self.assertFalse(models.VideoBlocked.objects.exists())
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_target_sets_type_video(self, mock_inter):
+        mock_inter.return_value = {
+            "entries": [
+                {
+                    "uploader_id": self.channel.uploader_id,
+                    "channel_id": self.channel.provider_object_id,
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ]
+        }
+
+        ts = timezone.now()
+        with patch.object(timezone, "now", return_value=ts):
+            tasks.fully_index_channel(pk=self.channel.pk)
+
+        self.assertEqual(1, models.Video.objects.count())
+
+        video = models.Video.objects.get()
+        self.assertTrue(video.is_video)
+        self.assertFalse(video.is_short)
+        self.assertFalse(video.is_livestream)
+
+        self.channel.refresh_from_db()
+        self.assertEqual(ts, self.channel.last_scanned)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_target_sets_type_short(self, mock_inter):
+        self.channel.index_videos = False
+        self.channel.index_shorts = True
+        self.channel.save()
+
+        mock_inter.return_value = {
+            "entries": [
+                {
+                    "uploader_id": self.channel.uploader_id,
+                    "channel_id": self.channel.provider_object_id,
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                    "original_url": "https://www.youtube.com/shorts/video-id"
+                }
+            ]
+        }
+
+        ts = timezone.now()
+        with patch.object(timezone, "now", return_value=ts):
+            tasks.fully_index_channel(pk=self.channel.pk)
+
+        self.assertEqual(1, models.Video.objects.count())
+
+        video = models.Video.objects.get()
+        self.assertFalse(video.is_video)
+        self.assertTrue(video.is_short)
+        self.assertFalse(video.is_livestream)
+
+        self.channel.refresh_from_db()
+        self.assertEqual(ts, self.channel.last_scanned_shorts)
+
+    @patch("vidar.interactor.func_with_retry")
+    def test_target_sets_type_livestream(self, mock_inter):
+        self.channel.index_videos = False
+        self.channel.index_shorts = False
+        self.channel.index_livestreams = True
+        self.channel.save()
+
+        mock_inter.return_value = {
+            "entries": [
+                {
+                    "uploader_id": self.channel.uploader_id,
+                    "channel_id": self.channel.provider_object_id,
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                    "was_live": True
+                }
+            ]
+        }
+
+        ts = timezone.now()
+        with patch.object(timezone, "now", return_value=ts):
+            tasks.fully_index_channel(pk=self.channel.pk)
+
+        self.assertEqual(1, models.Video.objects.count())
+
+        video = models.Video.objects.get()
+        self.assertFalse(video.is_video)
+        self.assertFalse(video.is_short)
+        self.assertTrue(video.is_livestream)
+
+        self.channel.refresh_from_db()
+        self.assertEqual(ts, self.channel.last_scanned_livestreams)
