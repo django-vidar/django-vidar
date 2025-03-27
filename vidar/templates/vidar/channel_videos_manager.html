@@ -92,6 +92,15 @@
                 <input type="checkbox" onClick="toggle(this, '.can-delete')" id="select_deletable_videos" class="form-check-input" />
                 <label for="select_deletable_videos">Select deletable videos</label>
             </div>
+            <div class="col pl-4">
+                {% for quality, counter in channel.existing_video_qualities.items %}
+                    <input type="checkbox" onClick="toggle(this, '.quality-{{ quality }}')" id="select_quality-{{ quality }}" class="form-check-input" />
+                    <label for="select_quality-{{ quality }}">{{ counter.0 }} @ Quality: {{ quality }}</label>
+                    <br />
+                {% endfor %}
+                <input type="checkbox" onClick="toggle(this, '.quality-None')" id="select_quality-None" class="form-check-input" />
+                <label for="select_quality-None">Select Quality: None</label>
+            </div>
         </div>
 
         <table class="table" id="result_list">
@@ -113,7 +122,7 @@
                         {% if all_livestreams_count or all_shorts_count %}<td>{% if video.is_video %}Video{% elif video.is_short %}Short{% elif video.is_livestream %}Live{% else %}Unknown{% endif %}</td>{% endif %}
                         <td>
                             <div class="form-check">
-                                <input class="form-check-input {% if vcbd %}can-delete{% else %}cannot-delete{% endif %} {% if video.is_video %}is-video{% elif video.is_short %}is-short{% elif video.is_livestream %}is-livestream{% endif %} {% if video.file %}has-file{% endif %} {% if video.audio %}has-audio{% endif %} {% if video.starred %}is-starred{% endif %}"
+                                <input class="form-check-input quality-{{ video.quality }} {% if vcbd %}can-delete{% else %}cannot-delete{% endif %} {% if video.is_video %}is-video{% elif video.is_short %}is-short{% elif video.is_livestream %}is-livestream{% endif %} {% if video.file %}has-file{% endif %} {% if video.audio %}has-audio{% endif %} {% if video.starred %}is-starred{% endif %}"
                                        type="checkbox"
                                        value="{{ video.pk }}"
                                        data-filesize="{{ video.file_size }}"
