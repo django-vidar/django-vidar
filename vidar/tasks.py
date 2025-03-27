@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import math
@@ -187,7 +188,8 @@ def trigger_crontab_scans(
     if not now:
         now = timezone.localtime()
     elif isinstance(now, float):
-        now = timezone.datetime.fromtimestamp(now)
+        now = timezone.datetime.fromtimestamp(now, datetime.timezone.utc)
+        now = now.astimezone(timezone.get_default_timezone())
 
     processed = {
         "channels": processed_channels or [],

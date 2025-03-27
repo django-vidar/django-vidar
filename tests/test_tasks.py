@@ -600,3 +600,222 @@ class Subscribe_to_channel_tests(TestCase):
         mock_banners.delay.assert_called_once()
         mock_renamer.delay.assert_called_once()
         mock_scanner.assert_called_once()
+
+
+class Trigger_crontab_scans_tests(TestCase):
+
+    @patch("vidar.tasks.check_missed_channel_scans_since_last_ran")
+    def test_check_missed_called_by_default(self, mock_task):
+        tasks.trigger_crontab_scans.delay()
+        mock_task.assert_called_once()
+
+    @patch("vidar.tasks.trigger_channel_scanner_tasks")
+    def test_triggers_channel_on_time(self, mock_trig):
+        channel = models.Channel.objects.create(
+            provider_object_id="channel-id",
+            name="test channel",
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            scanner_crontab="0 9 * * *"
+        )
+
+        now = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
+        output = tasks.trigger_crontab_scans.delay(
+            now=now.timestamp(),
+            check_if_crontab_was_missed=False
+        ).get()
+
+        mock_trig.assert_called_once()
+
+        self.assertDictEqual({"channels": [channel.pk], "playlists": []}, output)
+
+    @patch("vidar.tasks.check_missed_channel_scans_since_last_ran")
+    @patch("vidar.tasks.trigger_channel_scanner_tasks")
+    def test_channel_skipped_as_checker_triggered_already(self, mock_trig, mock_checker):
+        channel = models.Channel.objects.create(
+            provider_object_id="channel-id",
+            name="test channel",
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            scanner_crontab="0 9 * * *"
+        )
+
+        mock_checker.return_value = ([channel.pk], [])
+
+        now = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
+        output = tasks.trigger_crontab_scans.delay(
+            now=now.timestamp(),
+        ).get()
+
+        mock_trig.assert_not_called()
+
+        self.assertDictEqual({"channels": [channel.pk], "playlists": []}, output)
+
+    @patch("vidar.tasks.trigger_channel_scanner_tasks")
+    def test_triggers_nothing(self, mock_trig):
+        channel = models.Channel.objects.create(
+            provider_object_id="channel-id",
+            name="test channel",
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            scanner_crontab="0 9 * * *"
+        )
+
+        now = timezone.now().replace(hour=10, minute=0, second=0, microsecond=0)
+        output = tasks.trigger_crontab_scans.delay(
+            now=now.timestamp(),
+            check_if_crontab_was_missed=False
+        ).get()
+
+        mock_trig.assert_not_called()
+
+        self.assertDictEqual({"channels": [], "playlists": []}, output)
+
+    @patch("vidar.tasks.trigger_channel_scanner_tasks")
+    def test_triggers_nothing_as_channel_was_scanned_earlier(self, mock_trig):
+        channel = models.Channel.objects.create(
+            provider_object_id="channel-id",
+            name="test channel",
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            scanner_crontab="* * * * *"
+        )
+
+        now = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
+
+        with patch.object(timezone, 'now', return_value=now - timezone.timedelta(minutes=15)):
+            channel.scan_history.create()
+
+        with patch.object(timezone, "now", return_value=now):
+            output = tasks.trigger_crontab_scans.delay(
+                now=now.timestamp(),
+                check_if_crontab_was_missed=False
+            ).get()
+
+        mock_trig.assert_not_called()
+
+        self.assertDictEqual({"channels": [], "playlists": []}, output)
+
+    @patch("vidar.tasks.trigger_channel_scanner_tasks")
+    def test_scan_after_datetime_triggers_regardless(self, mock_trig):
+
+        now = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
+
+        channel = models.Channel.objects.create(
+            provider_object_id="channel-id",
+            name="test channel",
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            scanner_crontab="* * * * *",
+            scan_after_datetime=now,
+        )
+
+        with patch.object(timezone, 'now', return_value=now - timezone.timedelta(minutes=15)):
+            channel.scan_history.create()
+
+        with patch.object(timezone, "now", return_value=now):
+            output = tasks.trigger_crontab_scans.delay(
+                now=now.timestamp(),
+                check_if_crontab_was_missed=False
+            ).get()
+
+        mock_trig.assert_called_once()
+
+        self.assertDictEqual({"channels": [channel.pk], "playlists": []}, output)
+
+    @patch("vidar.tasks.trigger_channel_scanner_tasks")
+    def test_scan_after_datetime_skipped_as_crontab_got_it_first(self, mock_trig):
+
+        now = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
+
+        channel = models.Channel.objects.create(
+            provider_object_id="channel-id",
+            name="test channel",
+            status=channel_helpers.ChannelStatuses.ACTIVE,
+            scanner_crontab="* * * * *",
+            scan_after_datetime=now,
+        )
+
+        with patch.object(timezone, "now", return_value=now):
+            output = tasks.trigger_crontab_scans.delay(
+                now=now.timestamp(),
+                check_if_crontab_was_missed=False
+            ).get()
+
+        mock_trig.assert_called_once()
+
+        self.assertDictEqual({"channels": [channel.pk], "playlists": []}, output)
+
+    @patch("vidar.tasks.sync_playlist_data")
+    def test_triggers_playlist_on_time(self, mock_sync):
+        playlist = models.Playlist.objects.create(
+            provider_object_id="playlist-id",
+            title="test playlist",
+            crontab="0 9 * * *"
+        )
+
+        now = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
+        output = tasks.trigger_crontab_scans.delay(
+            now=now.timestamp(),
+            check_if_crontab_was_missed=False
+        ).get()
+
+        mock_sync.delay.assert_called_once()
+
+        self.assertDictEqual({"channels": [], "playlists": [playlist.pk]}, output)
+
+    @patch("vidar.tasks.check_missed_channel_scans_since_last_ran")
+    @patch("vidar.tasks.sync_playlist_data")
+    def test_playlist_skipped_as_checker_triggered_already(self, mock_sync, mock_checker):
+        playlist = models.Playlist.objects.create(
+            provider_object_id="playlist-id",
+            title="test playlist",
+            crontab="0 9 * * *"
+        )
+
+        mock_checker.return_value = ([], [playlist.pk])
+
+        now = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
+        output = tasks.trigger_crontab_scans.delay(
+            now=now.timestamp(),
+        ).get()
+
+        mock_sync.assert_not_called()
+
+        self.assertDictEqual({"channels": [], "playlists": [playlist.pk]}, output)
+
+    @patch("vidar.tasks.sync_playlist_data")
+    def test_triggers_nothing_with_playlists(self, mock_sync):
+        playlist = models.Playlist.objects.create(
+            provider_object_id="playlist-id",
+            title="test playlist",
+            crontab="0 9 * * *"
+        )
+
+        now = timezone.now().replace(hour=10, minute=0, second=0, microsecond=0)
+        output = tasks.trigger_crontab_scans.delay(
+            now=now.timestamp(),
+            check_if_crontab_was_missed=False
+        ).get()
+
+        mock_sync.assert_not_called()
+
+        self.assertDictEqual({"channels": [], "playlists": []}, output)
+
+    @patch("vidar.tasks.sync_playlist_data")
+    def test_triggers_nothing_as_playlist_was_scanned_earlier(self, mock_sync):
+        playlist = models.Playlist.objects.create(
+            provider_object_id="playlist-id",
+            title="test playlist",
+            crontab="* * * * *"
+        )
+
+        now = timezone.now().replace(hour=9, minute=0, second=0, microsecond=0)
+
+        with patch.object(timezone, 'now', return_value=now - timezone.timedelta(minutes=15)):
+            playlist.scan_history.create()
+
+        with patch.object(timezone, "now", return_value=now):
+            output = tasks.trigger_crontab_scans.delay(
+                now=now.timestamp(),
+                check_if_crontab_was_missed=False
+            ).get()
+
+        mock_sync.assert_not_called()
+
+        self.assertDictEqual({"channels": [], "playlists": []}, output)
