@@ -1,5 +1,6 @@
 import datetime
 
+import celery.states
 import requests.exceptions
 import yt_dlp
 
@@ -15,6 +16,8 @@ from django_celery_results.models import TaskResult
 from vidar import models, tasks, app_settings, exceptions
 from vidar.helpers import channel_helpers, celery_helpers
 from vidar.services import crontab_services
+
+from .test_functions import date_to_aware_date
 
 User = get_user_model()
 
@@ -2268,6 +2271,13 @@ class Delete_channel_tests(TestCase):
 
 class Daily_maintenances_tests(TestCase):
 
+    @patch("vidar.signals.pre_daily_maintenance")
+    @patch("vidar.signals.post_daily_maintenance")
+    def test_signals_sent(self, mock_post, mock_pre):
+        tasks.daily_maintenances.delay().get()
+        mock_pre.send.assert_called_once()
+        mock_post.send.assert_called_once()
+
     @patch("vidar.services.video_services.set_thumbnail")
     @patch("vidar.interactor.video_details")
     def test_archived_video_without_thumbnail_ytdlp_returns_nothing(self, mock_details, mock_setter):
@@ -2743,3 +2753,139 @@ class Daily_maintenances_tests(TestCase):
         with self.assertLogs("vidar.tasks") as logger:
             tasks.daily_maintenances.delay().get()
         self.assertIn("Failed to delete video", logger.output[-1])
+
+
+class Channel_rename_files_tests(TestCase):
+
+    def setUp(self) -> None:
+        self.channel = models.Channel.objects.create(name="Test Channel")
+
+    @patch("vidar.renamers.channel_rename_all_files")
+    def test_success(self, mock_renamer):
+        tasks.channel_rename_files.delay(channel_id=self.channel.pk).get()
+
+        mock_renamer.assert_called_once()
+
+    @patch("vidar.renamers.channel_rename_all_files")
+    def test_backend_has_no_move(self, mock_renamer):
+        mock_renamer.side_effect = exceptions.FileStorageBackendHasNoMoveError()
+
+        with self.assertRaises(exceptions.FileStorageBackendHasNoMoveError):
+            tasks.channel_rename_files.delay(channel_id=self.channel.pk).get()
+
+
+class Rename_all_archived_video_files_tests(TestCase):
+
+    def test_resets_file_not_found_flag(self):
+        video = models.Video.objects.create(file_not_found=True)
+        tasks.rename_all_archived_video_files.delay().get()
+
+        video.refresh_from_db()
+
+        self.assertFalse(video.file_not_found)
+
+    @patch("vidar.helpers.file_helpers.can_file_be_moved")
+    def test_storage_has_no_move(self, mock_can):
+        mock_can.return_value = False
+
+        with self.assertRaises(exceptions.FileStorageBackendHasNoMoveError):
+            tasks.rename_all_archived_video_files.delay().get()
+
+    @patch("vidar.tasks.rename_video_files")
+    def test_video_has_file_no_need_to_rename(self, mock_renamer):
+        video = models.Video.objects.create(
+            title="Test Video",
+            provider_object_id="video-id",
+            file="public/2025/2025-01-23 - Test Video [video-id].mp4",
+            upload_date=date_to_aware_date('2025-01-23')
+        )
+
+        tasks.rename_all_archived_video_files.delay().get()
+
+        mock_renamer.delay.assert_not_called()
+
+    @patch("vidar.tasks.rename_video_files")
+    def test_videos_one_has_file_no_need_to_rename_other_needs_fixing(self, mock_renamer):
+        video = models.Video.objects.create(
+            title="Test Video",
+            provider_object_id="video-id",
+            file="public/2025/2025-01-23 - Test Video [video-id].mp4",
+            upload_date=date_to_aware_date('2025-01-23')
+        )
+        video = models.Video.objects.create(
+            title="Test Video 2",
+            provider_object_id="video-id-2",
+            file="test 2.mp4",
+            upload_date=date_to_aware_date('2025-01-23')
+        )
+
+        tasks.rename_all_archived_video_files.delay().get()
+
+        mock_renamer.delay.assert_called_once_with(pk=video.pk, commit=True, remove_empty=True)
+
+
+class Rename_video_files_tests(TestCase):
+
+    @patch("vidar.helpers.file_helpers.can_file_be_moved")
+    def test_storage_has_no_move(self, mock_can):
+        mock_can.return_value = False
+
+        output = tasks.rename_video_files.delay(pk=0)
+        task_output = output.get()
+        self.assertIsNone(task_output)
+        self.assertEqual(celery.states.IGNORED, output.status)
+
+    @patch("vidar.renamers.video_rename_all_files")
+    @patch("vidar.helpers.file_helpers.can_file_be_moved")
+    def test_video_has_no_file(self, mock_can, mock_renamer):
+        mock_can.return_value = True
+        video = models.Video.objects.create()
+
+        output = tasks.rename_video_files.delay(pk=video.pk)
+        task_output = output.get()
+
+        self.assertEqual(celery.states.IGNORED, output.status)
+        self.assertIsNone(task_output)
+        mock_renamer.assert_not_called()
+
+    @patch("vidar.renamers.video_rename_all_files")
+    @patch("vidar.helpers.file_helpers.can_file_be_moved")
+    def test_renamer_raises_backend_error(self, mock_can, mock_renamer):
+        mock_can.return_value = True
+        mock_renamer.side_effect = exceptions.FileStorageBackendHasNoMoveError()
+        video = models.Video.objects.create(file="test.mp4")
+
+        output = tasks.rename_video_files.delay(pk=video.pk)
+        task_output = output.get()
+
+        self.assertEqual(celery.states.IGNORED, output.status)
+        self.assertIsNone(task_output)
+        mock_renamer.assert_called_once()
+
+    @patch("vidar.renamers.video_rename_all_files")
+    @patch("vidar.helpers.file_helpers.can_file_be_moved")
+    def test_renamer_raises_filenotfounderror(self, mock_can, mock_renamer):
+        mock_can.return_value = True
+        mock_renamer.side_effect = FileNotFoundError()
+        video = models.Video.objects.create(file="test.mp4")
+
+        with self.assertRaises(FileNotFoundError):
+            tasks.rename_video_files.delay(pk=video.pk).get()
+
+        video.refresh_from_db()
+
+        self.assertTrue(video.file_not_found)
+
+    @patch("vidar.renamers.video_rename_all_files")
+    @patch("vidar.helpers.file_helpers.can_file_be_moved")
+    def test_successful(self, mock_can, mock_renamer):
+        mock_can.return_value = True
+        mock_renamer.return_value = True
+        video = models.Video.objects.create(file="test.mp4")
+
+        output = tasks.rename_video_files.delay(pk=video.pk)
+        task_output = output.get()
+
+        self.assertEqual(celery.states.SUCCESS, output.status)
+        self.assertTrue(task_output)
+        mock_renamer.assert_called_once()

@@ -1991,18 +1991,12 @@ def update_video_statuses_and_details():
 def channel_rename_files(self, channel_id, commit=True, remove_empty=True, rename_videos=True):
 
     channel = Channel.objects.get(pk=channel_id)
-
-    try:
-        renamers.channel_rename_all_files(
-            channel=channel,
-            commit=commit,
-            remove_empty=remove_empty,
-            rename_videos=rename_videos,
-        )
-    except FileStorageBackendHasNoMoveError:
-        log.error("Cannot rename channel files as storage backend has no move ability")
-
-    return True
+    renamers.channel_rename_all_files(
+        channel=channel,
+        commit=commit,
+        remove_empty=remove_empty,
+        rename_videos=rename_videos,
+    )
 
 
 @shared_task(bind=True, queue="queue-vidar")
@@ -2035,30 +2029,29 @@ def rename_video_files(self, pk, remove_empty=True):
         raise Ignore()
 
     changed = False
-    with transaction.atomic():
-        video = Video.objects.select_for_update().get(pk=pk)
+    video = Video.objects.get(pk=pk)
 
-        if not video.file:
-            self.update_state(state=states.FAILURE, meta=f"Renaming video.{pk=} does not have a file.")
-            raise Ignore()
+    if not video.file:
+        self.update_state(state=states.FAILURE, meta=f"Renaming video.{pk=} does not have a file.")
+        raise Ignore()
 
-        try:
-            changed = renamers.video_rename_all_files(
-                video=video,
-                commit=False,
-                remove_empty=remove_empty,
-            )
-        except FileStorageBackendHasNoMoveError:
-            log.exception("Attempting to rename files on storage backend that has no `move` functionality")
-            self.update_state(state=states.FAILURE, meta="File storage backend cannot move files")
-            raise Ignore()
-        except:  # noqa: E722
-            video.file_not_found = True
-            changed = True
-            raise
-        finally:
-            if changed:
-                video.save()
+    try:
+        changed = renamers.video_rename_all_files(
+            video=video,
+            commit=False,
+            remove_empty=remove_empty,
+        )
+    except FileStorageBackendHasNoMoveError:
+        log.exception("Attempting to rename files on storage backend that has no `move` functionality")
+        self.update_state(state=states.FAILURE, meta="File storage backend cannot move files")
+        raise Ignore()
+    except OSError:
+        video.file_not_found = True
+        changed = True
+        raise
+    finally:
+        if changed:
+            video.save()
 
     return True
 
