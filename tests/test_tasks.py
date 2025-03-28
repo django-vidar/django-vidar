@@ -6,7 +6,7 @@ import yt_dlp
 
 from unittest.mock import call, patch, MagicMock
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
@@ -2967,3 +2967,175 @@ class Convert_video_to_mp4_tests(TestCase):
 
         self.assertIn("convert_video_to_mp4_started", video.system_notes)
         self.assertIn("convert_video_to_mp4_finished", video.system_notes)
+
+
+class Monthly_maintenances_tests(TestCase):
+
+    @patch("vidar.signals.pre_monthly_maintenance")
+    @patch("vidar.signals.post_monthly_maintenance")
+    def test_signals_sent(self, mock_post, mock_pre):
+        tasks.monthly_maintenances.delay().get()
+        mock_pre.send.assert_called_once()
+        mock_post.send.assert_called_once()
+
+    @override_settings(VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=True)
+    @patch("vidar.tasks.update_channel_banners")
+    def test_only_indexing_channels_get_banner_updates(self, mock_banner):
+        channel1 = models.Channel.objects.create(index_videos=True, index_shorts=False, index_livestreams=False)
+        channel2 = models.Channel.objects.create(index_videos=False, index_shorts=False, index_livestreams=False)
+
+        tasks.monthly_maintenances.delay().get()
+
+        mock_banner.apply_async.assert_called_with(args=[channel1.pk], countdown=0)
+
+    @override_settings(VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=False)
+    @patch("vidar.tasks.update_channel_banners")
+    def test_only_indexing_channels_get_banner_updates_system_disabled(self, mock_banner):
+        channel1 = models.Channel.objects.create(index_videos=True, index_shorts=False, index_livestreams=False)
+        channel2 = models.Channel.objects.create(index_videos=False, index_shorts=False, index_livestreams=False)
+
+        tasks.monthly_maintenances.delay().get()
+
+        mock_banner.apply_async.assert_not_called()
+
+    @override_settings(
+        VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=False,
+        VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING=True,
+        VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT=False,
+    )
+    @patch("vidar.helpers.statistics_helpers.most_common_date_weekday")
+    def test_crontab_balancing_skip_channels_with_daily_crontab(self, mock_stats_dow):
+        mock_stats_dow.return_value = 2
+        channel1 = models.Channel.objects.create(index_videos=True, scanner_crontab="* * * * *")
+
+        tasks.monthly_maintenances.delay().get()
+
+        mock_stats_dow.assert_not_called()
+
+    @override_settings(
+        VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=False,
+        VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING=True,
+        VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT=False,
+    )
+    @patch("vidar.helpers.statistics_helpers.most_common_date_weekday")
+    def test_crontab_balancing_skip_channels_with_no_videos(self, mock_stats_dow):
+        mock_stats_dow.return_value = 2
+        channel1 = models.Channel.objects.create(index_videos=True, scanner_crontab="* * * * 4")
+
+        tasks.monthly_maintenances.delay().get()
+
+        mock_stats_dow.assert_not_called()
+
+    @override_settings(
+        VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=False,
+        VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING=True,
+        VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT=False,
+    )
+    @patch("vidar.helpers.statistics_helpers.most_common_date_weekday")
+    def test_crontab_balancing_channels_with_large_upload_date_range(self, mock_stats_dow):
+        mock_stats_dow.return_value = 2
+        old_crontab = "10 4 * * 4"
+        channel = models.Channel.objects.create(index_videos=True, scanner_crontab=old_crontab)
+
+        channel.videos.create(upload_date=date_to_aware_date("2024-01-01"))
+        channel.videos.create(upload_date=date_to_aware_date("2024-05-10"))
+
+        tasks.monthly_maintenances.delay().get()
+
+        mock_stats_dow.assert_called_once()
+
+        channel.refresh_from_db()
+
+        self.assertNotEqual(old_crontab, channel.scanner_crontab)
+        self.assertRegex(channel.scanner_crontab, r'^\d+ \d+ \* \* 3$')
+
+    @override_settings(
+        VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=False,
+        VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING=False,
+        VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT=True,
+    )
+    @patch("vidar.tasks.rename_all_archived_video_files")
+    def test_rename_all_files_calls_task(self, mock_task):
+        tasks.monthly_maintenances.delay().get()
+        mock_task.assert_called_once()
+
+    @override_settings(
+        VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=False,
+        VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING=False,
+        VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT=True,
+    )
+    @patch("vidar.tasks.rename_all_archived_video_files")
+    def test_rename_all_files_calls_task_but_backend_failures(self, mock_task):
+        mock_task.side_effect = exceptions.FileStorageBackendHasNoMoveError()
+        with self.assertLogs("vidar.tasks") as logger:
+            tasks.monthly_maintenances.delay().get()
+            expected_log_msg = "Failure to confirm filenames are correct as File backend does not support move."
+            log_has_line = any([True for x in logger.output if expected_log_msg in x])
+            self.assertTrue(log_has_line, "logger did not capture FileStorageBackendHasNoMoveError error.")
+
+    @override_settings(
+        VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=False,
+        VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING=False,
+        VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT=False,
+        VIDAR_MONTHLY_CLEAR_DLP_FORMATS=True
+    )
+    def test_clear_old_dlp_formats_from_videos(self):
+        video1 = models.Video.objects.create(dlp_formats={"test": "here"}, upload_date=date_to_aware_date("2023-04-01"))
+        video2 = models.Video.objects.create(upload_date=date_to_aware_date("2024-04-01"))
+        video3 = models.Video.objects.create(dlp_formats={"test": "here"}, upload_date=timezone.now().date())
+
+        tasks.monthly_maintenances.delay().get()
+
+        video1.refresh_from_db()
+        video2.refresh_from_db()
+        video3.refresh_from_db()
+
+        self.assertIsNone(video1.dlp_formats)
+        self.assertIsNone(video2.dlp_formats)
+        self.assertDictEqual({"test": "here"}, video3.dlp_formats)
+
+    @override_settings(
+        VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=False,
+        VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING=False,
+        VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT=False,
+        VIDAR_MONTHLY_CLEAR_DLP_FORMATS=False,
+    )
+    def test_clear_old_dlp_formats_from_videos_system_disabled(self):
+        video1 = models.Video.objects.create(dlp_formats={"test": "here"}, upload_date=date_to_aware_date("2023-04-01"))
+        video2 = models.Video.objects.create(upload_date=date_to_aware_date("2024-04-01"))
+        video3 = models.Video.objects.create(dlp_formats={"test": "here"}, upload_date=timezone.now().date())
+
+        tasks.monthly_maintenances.delay().get()
+
+        video1.refresh_from_db()
+        video2.refresh_from_db()
+        video3.refresh_from_db()
+
+        self.assertDictEqual({"test": "here"}, video1.dlp_formats)
+        self.assertIsNone(video2.dlp_formats)
+        self.assertDictEqual({"test": "here"}, video3.dlp_formats)
+
+    @override_settings(
+        VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=False,
+        VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING=False,
+        VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT=False,
+        VIDAR_MONTHLY_ASSIGN_OLDEST_THUMBNAILS_TO_CHANNEL_YEAR_DIRECTORY=True
+    )
+    @patch("vidar.oneoffs.assign_oldest_thumbnail_to_channel_year_directories")
+    def test_assign_oldest_thumbnails(self, mock_func):
+        tasks.monthly_maintenances.delay().get()
+
+        mock_func.assert_called_once()
+
+    @override_settings(
+        VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=False,
+        VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING=False,
+        VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT=False,
+        VIDAR_MONTHLY_ASSIGN_OLDEST_THUMBNAILS_TO_CHANNEL_YEAR_DIRECTORY=True
+    )
+    @patch("vidar.oneoffs.assign_oldest_thumbnail_to_channel_year_directories")
+    def test_assign_oldest_thumbnails_fails_backend_error(self, mock_func):
+        mock_func.side_effect = exceptions.FileStorageBackendHasNoMoveError()
+        tasks.monthly_maintenances.delay().get()
+
+        mock_func.assert_called_once()

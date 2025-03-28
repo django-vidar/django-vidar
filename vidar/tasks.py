@@ -1466,16 +1466,8 @@ def monthly_maintenances(self):
                 new_crontab = crontab_services.generate_weekly(day_of_week=common_week_day)
 
                 log.debug(f"{channel.name:>50} {dslu:>10} {dbr:>10} {channel.scanner_crontab:>20} {new_crontab:>20}")
-                channel.index_videos = True
+
                 channel.scanner_crontab = new_crontab
-
-                if channel.scanner_limit == 2:
-                    channel.scanner_limit = 5
-
-                if channel.index_shorts and channel.scanner_limit_shorts == 2:
-                    channel.scanner_limit_shorts = 5
-                if channel.index_livestreams and channel.scanner_limit_livestreams == 2:
-                    channel.scanner_limit_livestreams = 5
 
                 channel.save()
 
@@ -1487,16 +1479,22 @@ def monthly_maintenances(self):
         except FileStorageBackendHasNoMoveError:
             log.exception("Failure to confirm filenames are correct as File backend does not support move.")
 
-    dlp_formats_cleared = Video.objects.filter(
-        Q(privacy_status_checks__gt=app_settings.PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO)
-        | Q(file="", upload_date__lt=timezone.now().date() - timezone.timedelta(days=6 * 30))
-    )
-    log.info(f"{dlp_formats_cleared=} from video.dlp_formats.")
+    if app_settings.MONTHLY_CLEAR_DLP_FORMATS:
+        dlp_formats_cleared = (
+            Video.objects.filter(
+                Q(privacy_status_checks__gt=app_settings.PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO)
+                | Q(file="", upload_date__lt=timezone.now().date() - timezone.timedelta(days=6 * 30))
+            )
+            .exclude(dlp_formats__isnull=True)
+            .update(dlp_formats=None)
+        )
+        log.info(f"{dlp_formats_cleared=} from video.dlp_formats.")
 
-    try:
-        oneoffs.assign_oldest_thumbnail_to_channel_year_directories()
-    except FileStorageBackendHasNoMoveError:
-        log.error("Cannot assign channel directories cover files as storage backend has no move ability")
+    if app_settings.MONTHLY_ASSIGN_OLDEST_THUMBNAILS_TO_CHANNEL_YEAR_DIRECTORY:
+        try:
+            oneoffs.assign_oldest_thumbnail_to_channel_year_directories()
+        except FileStorageBackendHasNoMoveError:
+            log.error("Cannot assign channel directories cover files as storage backend has no move ability")
 
     signals.post_monthly_maintenance.send(sender=self.__class__, instance=self)
 

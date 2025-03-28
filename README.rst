@@ -378,11 +378,15 @@ settings.py and will bypass the settings getter system.
     Dot notation path to a function that accepts ``video`` and returns the artist
     for ``navigator.mediaSession.metadata`` used on the video player.
 
-``VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS`` (default: ``True``)
+``VIDAR_MONTHLY_ASSIGN_OLDEST_THUMBNAILS_TO_CHANNEL_YEAR_DIRECTORY`` (default: ``False``)
+
+``VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS`` (default: ``False``)
 
 ``VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING`` (default: ``False``)
 
-``VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT`` (default: ``True``)
+``VIDAR_MONTHLY_CLEAR_DLP_FORMATS`` (default: ``True``)
+
+``VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT`` (default: ``False``)
 
 ``VIDAR_NOTIFICATIONS_CHANNEL_STATUS_CHANGED`` (default: ``True``)
 
