@@ -3223,3 +3223,115 @@ class Convert_video_to_audio_tests(TestCase):
 
         self.assertIn("convert_video_to_audio_started", video.system_notes)
         self.assertIn("convert_video_to_audio_finished", video.system_notes)
+
+
+class Slow_full_archive_test(TestCase):
+
+    def setUp(self) -> None:
+        self.channel = models.Channel.objects.create(
+            slow_full_archive=True,
+            index_videos=True,
+            fully_indexed=True,
+        )
+
+
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.tasks.fully_index_channel")
+    def test_channel_not_fully_indexed_calls_full_indexer(self, mock_task, mock_dl):
+        self.channel.fully_indexed = False
+        self.channel.save()
+
+        output = tasks.slow_full_archive.delay().get()
+        self.assertEqual(0, output)
+
+        mock_task.delay.assert_called_with(pk=self.channel.pk)
+        mock_dl.delay.assert_not_called()
+
+    @override_settings(VIDAR_SLOW_FULL_ARCHIVE_TASK_DOWNLOAD_LIMIT=2)
+    @patch("vidar.tasks.download_provider_video")
+    def test_downloads_system_limit(self, mock_dl):
+        v1 = self.channel.videos.create(upload_date=date_to_aware_date("2025-01-01"))
+        v2 = self.channel.videos.create(upload_date=date_to_aware_date("2025-01-02"))
+        v3 = self.channel.videos.create(upload_date=date_to_aware_date("2025-01-03"))
+
+        output = tasks.slow_full_archive.delay().get()
+        self.assertEqual(2, output)
+
+        mock_dl.delay.assert_has_calls([
+            call(pk=v1.pk, task_source="automated_archiver - Channel Slow Full Archive", requested_by="Channel Slow Full Archive",),
+            call(pk=v2.pk, task_source="automated_archiver - Channel Slow Full Archive", requested_by="Channel Slow Full Archive", ),
+        ])
+
+    @override_settings(VIDAR_SLOW_FULL_ARCHIVE_TASK_DOWNLOAD_LIMIT=2)
+    @patch("vidar.tasks.download_provider_video")
+    def test_downloads_skips_ones_with_errors(self, mock_dl):
+        v1 = self.channel.videos.create(upload_date=date_to_aware_date("2025-01-01"))
+        v2 = self.channel.videos.create(upload_date=date_to_aware_date("2025-01-02"))
+        v3 = self.channel.videos.create(upload_date=date_to_aware_date("2025-01-03"))
+
+        v2.download_errors.create()
+
+        output = tasks.slow_full_archive.delay().get()
+        self.assertEqual(2, output)
+
+        mock_dl.delay.assert_has_calls([
+            call(pk=v1.pk, task_source="automated_archiver - Channel Slow Full Archive", requested_by="Channel Slow Full Archive",),
+            call(pk=v3.pk, task_source="automated_archiver - Channel Slow Full Archive", requested_by="Channel Slow Full Archive", ),
+        ])
+
+    @override_settings(VIDAR_SLOW_FULL_ARCHIVE_TASK_DOWNLOAD_LIMIT=2)
+    @patch("vidar.tasks.download_provider_video")
+    def test_downloads_skips_celery_locked_objects(self, mock_dl):
+        v1 = self.channel.videos.create(upload_date=date_to_aware_date("2025-01-01"))
+        v2 = self.channel.videos.create(upload_date=date_to_aware_date("2025-01-02"))
+        v3 = self.channel.videos.create(upload_date=date_to_aware_date("2025-01-03"))
+
+        celery_helpers.object_lock_acquire(obj=v1, timeout=1)
+
+        output = tasks.slow_full_archive.delay().get()
+        self.assertEqual(2, output)
+
+        mock_dl.delay.assert_has_calls([
+            call(pk=v2.pk, task_source="automated_archiver - Channel Slow Full Archive",
+                 requested_by="Channel Slow Full Archive", ),
+            call(pk=v3.pk, task_source="automated_archiver - Channel Slow Full Archive",
+                 requested_by="Channel Slow Full Archive", ),
+        ])
+
+    @override_settings(VIDAR_SLOW_FULL_ARCHIVE_TASK_DOWNLOAD_LIMIT=2)
+    @patch("vidar.tasks.download_provider_video")
+    def test_downloads_videos_within_cutoff_period(self, mock_dl):
+
+        self.channel.full_archive_cutoff = date_to_aware_date("2023-06-14")
+        self.channel.save()
+
+        v1 = self.channel.videos.create(upload_date=date_to_aware_date("2023-01-01"))
+        v2 = self.channel.videos.create(upload_date=date_to_aware_date("2024-01-02"))
+        v3 = self.channel.videos.create(upload_date=date_to_aware_date("2025-01-03"))
+
+        output = tasks.slow_full_archive.delay().get()
+        self.assertEqual(2, output)
+
+        mock_dl.delay.assert_has_calls([
+            call(pk=v2.pk, task_source="automated_archiver - Channel Slow Full Archive",
+                 requested_by="Channel Slow Full Archive", ),
+            call(pk=v3.pk, task_source="automated_archiver - Channel Slow Full Archive",
+                 requested_by="Channel Slow Full Archive", ),
+        ])
+
+    @override_settings(VIDAR_SLOW_FULL_ARCHIVE_TASK_DOWNLOAD_LIMIT=2)
+    @patch("vidar.services.notification_services.full_archiving_completed")
+    @patch("vidar.tasks.download_provider_video")
+    def test_channel_without_videos_to_download_finishes(self, mock_dl, mock_notif):
+        output = tasks.slow_full_archive.delay().get()
+        self.assertEqual(0, output)
+
+        mock_dl.assert_not_called()
+        mock_notif.assert_called_once()
+
+        self.channel.refresh_from_db()
+
+        self.assertFalse(self.channel.full_archive)
+        self.assertFalse(self.channel.slow_full_archive)
+        self.assertTrue(self.channel.send_download_notification)
+        self.assertTrue(self.channel.fully_indexed)

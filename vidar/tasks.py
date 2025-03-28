@@ -2260,7 +2260,7 @@ def slow_full_archive():
             channel_services.full_archiving_completed(channel=channel)
             notification_services.full_archiving_completed(channel=channel)
 
-        for video in full_archive_videos_to_process:
+        for video in full_archive_videos_to_process.order_by("upload_date"):
 
             if total_downloads >= max_automated_downloads:
                 break
@@ -2279,3 +2279,5 @@ def slow_full_archive():
             )
 
             total_downloads += 1
+
+    return total_downloads
