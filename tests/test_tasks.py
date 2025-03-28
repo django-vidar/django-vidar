@@ -2,7 +2,7 @@ import datetime
 
 import yt_dlp
 
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from django.test import TestCase
 from django.utils import timezone
@@ -10,7 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from django_celery_results.models import TaskResult
 
-from vidar import models, tasks, app_settings
+from vidar import models, tasks, app_settings, exceptions
 from vidar.helpers import channel_helpers, celery_helpers
 from vidar.services import crontab_services
 
@@ -2097,3 +2097,166 @@ class Download_provider_video_comments_tests(TestCase):
 
         self.assertEqual(comment1.pk, comment2.parent_youtube_id)
 
+
+class Delete_channel_videos_tests(TestCase):
+
+    def setUp(self) -> None:
+        self.channel = models.Channel.objects.create(
+            name="test channel",
+            fully_indexed=True,
+            fully_indexed_shorts=True,
+            fully_indexed_livestreams=True,
+        )
+        self.video_without_file = self.channel.videos.create(title="Video without file")
+        self.video_with_file = self.channel.videos.create(title="Video without file", file="test.mp4")
+
+        self.playlist = models.Playlist.objects.create(title="playlist 1")
+        self.video_with_playlist = self.channel.videos.create(title="video with playlist")
+        self.playlist.playlistitem_set.create(video=self.video_with_playlist)
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_not_keeping_archived_videos(self, mock_delete):
+        tasks.delete_channel_videos(pk=self.channel.pk)
+
+        mock_delete.assert_has_calls([
+            call(video=self.video_without_file),
+            call(video=self.video_with_file),
+        ], any_order=True)
+
+        self.channel.refresh_from_db()
+        self.assertFalse(self.channel.fully_indexed)
+        self.assertFalse(self.channel.fully_indexed_shorts)
+        self.assertFalse(self.channel.fully_indexed_livestreams)
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_keeping_archived_videos(self, mock_delete):
+        tasks.delete_channel_videos(pk=self.channel.pk, keep_archived_videos=True)
+
+        mock_delete.assert_called_with(video=self.video_without_file)
+
+        self.channel.refresh_from_db()
+        self.assertFalse(self.channel.fully_indexed)
+        self.assertFalse(self.channel.fully_indexed_shorts)
+        self.assertFalse(self.channel.fully_indexed_livestreams)
+
+
+class Delete_channel_tests(TestCase):
+
+    def setUp(self) -> None:
+        self.channel = models.Channel.objects.create(
+            name="test channel",
+        )
+        self.video_without_file = self.channel.videos.create(title="Video without file")
+        self.video_with_file = self.channel.videos.create(title="Video without file", file="test.mp4")
+
+        self.playlist = models.Playlist.objects.create(title="playlist 1", channel=self.channel)
+        self.video_with_playlist = self.channel.videos.create(title="video with playlist")
+        self.playlist.playlistitem_set.create(video=self.video_with_playlist)
+
+    @patch("vidar.services.video_services.delete_video")
+    @patch("vidar.renamers.video_rename_all_files")
+    @patch("vidar.services.playlist_services.delete_playlist_videos")
+    @patch("vidar.services.channel_services.delete_files")
+    def test_deletes_files(self, mock_delete_files, mock_delete_playlist_videos, mock_renamer, mock_delete_video):
+        tasks.delete_channel(pk=self.channel.pk)
+        mock_delete_files.assert_called_once()
+        mock_delete_playlist_videos.assert_called_once()
+        mock_renamer.assert_not_called()
+        mock_delete_video.assert_has_calls((
+            call(video=self.video_with_file),
+            call(video=self.video_without_file).
+            call(video=self.video_with_playlist),
+        ), any_order=True)
+
+    @patch("vidar.services.video_services.delete_video")
+    @patch("vidar.renamers.video_rename_all_files")
+    @patch("vidar.services.playlist_services.delete_playlist_videos")
+    @patch("vidar.services.channel_services.delete_files")
+    def test_keep_archived_videos(self, mock_delete_files, mock_delete_playlist_videos, mock_renamer, mock_delete_video):
+        tasks.delete_channel(pk=self.channel.pk, keep_archived_videos=True)
+        mock_delete_files.assert_called_once()
+        mock_delete_playlist_videos.assert_called_once()
+        mock_renamer.assert_called_with(video=self.video_with_file)
+        mock_delete_video.assert_has_calls((
+            call(video=self.video_without_file).
+            call(video=self.video_with_playlist),
+        ), any_order=True)
+
+        self.video_with_file.refresh_from_db()
+        self.assertIsNone(self.video_with_file.channel)
+
+    @patch("vidar.services.video_services.delete_video")
+    @patch("vidar.renamers.video_rename_all_files")
+    @patch("vidar.services.playlist_services.delete_playlist_videos")
+    @patch("vidar.services.channel_services.delete_files")
+    def test_keep_archived_videos(self, mock_delete_files, mock_delete_playlist_videos, mock_renamer, mock_delete_video):
+        tasks.delete_channel(pk=self.channel.pk, keep_archived_videos=True)
+        mock_delete_files.assert_called_once()
+        mock_delete_playlist_videos.assert_called_once()
+        mock_renamer.assert_called_with(video=self.video_with_file)
+        mock_delete_video.assert_has_calls((
+            call(video=self.video_without_file).
+            call(video=self.video_with_playlist),
+        ), any_order=True)
+
+        self.video_with_file.refresh_from_db()
+        self.assertIsNone(self.video_with_file.channel)
+
+    @patch("vidar.services.video_services.delete_video")
+    @patch("vidar.renamers.video_rename_all_files")
+    @patch("vidar.services.playlist_services.delete_playlist_videos")
+    @patch("vidar.services.channel_services.delete_files")
+    def test_video_has_secondary_playlist(self, mock_delete_files, mock_delete_playlist_videos, mock_renamer, mock_delete_video):
+        playlist2 = models.Playlist.objects.create(title="Playlist 2")
+        playlist2.playlistitem_set.create(video=self.video_with_playlist)
+        tasks.delete_channel(pk=self.channel.pk, keep_archived_videos=False)
+        mock_delete_files.assert_called_once()
+        mock_delete_playlist_videos.assert_called_once()
+        mock_renamer.assert_called_with(video=self.video_with_playlist)
+        mock_delete_video.assert_has_calls((
+            call(video=self.video_without_file).
+            call(video=self.video_with_file),
+        ), any_order=True)
+
+        self.video_with_playlist.refresh_from_db()
+        self.assertIsNone(self.video_with_playlist.channel)
+
+    @patch("vidar.services.video_services.delete_video")
+    @patch("vidar.renamers.video_rename_all_files")
+    @patch("vidar.services.playlist_services.delete_playlist_videos")
+    @patch("vidar.services.channel_services.delete_files")
+    def test_video_has_secondary_playlist_keeping_archived(self, mock_delete_files, mock_delete_playlist_videos, mock_renamer, mock_delete_video):
+        playlist2 = models.Playlist.objects.create(title="Playlist 2")
+        playlist2.playlistitem_set.create(video=self.video_with_playlist)
+        tasks.delete_channel(pk=self.channel.pk, keep_archived_videos=True)
+        mock_delete_files.assert_called_once()
+        mock_delete_playlist_videos.assert_called_once()
+        mock_renamer.assert_has_calls((
+            call(video=self.video_without_file).
+            call(video=self.video_with_file),
+        ), any_order=True)
+        mock_delete_video.assert_called_with(video=self.video_without_file)
+
+        self.video_without_file.refresh_from_db()
+        self.assertIsNone(self.video_without_file.channel)
+
+        self.video_with_file.refresh_from_db()
+        self.assertIsNone(self.video_with_file.channel)
+
+    @patch("vidar.services.video_services.delete_video")
+    @patch("vidar.renamers.video_rename_all_files")
+    @patch("vidar.services.playlist_services.delete_playlist_videos")
+    @patch("vidar.services.channel_services.delete_files")
+    def test_renamer_raises_backend_error(self, mock_delete_files, mock_delete_playlist_videos, mock_renamer, mock_delete_video):
+        mock_renamer.side_effect = exceptions.FileStorageBackendHasNoMoveError()
+        tasks.delete_channel(pk=self.channel.pk, keep_archived_videos=True)
+        mock_delete_files.assert_called_once()
+        mock_delete_playlist_videos.assert_called_once()
+        mock_renamer.assert_called_with(video=self.video_with_file)
+        mock_delete_video.assert_has_calls((
+            call(video=self.video_without_file).
+            call(video=self.video_with_playlist),
+        ), any_order=True)
+
+        self.video_with_file.refresh_from_db()
+        self.assertIsNone(self.video_with_file.channel)

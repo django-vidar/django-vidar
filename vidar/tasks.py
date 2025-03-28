@@ -1395,7 +1395,7 @@ def delete_channel(pk, keep_archived_videos=False, delete_playlists=True):
         if (keep_archived_videos and video.file) or video.playlists.exists():
             video.channel = None
             try:
-                renamers.video_rename_all_files(video)
+                renamers.video_rename_all_files(video=video)
             except FileStorageBackendHasNoMoveError:
                 log.error("Cannot rename video files as storage backend has no move ability")
                 break
