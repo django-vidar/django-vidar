@@ -1222,10 +1222,7 @@ def convert_video_to_audio(self, pk, filepath=None, return_filepath=False):
     clip.audio.write_audiofile(output_filepath, logger="bar" if settings.DEBUG else None)
 
     if was_remote:
-        try:
-            os.unlink(local_filepath)
-        except FileNotFoundError:
-            log.exception(f"Failure to delete remote copied local file after conversion to audio. {local_filepath=}")
+        os.unlink(local_filepath)
 
     with transaction.atomic():
         video = Video.objects.select_for_update().get(id=pk)
