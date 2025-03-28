@@ -1869,20 +1869,29 @@ def daily_maintenances(self):
         channel_videos_base_qs = (
             channel.videos.exclude(file="")
             .annotate(percentage_of_video=F("duration") * 0.9)
-            .filter(user_playback_history__seconds__gte=F("percentage_of_video"))
+            .filter(starred__isnull=True, user_playback_history__seconds__gte=F("percentage_of_video"))
         )
 
         if channel.delete_videos_after_watching:
             for video in channel_videos_base_qs.filter(is_video=True):
-                video_services.delete_video(video=video, keep_record=True)
+                try:
+                    video_services.delete_video(video=video, keep_record=True)
+                except ValueError:
+                    log.exception("Failed to delete video")
 
         if channel.delete_shorts_after_watching:
             for short in channel_videos_base_qs.filter(is_short=True):
-                video_services.delete_video(video=short, keep_record=True)
+                try:
+                    video_services.delete_video(video=short, keep_record=True)
+                except ValueError:
+                    log.exception("Failed to delete video")
 
         if channel.delete_livestreams_after_watching:
             for livestream in channel_videos_base_qs.filter(is_livestream=True):
-                video_services.delete_video(video=livestream, keep_record=True)
+                try:
+                    video_services.delete_video(video=livestream, keep_record=True)
+                except ValueError:
+                    log.exception("Failed to delete video")
 
     signals.post_daily_maintenance.send(sender=self.__class__, instance=self)
 

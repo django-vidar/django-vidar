@@ -1,5 +1,6 @@
 import datetime
 
+import requests.exceptions
 import yt_dlp
 
 from unittest.mock import call, patch
@@ -7,12 +8,15 @@ from unittest.mock import call, patch
 from django.test import TestCase
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.contrib.auth import get_user_model
 
 from django_celery_results.models import TaskResult
 
 from vidar import models, tasks, app_settings, exceptions
 from vidar.helpers import channel_helpers, celery_helpers
 from vidar.services import crontab_services
+
+User = get_user_model()
 
 
 class Update_channel_banners_tests(TestCase):
@@ -2260,3 +2264,482 @@ class Delete_channel_tests(TestCase):
 
         self.video_with_file.refresh_from_db()
         self.assertIsNone(self.video_with_file.channel)
+
+
+class Daily_maintenances_tests(TestCase):
+
+    @patch("vidar.services.video_services.set_thumbnail")
+    @patch("vidar.interactor.video_details")
+    def test_archived_video_without_thumbnail_ytdlp_returns_nothing(self, mock_details, mock_setter):
+        video = models.Video.objects.create(file="test.mp4")
+        mock_details.return_value = {}
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_details.assert_called_once()
+        mock_setter.assert_not_called()
+
+    @patch("vidar.services.video_services.set_thumbnail")
+    @patch("vidar.interactor.video_details")
+    def test_archived_video_without_thumbnail_obtains_one(self, mock_details, mock_setter):
+        video = models.Video.objects.create(file="test.mp4")
+        mock_details.return_value = {"thumbnail": "..."}
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_details.assert_called_once()
+        mock_setter.assert_called_once()
+
+    @patch("vidar.services.video_services.set_thumbnail")
+    @patch("vidar.interactor.video_details")
+    def test_archived_video_without_thumbnail_fails(self, mock_details, mock_setter):
+        mock_setter.side_effect = requests.exceptions.RequestException()
+        video = models.Video.objects.create(file="test.mp4")
+        mock_details.return_value = {"thumbnail": "..."}
+
+        with self.assertLogs("vidar.tasks") as logger:
+            tasks.daily_maintenances.delay().get()
+
+        self.assertIn("failure to set thumbnail", logger.output[-1])
+        mock_details.assert_called_once()
+        mock_setter.assert_called_once()
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_videos_marked_for_deletion(self, mock_deleted):
+        video = models.Video.objects.create(mark_for_deletion=True)
+        tasks.daily_maintenances.delay().get()
+        mock_deleted.assert_called_with(video=video)
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_videos_marked_for_deletion_fails(self, mock_deleted):
+        mock_deleted.side_effect = ValueError("failed for some reason")
+        video = models.Video.objects.create(mark_for_deletion=True)
+
+        with self.assertLogs("vidar.tasks") as logger:
+            tasks.daily_maintenances.delay().get()
+
+        self.assertIn("Failed to delete", logger.output[-1])
+        mock_deleted.assert_called_with(video=video)
+
+    @patch("vidar.tasks.convert_video_to_audio")
+    def test_video_wants_audio(self, mock_task):
+
+        video = models.Video.objects.create(convert_to_audio=True, thumbnail="thumbnail.jpg", file="test.mp4")
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_task.delay.assert_called_once()
+
+    @patch("vidar.tasks.convert_video_to_audio")
+    def test_channel_wants_audio(self, mock_task):
+
+        channel = models.Channel.objects.create(
+            convert_videos_to_mp3=True,
+        )
+
+        video = channel.videos.create(file="test.mp4", thumbnail="thumbnail.jpg",)
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_task.delay.assert_called_once()
+
+    @patch("vidar.tasks.convert_video_to_audio")
+    def test_playlist_wants_audio(self, mock_task):
+
+        playlist = models.Playlist.objects.create(
+            convert_to_audio=True,
+        )
+
+        video = models.Video.objects.create(file="test.mp4", thumbnail="thumbnail.jpg",)
+
+        playlist.videos.add(video)
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_task.delay.assert_called_once()
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_videos_after_watching(self, mock_deleter):
+
+        user = User.objects.create(username='test', password="password")
+
+        channel = models.Channel.objects.create(delete_videos_after_watching=True)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            duration=100,
+            is_video=True,
+        )
+
+        models.UserPlaybackHistory.objects.create(user=user, video=video, seconds=90)
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_deleter.assert_called_with(video=video, keep_record=True)
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_videos_after_watching_keep_starred(self, mock_deleter):
+
+        user = User.objects.create(username='test', password="password")
+
+        channel = models.Channel.objects.create(delete_videos_after_watching=True)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            duration=100,
+            is_video=True,
+            starred=timezone.now(),
+        )
+
+        models.UserPlaybackHistory.objects.create(user=user, video=video, seconds=90)
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_deleter.assert_not_called()
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_videos_after_watching_fails(self, mock_deleter):
+
+        mock_deleter.side_effect = ValueError("test failure to delete")
+
+        user = User.objects.create(username='test', password="password")
+
+        channel = models.Channel.objects.create(delete_videos_after_watching=True)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            duration=100,
+            is_video=True,
+        )
+
+        models.UserPlaybackHistory.objects.create(user=user, video=video, seconds=90)
+
+        with self.assertLogs("vidar.tasks") as logger:
+            tasks.daily_maintenances.delay().get()
+        self.assertIn("Failed to delete video", logger.output[-1])
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_shorts_after_watching(self, mock_deleter):
+
+        user = User.objects.create(username='test', password="password")
+
+        channel = models.Channel.objects.create(delete_shorts_after_watching=True)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            duration=100,
+            is_short=True,
+        )
+
+        models.UserPlaybackHistory.objects.create(user=user, video=video, seconds=90)
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_deleter.assert_called_with(video=video, keep_record=True)
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_shorts_after_watching_keep_starred(self, mock_deleter):
+
+        user = User.objects.create(username='test', password="password")
+
+        channel = models.Channel.objects.create(delete_shorts_after_watching=True)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            duration=100,
+            is_short=True,
+            starred=timezone.now(),
+        )
+
+        models.UserPlaybackHistory.objects.create(user=user, video=video, seconds=90)
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_deleter.assert_not_called()
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_shorts_after_watching_fails(self, mock_deleter):
+
+        mock_deleter.side_effect = ValueError("test failure to delete")
+
+        user = User.objects.create(username='test', password="password")
+
+        channel = models.Channel.objects.create(delete_shorts_after_watching=True)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            duration=100,
+            is_short=True,
+        )
+
+        models.UserPlaybackHistory.objects.create(user=user, video=video, seconds=90)
+
+        with self.assertLogs("vidar.tasks") as logger:
+            tasks.daily_maintenances.delay().get()
+        self.assertIn("Failed to delete video", logger.output[-1])
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_livestreams_after_watching(self, mock_deleter):
+
+        user = User.objects.create(username='test', password="password")
+
+        channel = models.Channel.objects.create(delete_livestreams_after_watching=True)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            duration=100,
+            is_livestream=True,
+        )
+
+        models.UserPlaybackHistory.objects.create(user=user, video=video, seconds=90)
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_deleter.assert_called_with(video=video, keep_record=True)
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_livestreams_after_watching_keep_starred(self, mock_deleter):
+
+        user = User.objects.create(username='test', password="password")
+
+        channel = models.Channel.objects.create(delete_livestreams_after_watching=True)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            duration=100,
+            is_livestream=True,
+            starred=timezone.now(),
+        )
+
+        models.UserPlaybackHistory.objects.create(user=user, video=video, seconds=90)
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_deleter.assert_not_called()
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_livestreams_after_watching_fails(self, mock_deleter):
+        mock_deleter.side_effect = ValueError("test failure to delete")
+
+        user = User.objects.create(username='test', password="password")
+
+        channel = models.Channel.objects.create(delete_livestreams_after_watching=True)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            duration=100,
+            is_livestream=True,
+        )
+
+        models.UserPlaybackHistory.objects.create(user=user, video=video, seconds=90)
+
+        with self.assertLogs("vidar.tasks") as logger:
+            tasks.daily_maintenances.delay().get()
+        self.assertIn("Failed to delete video", logger.output[-1])
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_videos_after_days(self, mock_deleter):
+
+        channel = models.Channel.objects.create(delete_videos_after_days=2)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            is_video=True,
+            date_downloaded=timezone.now() - timezone.timedelta(days=4)
+        )
+
+        video2 = channel.videos.create(
+            file="test2.mp4",
+            thumbnail="thumbnail2.jpg",
+            is_video=True,
+            date_downloaded=timezone.now() - timezone.timedelta(days=1)
+        )
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_deleter.assert_called_with(video=video, keep_record=True)
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_videos_after_days_keep_starred(self, mock_deleter):
+
+        channel = models.Channel.objects.create(delete_videos_after_days=2)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            is_video=True,
+            starred=timezone.now(),
+            date_downloaded=timezone.now() - timezone.timedelta(days=4)
+        )
+
+        video2 = channel.videos.create(
+            file="test2.mp4",
+            thumbnail="thumbnail2.jpg",
+            is_video=True,
+            date_downloaded=timezone.now() - timezone.timedelta(days=1)
+        )
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_deleter.assert_not_called()
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_videos_after_days_fails(self, mock_deleter):
+        mock_deleter.side_effect = ValueError("test failure to delete")
+
+        channel = models.Channel.objects.create(delete_videos_after_days=2)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            is_video=True,
+            date_downloaded=timezone.now() - timezone.timedelta(days=4)
+        )
+
+        tasks.daily_maintenances.delay().get()
+
+        with self.assertLogs("vidar.tasks") as logger:
+            tasks.daily_maintenances.delay().get()
+        self.assertIn("Failed to delete video", logger.output[-1])
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_shorts_after_days(self, mock_deleter):
+
+        channel = models.Channel.objects.create(delete_shorts_after_days=2)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            is_short=True,
+            date_downloaded=timezone.now() - timezone.timedelta(days=4)
+        )
+
+        video2 = channel.videos.create(
+            file="test2.mp4",
+            thumbnail="thumbnail2.jpg",
+            is_short=True,
+            date_downloaded=timezone.now() - timezone.timedelta(days=1)
+        )
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_deleter.assert_called_with(video=video, keep_record=True)
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_shorts_after_days_keep_starred(self, mock_deleter):
+
+        channel = models.Channel.objects.create(delete_shorts_after_days=2)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            is_short=True,
+            starred=timezone.now(),
+            date_downloaded=timezone.now() - timezone.timedelta(days=4)
+        )
+
+        video2 = channel.videos.create(
+            file="test2.mp4",
+            thumbnail="thumbnail2.jpg",
+            is_short=True,
+            date_downloaded=timezone.now() - timezone.timedelta(days=1)
+        )
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_deleter.assert_not_called()
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_shorts_after_days_fails(self, mock_deleter):
+        mock_deleter.side_effect = ValueError("test failure to delete")
+
+        channel = models.Channel.objects.create(delete_shorts_after_days=2)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            is_short=True,
+            date_downloaded=timezone.now() - timezone.timedelta(days=4)
+        )
+
+        tasks.daily_maintenances.delay().get()
+
+        with self.assertLogs("vidar.tasks") as logger:
+            tasks.daily_maintenances.delay().get()
+        self.assertIn("Failed to delete video", logger.output[-1])
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_livestreams_after_days(self, mock_deleter):
+
+        channel = models.Channel.objects.create(delete_livestreams_after_days=2)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            is_livestream=True,
+            date_downloaded=timezone.now() - timezone.timedelta(days=4)
+        )
+
+        video2 = channel.videos.create(
+            file="test2.mp4",
+            thumbnail="thumbnail2.jpg",
+            is_livestream=True,
+            date_downloaded=timezone.now() - timezone.timedelta(days=1)
+        )
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_deleter.assert_called_with(video=video, keep_record=True)
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_livestreams_after_days_keep_starred(self, mock_deleter):
+
+        channel = models.Channel.objects.create(delete_livestreams_after_days=2)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            is_livestream=True,
+            starred=timezone.now(),
+            date_downloaded=timezone.now() - timezone.timedelta(days=4)
+        )
+
+        video2 = channel.videos.create(
+            file="test2.mp4",
+            thumbnail="thumbnail2.jpg",
+            is_livestream=True,
+            date_downloaded=timezone.now() - timezone.timedelta(days=1)
+        )
+
+        tasks.daily_maintenances.delay().get()
+
+        mock_deleter.assert_not_called()
+
+    @patch("vidar.services.video_services.delete_video")
+    def test_delete_livestreams_after_days_fails(self, mock_deleter):
+        mock_deleter.side_effect = ValueError("test failure to delete")
+
+        channel = models.Channel.objects.create(delete_livestreams_after_days=2)
+
+        video = channel.videos.create(
+            file="test.mp4",
+            thumbnail="thumbnail.jpg",
+            is_livestream=True,
+            date_downloaded=timezone.now() - timezone.timedelta(days=4)
+        )
+
+        tasks.daily_maintenances.delay().get()
+
+        with self.assertLogs("vidar.tasks") as logger:
+            tasks.daily_maintenances.delay().get()
+        self.assertIn("Failed to delete video", logger.output[-1])
