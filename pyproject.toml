@@ -22,7 +22,22 @@ classifiers = [
 	"Programming Language :: Python :: 3.12",
 ]
 
-dependencies = {file = ["requirements.txt"]}
+dependencies = [
+	"Django>=5.1,<6.0",
+	"django-bootstrap4",
+	"django-mathfilters",
+	"django-positions",
+	"django-mptt",
+	"celery",
+	"django-celery-beat",
+	"django-celery-results",
+	"redis",
+	"requests",
+	"beautifulsoup4",
+	"yt-dlp",
+	"moviepy",
+	"Pillow>=10.0.0",
+]
 
 [project.urls]
 Repository = "https://github.com/django-vidar/django-vidar"
