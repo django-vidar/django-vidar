@@ -15,7 +15,7 @@ from vidar import models, tasks, app_settings, exceptions
 from vidar.helpers import channel_helpers, celery_helpers
 from vidar.services import crontab_services
 
-from .test_functions import date_to_aware_date
+from ..test_functions import date_to_aware_date
 
 User = get_user_model()
 
@@ -816,3 +816,51 @@ class Automated_archiver_tests(TestCase):
             call(pk=video1.pk, task_source="automated_archiver - Video Quality Changed Afterwards"),
             call(pk=video2.pk, task_source="automated_archiver - Video Quality Changed Afterwards"),
         ])
+
+
+class Update_video_statuses_and_details(TestCase):
+
+    @patch("vidar.tasks.update_video_details")
+    def test_video_less_than_check_age_not_checked_again(self, mock_task):
+        models.Video.objects.create(file="test.mp4")
+
+        tasks.update_video_statuses_and_details()
+
+        mock_task.apply_async.assert_not_called()
+
+    @patch("vidar.tasks.update_video_details")
+    def test_video_more_than_check_age_is_checked(self, mock_task):
+
+        ts = timezone.now() - timezone.timedelta(days=33)
+        with patch.object(timezone, "now", return_value=ts):
+            video1 = models.Video.objects.create(file="test.mp4")
+
+        ts = timezone.now() - timezone.timedelta(days=32)
+        with patch.object(timezone, "now", return_value=ts):
+            video2 = models.Video.objects.create(file="test.mp4")
+
+        tasks.update_video_statuses_and_details()
+
+        mock_task.apply_async.assert_called_once_with(
+            kwargs=dict(pk=video1.pk, mode="auto"), countdown=0
+        )
+
+    @override_settings(VIDAR_PRIVACY_STATUS_CHECK_FORCE_CHECK_PER_CALL=2)
+    @patch("vidar.tasks.update_video_details")
+    def test_video_force_checking(self, mock_task):
+
+        ts = timezone.now() - timezone.timedelta(days=33)
+        with patch.object(timezone, "now", return_value=ts):
+            video1 = models.Video.objects.create(file="test.mp4")
+
+        ts = timezone.now() - timezone.timedelta(days=32)
+        with patch.object(timezone, "now", return_value=ts):
+            video2 = models.Video.objects.create(file="test.mp4")
+
+        ts = timezone.now() - timezone.timedelta(days=31)
+        with patch.object(timezone, "now", return_value=ts):
+            video3 = models.Video.objects.create(file="test.mp4")
+
+        tasks.update_video_statuses_and_details()
+
+        self.assertEqual(2, mock_task.apply_async.call_count)

@@ -17,7 +17,7 @@ from vidar import models, tasks, app_settings, exceptions
 from vidar.helpers import channel_helpers, celery_helpers
 from vidar.services import crontab_services
 
-from .test_functions import date_to_aware_date
+from ..test_functions import date_to_aware_date
 
 User = get_user_model()
 

@@ -23,7 +23,7 @@ def _clean_kwargs(kwargs):
 
 def get_ytdlp(kwargs):
 
-    if getattr(settings, "IS_TESTING", False):
+    if getattr(settings, "IS_TESTING", False):  # pragma: no cover
         raise ValueError("yt-dlp is about to be called within testing. It should be mocked.")
 
     if user_initializer_func := app_settings.YTDLP_INITIALIZER:

@@ -1901,6 +1901,8 @@ def update_video_statuses_and_details():
     # NOTE: Update views.update_video_details_queue with same logic.
 
     log.info("Triggering Video Status Updater tasks")
+    checks_video_age_days = app_settings.PRIVACY_STATUS_CHECK_MIN_AGE
+    thirty_days_ago = (timezone.now() - timezone.timedelta(days=checks_video_age_days)).date()
 
     videos_that_are_checkable = (
         Video.objects.archived()
@@ -1915,11 +1917,10 @@ def update_video_statuses_and_details():
         )
         .filter(
             privacy_status_checks__lt=app_settings.PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO,
+            inserted__date__lte=thirty_days_ago,
         )
         .order_by("-zero_quality_first", "-last_checked_null_first", "last_privacy_status_check", "upload_date")
     )
-
-    checks_video_age_days = app_settings.PRIVACY_STATUS_CHECK_MIN_AGE
 
     videos_to_check_per_day = math.ceil(videos_that_are_checkable.count() / checks_video_age_days)
 
@@ -1940,8 +1941,6 @@ def update_video_statuses_and_details():
         f"{videos_to_check_per_hour}/hr {videos_to_check_per_ten_minutes}/10min"
     )
     log.info(f"Videos to check today {videos_to_check_per_day} - {tasks_completed_today} = {tasks_to_complete_today}")
-
-    thirty_days_ago = (timezone.localtime() - timezone.timedelta(days=checks_video_age_days)).date()
 
     qs = Q(last_privacy_status_check__date__lt=thirty_days_ago) | Q(last_privacy_status_check__isnull=True)
     if app_settings.SAVE_INFO_JSON_FILE:
