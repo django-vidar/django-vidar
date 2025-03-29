@@ -355,7 +355,7 @@ settings.py and will bypass the settings getter system.
 ``VIDAR_LOAD_SPONSORBLOCK_DATA_ON_UPDATE_VIDEO_DETAILS`` (default: ``True``)
     When checking video status, should it also check sponsorblock for updates?
 
-``VIDAR_MEDIA_CACHE`` (default: ``""``)
+``VIDAR_MEDIA_CACHE`` (default: ``"cache/"``)
     Temporary directory to use when downloading videos before conversion and saving to MEDIA_ROOT.
 
 ``VIDAR_MEDIA_HARDLINK`` (default: ``False``)

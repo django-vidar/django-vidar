@@ -1,3 +1,5 @@
+import pathlib
+
 from django.conf import settings
 from django.utils.module_loading import import_string
 
@@ -237,7 +239,7 @@ class AppSettings(object):
 
     @property
     def MEDIA_CACHE(self):
-        return self._setting("MEDIA_CACHE", "")
+        return pathlib.Path(self._setting("MEDIA_CACHE", "cache/"))
 
     @property
     def MEDIA_HARDLINK(self):

@@ -772,7 +772,7 @@ def download_provider_video(
             log.info(f"Failure to acquire lock for {video.pk=}. Ending now.")
             raise SystemError(f"Failure to acquire lock for {video.celery_object_lock_key()=}.")
 
-    cache_folder = app_settings.MEDIA_CACHE
+    cache_folder = pathlib.Path(app_settings.MEDIA_CACHE)
 
     if quality is None:
         selected_quality = video_services.quality_to_download(video=video)
@@ -834,7 +834,7 @@ def download_provider_video(
             for file in cache_folder.glob(f"{video.provider_object_id}*"):
                 try:
                     file.unlink()
-                except OSError:
+                except OSError:  # pragma: no cover
                     log.exception("Failed to delete processing file due to invalid data exception raise")
 
         if self.request.retries >= 3:
@@ -890,9 +890,6 @@ def download_provider_video(
         downloaded_file_data=downloaded_file_data,
         overwrite_formats=False,
     )
-
-    if "downloads" not in video.system_notes:
-        video.system_notes["downloads"] = []
 
     video.set_latest_download_stats(
         status="success",
