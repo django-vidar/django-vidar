@@ -1320,10 +1320,6 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
         if video_created:
             new_videos += 1
 
-        if not video.is_video and not video.is_short and not video.is_livestream:
-            video.is_video = True
-            video.save()
-
         if video in videos_existing:
             videos_existing.remove(video)
 
@@ -1356,7 +1352,7 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
 
         try:
             video.check_and_add_video_to_playlists_based_on_title_matching()
-        except:  # noqa: E722
+        except:  # noqa: E722 ; pragma: no cover
             log.exception("Failure to check and add video to playlists based on title matching")
 
         if video_services.should_download_comments(video=video):

@@ -908,3 +908,418 @@ class Load_sponsorblock_data_tests(TestCase):
         self.assertEqual(1, mock_load.call_count)
 
 
+class Sync_playlist_data_tests(TestCase):
+
+    @patch("vidar.services.notification_services.playlist_disabled_due_to_errors")
+    @patch("vidar.interactor.playlist_details")
+    def test_one_failure_to_read_playlist_increments_counter(self, mock_inter, mock_notif):
+        mock_inter.return_value = None
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        playlist.refresh_from_db()
+
+        self.assertEqual(1, playlist.not_found_failures)
+
+        mock_inter.assert_called_once()
+        mock_notif.assert_not_called()
+
+    @patch("vidar.services.notification_services.playlist_disabled_due_to_errors")
+    @patch("vidar.interactor.playlist_details")
+    def test_too_many_failures_to_read_playlist_disables_it(self, mock_inter, mock_notif):
+        mock_inter.return_value = None
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *", provider_object_id="playlist-id")
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        playlist.refresh_from_db()
+
+        self.assertEqual(5, playlist.not_found_failures)
+        self.assertEqual("", playlist.crontab)
+
+        self.assertEqual(5, mock_inter.call_count)
+        mock_notif.assert_called_once_with(playlist=playlist)
+
+    @patch("vidar.interactor.playlist_details")
+    def test_with_some_failures_but_now_successful_clears_flags(self, mock_inter):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [],
+        }
+
+        playlist = models.Playlist.objects.create(
+            crontab="* * * * *",
+            not_found_failures=1,
+        )
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        playlist.refresh_from_db()
+
+        self.assertEqual(0, playlist.not_found_failures)
+
+    @patch("vidar.interactor.playlist_details")
+    def test_assigns_channel(self, mock_inter):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [],
+        }
+
+        channel = models.Channel.objects.create(provider_object_id="channel-id")
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        playlist.refresh_from_db()
+
+        self.assertEqual(channel, playlist.channel)
+
+    @patch("vidar.interactor.playlist_details")
+    def test_does_not_reassign_channel(self, mock_inter):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [],
+        }
+
+        channel = models.Channel.objects.create(provider_object_id="channel-id")
+        channel2 = models.Channel.objects.create(provider_object_id="channel-id-2")
+
+        playlist = models.Playlist.objects.create(
+            crontab="* * * * *",
+            channel=channel2,
+        )
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        playlist.refresh_from_db()
+
+        self.assertEqual(channel2, playlist.channel)
+
+    @patch("vidar.services.notification_services.video_added_to_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_skips_video_without_data(self, mock_inter, mock_notif):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [{},],
+        }
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        self.assertFalse(playlist.videos.exists())
+
+        mock_notif.assert_not_called()
+
+    @patch("vidar.services.notification_services.video_added_to_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_skips_private_video(self, mock_inter, mock_notif):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [{
+                "title": "[private video]",
+            },],
+        }
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        self.assertFalse(playlist.videos.exists())
+
+        mock_notif.assert_not_called()
+
+    @patch("vidar.services.notification_services.video_added_to_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_skips_deleted_video(self, mock_inter, mock_notif):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [{
+                "title": "[deleted video]",
+            },],
+        }
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        self.assertFalse(playlist.videos.exists())
+
+        mock_notif.assert_not_called()
+
+    @patch("vidar.services.notification_services.video_added_to_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_video_blocked(self, mock_inter, mock_notif):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [
+                {
+                    "id": "video-id",
+                    "title": "Test Video",
+                },
+            ],
+        }
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+        models.VideoBlocked.objects.create(provider_object_id="video-id")
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        self.assertFalse(playlist.videos.exists())
+
+        mock_notif.assert_not_called()
+
+    @patch("vidar.services.notification_services.video_added_to_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_creates_videos(self, mock_inter, mock_notif):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [
+                {
+                    "uploader_id": "uploader-id",
+                    "channel_id": "channel-id",
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ],
+        }
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        self.assertTrue(playlist.videos.exists())
+
+        mock_notif.assert_called_once()
+
+    @patch("vidar.services.notification_services.video_readded_to_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_video_was_missing_but_now_found_live_clears_flag(self, mock_inter, mock_notif):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [
+                {
+                    "uploader_id": "uploader-id",
+                    "channel_id": "channel-id",
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ],
+        }
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        video = models.Video.objects.create(provider_object_id="video-id")
+
+        pli = playlist.playlistitem_set.create(
+            video=video,
+            missing_from_playlist_on_provider=True
+        )
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        pli.refresh_from_db()
+
+        self.assertFalse(pli.missing_from_playlist_on_provider)
+
+        mock_notif.assert_called_once()
+
+    @patch("vidar.services.notification_services.video_readded_to_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_video_was_manually_added_but_now_found_live_clears_flag(self, mock_inter, mock_notif):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [
+                {
+                    "uploader_id": "uploader-id",
+                    "channel_id": "channel-id",
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ],
+        }
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        video = models.Video.objects.create(provider_object_id="video-id")
+
+        pli = playlist.playlistitem_set.create(
+            video=video,
+            manually_added=True
+        )
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        pli.refresh_from_db()
+
+        self.assertFalse(pli.manually_added)
+        mock_notif.assert_called_once()
+
+    @patch("vidar.interactor.playlist_details")
+    def test_video_not_permitted_to_download_sets_flag(self, mock_inter):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [
+                {
+                    "uploader_id": "uploader-id",
+                    "channel_id": "channel-id",
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ],
+        }
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        video = models.Video.objects.create(provider_object_id="video-id", permit_download=False)
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        pli = playlist.playlistitem_set.get(video=video)
+
+        self.assertFalse(pli.download)
+
+    @patch("vidar.services.notification_services.playlist_disabled_due_to_string")
+    @patch("vidar.interactor.playlist_details")
+    def test_video_title_disables_playlist_crontab(self, mock_inter, mock_notif):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [
+                {
+                    "uploader_id": "uploader-id",
+                    "channel_id": "channel-id",
+                    "id": "video-id",
+                    "title": "video title finale",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ],
+        }
+
+        playlist = models.Playlist.objects.create(
+            provider_object_id="playlist-id",
+            crontab="* * * * *",
+            disable_when_string_found_in_video_title=" finale"
+        )
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        playlist.refresh_from_db()
+
+        self.assertEqual("", playlist.crontab)
+
+        mock_notif.assert_called_once_with(playlist=playlist)
+
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.interactor.playlist_details")
+    def test_video_wants_comments_on_index(self, mock_inter, mock_dl):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [
+                {
+                    "uploader_id": "uploader-id",
+                    "channel_id": "channel-id",
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ],
+        }
+
+        playlist = models.Playlist.objects.create()
+
+        video = models.Video.objects.create(
+            provider_object_id="video-id",
+            download_comments_on_index=True,
+        )
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        mock_dl.apply_async.assert_called_once_with(args=[video.pk], countdown=0)
+
+    @patch("vidar.services.notification_services.video_removed_from_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_video_removed_from_live_flags_as_missing(self, mock_inter, mock_notif):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [],
+        }
+
+        playlist = models.Playlist.objects.create()
+
+        video = models.Video.objects.create(provider_object_id="video-id")
+
+        pli = playlist.playlistitem_set.create(video=video)
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        pli.refresh_from_db()
+
+        self.assertTrue(pli.missing_from_playlist_on_provider)
+        mock_notif.assert_called_once_with(video=video, playlist=playlist, removed=False)
+
+    @patch("vidar.services.notification_services.video_removed_from_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_video_removed_from_live_with_sync_deletions_removes_connection(self, mock_inter, mock_notif):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [],
+        }
+
+        playlist = models.Playlist.objects.create(sync_deletions=True)
+
+        video = models.Video.objects.create(provider_object_id="video-id")
+
+        pli = playlist.playlistitem_set.create(video=video)
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        self.assertFalse(playlist.playlistitem_set.exists())
+        mock_notif.assert_called_once_with(video=video, playlist=playlist, removed=True)
