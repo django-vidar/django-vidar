@@ -1667,7 +1667,7 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode="m
         try:
             video.quality = ytdlp_services.get_highest_quality_from_video_dlp_formats(video.dlp_formats)
             video.quality = ytdlp_services.fix_quality_values(video.quality)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError):  # pragma: no cover
             log.exception("Failure to obtain video quality during status check.")
 
     if video.quality and video.at_max_quality:
@@ -1716,7 +1716,7 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode="m
 
     try:
         video_services.load_chapters_from_info_json(video=video, info_json_data=dlp_output)
-    except:  # noqa: E722
+    except:  # noqa: E722 ; pragma: no cover
         log.exception(f"Failure to load chapters on {video=}")
 
     if app_settings.LOAD_SPONSORBLOCK_DATA_ON_UPDATE_VIDEO_DETAILS:

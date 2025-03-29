@@ -16,6 +16,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from vidar import models, tasks, app_settings, exceptions
 from vidar.helpers import channel_helpers, celery_helpers
 from vidar.services import crontab_services
+from vidar.storages import vidar_storage
 
 from ..test_functions import date_to_aware_date
 
@@ -1571,3 +1572,350 @@ class Load_video_thumbnail_tests(TestCase):
             tasks.load_video_thumbnail.delay(pk=video.pk, url="url").get()
 
         self.assertEqual(4, mock_set.call_count)
+
+
+class Update_video_details_tests(TestCase):
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.interactor.video_details")
+    def test_video_with_file_missing_info_json_ytdlp_kwargs_adds_write_info_json(self, mock_details):
+        mock_details.return_value = {}
+        video = models.Video.objects.create(file="test.mp4")
+
+        with self.assertRaises(ValueError, msg="No output from yt-dlp"):
+            tasks.update_video_details.delay(pk=video.pk).get()
+
+        mock_details.assert_called_once_with(
+            video.url,
+            quiet=True,
+            instance=video,
+            writeinfojson=True,
+        )
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=False)
+    @patch("vidar.interactor.video_details")
+    def test_video_with_file_missing_info_json_system_false_does_not_add_write_info_json(self, mock_details):
+        mock_details.return_value = {}
+        video = models.Video.objects.create(file="test.mp4")
+
+        with self.assertRaises(ValueError, msg="No output from yt-dlp"):
+            tasks.update_video_details.delay(pk=video.pk).get()
+
+        mock_details.assert_called_once_with(
+            video.url,
+            quiet=True,
+            instance=video,
+        )
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.interactor.video_details")
+    def test_video_without_file_does_not_add_ytdlp_kwargs_write_info_json(self, mock_details):
+        mock_details.return_value = {}
+        video = models.Video.objects.create()
+
+        with self.assertRaises(ValueError, msg="No output from yt-dlp"):
+            tasks.update_video_details.delay(pk=video.pk).get()
+
+        mock_details.assert_called_once_with(
+            video.url,
+            quiet=True,
+            instance=video,
+        )
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.services.video_services.log_update_video_details_called")
+    @patch("vidar.interactor.video_details")
+    def test_ytdlp_dl_error_updates_status(self, mock_detail, mock_log):
+        mock_detail.side_effect = yt_dlp.DownloadError("blocked in your country")
+
+        video = models.Video.objects.create()
+
+        tasks.update_video_details.delay(pk=video.pk, mode="auto").get()
+
+        video.refresh_from_db()
+        self.assertEqual(video.privacy_status, models.Video.VideoPrivacyStatuses.BLOCKED)
+
+        mock_log.assert_called_once_with(video=video, mode="auto", commit=True, result="Privacy Status Changed")
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.services.video_services.log_update_video_details_called")
+    @patch("vidar.interactor.video_details")
+    def test_ytdlp_dl_error_confirm_age_logs_result(self, mock_detail, mock_log):
+        mock_detail.side_effect = yt_dlp.DownloadError("signin to confirm your age")
+
+        video = models.Video.objects.create()
+
+        tasks.update_video_details.delay(pk=video.pk, mode="auto").get()
+
+        video.refresh_from_db()
+        self.assertEqual(video.privacy_status, models.Video.VideoPrivacyStatuses.PUBLIC)
+
+        mock_log.assert_called_once_with(video=video, mode="auto", commit=True, result="Sign in to confirm age")
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.services.video_services.log_update_video_details_called")
+    @patch("vidar.interactor.video_details")
+    def test_ytdlp_dl_error_unknown_reason_retries(self, mock_detail, mock_log):
+        mock_detail.side_effect = yt_dlp.DownloadError("some unknown reason")
+
+        video = models.Video.objects.create()
+
+        with self.assertRaises(yt_dlp.DownloadError):
+            tasks.update_video_details.delay(pk=video.pk, mode="auto").get()
+
+        video.refresh_from_db()
+        self.assertEqual(video.privacy_status, models.Video.VideoPrivacyStatuses.PUBLIC)
+
+        mock_log.assert_called_once_with(video=video, mode="auto", commit=True, result="4th attempt retry in 1 hour")
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.services.video_services.log_update_video_details_called")
+    @patch("vidar.interactor.video_details")
+    def test_video_title_changed_to_private_video(self, mock_detail, mock_log):
+        mock_detail.return_value = {
+            "title": "[private video]"
+        }
+
+        video = models.Video.objects.create()
+
+        tasks.update_video_details.delay(pk=video.pk, mode="auto").get()
+
+        video.refresh_from_db()
+        self.assertEqual(video.privacy_status, models.Video.VideoPrivacyStatuses.PRIVATE)
+
+        mock_log.assert_called_once_with(video=video, mode="auto", commit=True, result="Success")
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.services.video_services.log_update_video_details_called")
+    @patch("vidar.interactor.video_details")
+    def test_video_title_changed_to_deleted_video(self, mock_detail, mock_log):
+        mock_detail.return_value = {
+            "title": "[deleted video]"
+        }
+
+        video = models.Video.objects.create()
+
+        tasks.update_video_details.delay(pk=video.pk, mode="auto").get()
+
+        video.refresh_from_db()
+        self.assertEqual(video.privacy_status, models.Video.VideoPrivacyStatuses.DELETED)
+
+        mock_log.assert_called_once_with(video=video, mode="auto", commit=True, result="Success")
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.services.video_services.log_update_video_details_called")
+    @patch("vidar.interactor.video_details")
+    def test_video_sets_updated_details(self, mock_detail, mock_log):
+        mock_detail.return_value = {
+            "title": "Test Video",
+            "id": "video-id",
+            "description": "Video desc",
+        }
+
+        video = models.Video.objects.create(
+            provider_object_id="video-id",
+            quality=720,
+        )
+
+        tasks.update_video_details.delay(pk=video.pk, mode="auto").get()
+        mock_log.assert_called_once_with(video=video, mode="auto", commit=True, result="Success")
+
+        video.refresh_from_db()
+
+        self.assertEqual("Test Video", video.title)
+        self.assertEqual("Video desc", video.description)
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.services.ytdlp_services.get_highest_quality_from_video_dlp_formats")
+    @patch("vidar.services.video_services.log_update_video_details_called")
+    @patch("vidar.interactor.video_details")
+    def test_video_quality_zero_gets_set_to_max_based_on_highest_in_dlp_formats(self, mock_detail, mock_log, mock_high):
+        mock_detail.return_value = {
+            "title": "Test Video",
+            "id": "video-id",
+            "description": "Video desc",
+        }
+        mock_high.return_value = 1080
+
+        video = models.Video.objects.create(provider_object_id="video-id", quality=0)
+
+        tasks.update_video_details.delay(pk=video.pk, mode="auto").get()
+        mock_log.assert_called_once_with(video=video, mode="auto", commit=True, result="Success")
+
+        video.refresh_from_db()
+
+        self.assertEqual(1080, video.quality)
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.services.ytdlp_services.get_highest_quality_from_video_dlp_formats")
+    @patch("vidar.services.video_services.log_update_video_details_called")
+    @patch("vidar.interactor.video_details")
+    def test_video_quality_is_still_at_max_quality(self, mock_detail, mock_log, mock_high):
+        mock_detail.return_value = {
+            "title": "Test Video",
+            "id": "video-id",
+            "description": "Video desc",
+        }
+        mock_high.return_value = 1080
+
+        video = models.Video.objects.create(provider_object_id="video-id", quality=1080, at_max_quality=True)
+
+        tasks.update_video_details.delay(pk=video.pk, mode="auto").get()
+        mock_log.assert_called_once_with(video=video, mode="auto", commit=True, result="Success")
+
+        video.refresh_from_db()
+
+        self.assertTrue(video.at_max_quality)
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.services.ytdlp_services.get_highest_quality_from_video_dlp_formats")
+    @patch("vidar.services.video_services.log_update_video_details_called")
+    @patch("vidar.interactor.video_details")
+    def test_video_quality_is_no_longer_at_max_quality_sets_flag(self, mock_detail, mock_log, mock_high):
+        mock_detail.return_value = {
+            "title": "Test Video",
+            "id": "video-id",
+            "description": "Video desc",
+        }
+        mock_high.return_value = 2160
+
+        video = models.Video.objects.create(provider_object_id="video-id", quality=1080, at_max_quality=True)
+
+        tasks.update_video_details.delay(pk=video.pk, mode="auto").get()
+        mock_log.assert_called_once_with(video=video, mode="auto", commit=True, result="Success")
+
+        video.refresh_from_db()
+
+        self.assertFalse(video.at_max_quality)
+        self.assertIn("uvd_max_quality_changed", video.system_notes)
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.video_details")
+    def test_download_true_missing_file_calls_download(self, mock_detail, mock_dl):
+        mock_detail.return_value = {
+            "title": "Test Video",
+            "id": "video-id",
+            "description": "Video desc",
+        }
+
+        video = models.Video.objects.create(provider_object_id="video-id")
+
+        output = tasks.update_video_details.delay(pk=video.pk, mode="auto", download_file=True).get()
+        self.assertEqual("Video should have had file but does not. Downloading now.", output)
+
+        mock_dl.delay.assert_called_once_with(pk=video.pk, task_source="update_video_details missing file")
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.tasks.rename_video_files")
+    @patch("vidar.tasks.load_sponsorblock_data")
+    @patch("vidar.services.video_services.load_chapters_from_info_json")
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.load_video_thumbnail")
+    @patch("vidar.services.video_services.save_infojson_file")
+    @patch("vidar.interactor.video_details")
+    @patch("vidar.tasks.download_provider_video")
+    def test_download_true_with_file_updates_the_rest(self, mock_dl, mock_detail, mock_json, mock_thumb, mock_comm, mock_chapters, mock_sb, mock_rename):
+        mock_detail.return_value = {
+            "title": "Test Video",
+            "id": "video-id",
+            "description": "Video desc",
+            "requested_downloads": [{},]
+        }
+
+        video = models.Video.objects.create(
+            provider_object_id="video-id",
+            file="test.mp4",
+            upload_date=date_to_aware_date("2025-01-02"),
+        )
+
+        with patch.object(vidar_storage, "exists", return_value=True):
+            output = tasks.update_video_details.delay(pk=video.pk, mode="auto", download_file=True).get()
+        self.assertEqual("Success", output)
+
+        mock_dl.delay.assert_not_called()
+
+        mock_json.assert_called_once()
+        mock_thumb.apply_async.assert_called_once()
+        mock_comm.delay.assert_not_called()
+        mock_chapters.assert_called_once()
+        mock_sb.apply_async.assert_called_once()
+        mock_rename.apply_async.assert_called_once()
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.tasks.rename_video_files")
+    @patch("vidar.tasks.load_sponsorblock_data")
+    @patch("vidar.services.video_services.load_chapters_from_info_json")
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.load_video_thumbnail")
+    @patch("vidar.services.video_services.save_infojson_file")
+    @patch("vidar.interactor.video_details")
+    @patch("vidar.tasks.download_provider_video")
+    def test_download_true_with_max_sponsorblock_checks_not_called(self, mock_dl, mock_detail, mock_json, mock_thumb, mock_comm, mock_chapters, mock_sb, mock_rename):
+        mock_detail.return_value = {
+            "title": "Test Video",
+            "id": "video-id",
+            "description": "Video desc",
+            "requested_downloads": [{},]
+        }
+
+        video = models.Video.objects.create(
+            provider_object_id="video-id",
+            file="test.mp4",
+            upload_date=date_to_aware_date("2025-01-02"),
+            system_notes={
+                "sponsorblock-loaded": [
+                    timezone.now().isoformat(), timezone.now().isoformat(), timezone.now().isoformat()
+                ]
+            }
+        )
+
+        with patch.object(vidar_storage, "exists", return_value=True):
+            output = tasks.update_video_details.delay(pk=video.pk, mode="auto", download_file=True).get()
+        self.assertEqual("Success", output)
+
+        mock_dl.delay.assert_not_called()
+
+        mock_json.assert_called_once()
+        mock_thumb.apply_async.assert_called_once()
+        mock_comm.delay.assert_not_called()
+        mock_chapters.assert_called_once()
+        mock_sb.apply_async.assert_not_called()
+        mock_rename.apply_async.assert_called_once()
+
+    @override_settings(VIDAR_SAVE_INFO_JSON_FILE=True)
+    @patch("vidar.tasks.rename_video_files")
+    @patch("vidar.tasks.load_sponsorblock_data")
+    @patch("vidar.services.video_services.load_chapters_from_info_json")
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.load_video_thumbnail")
+    @patch("vidar.services.video_services.save_infojson_file")
+    @patch("vidar.interactor.video_details")
+    @patch("vidar.tasks.download_provider_video")
+    def test_download_true_with_file_gets_comments(self, mock_dl, mock_detail, mock_json, mock_thumb, mock_comm, mock_chapters, mock_sb, mock_rename):
+        mock_detail.return_value = {
+            "title": "Test Video",
+            "id": "video-id",
+            "description": "Video desc",
+            "requested_downloads": [{},]
+        }
+
+        video = models.Video.objects.create(
+            provider_object_id="video-id",
+            file="test.mp4",
+            upload_date=date_to_aware_date("2025-01-02"),
+            download_comments_on_index=True,
+        )
+
+        with patch.object(vidar_storage, "exists", return_value=True):
+            output = tasks.update_video_details.delay(pk=video.pk, mode="auto", download_file=True).get()
+        self.assertEqual("Success", output)
+
+        mock_dl.delay.assert_not_called()
+
+        mock_json.assert_called_once()
+        mock_thumb.apply_async.assert_called_once()
+        mock_comm.delay.assert_called_once()
+        mock_chapters.assert_called_once()
+        mock_sb.apply_async.assert_called_once()
+        mock_rename.apply_async.assert_called_once()
