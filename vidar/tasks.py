@@ -515,7 +515,7 @@ def automated_archiver():
         channel.full_archive_after = None
         channel.full_archive = True
         channel.slow_full_archive = False
-        channel.send_download_notifications = False
+        channel.send_download_notification = False
         channel.save()
         notification_services.full_archiving_started(channel=channel)
 
@@ -620,7 +620,7 @@ def automated_archiver():
             channel_services.full_archiving_completed(channel=channel)
             notification_services.full_archiving_completed(channel=channel)
 
-        for video in full_archive_videos_to_process:
+        for video in full_archive_videos_to_process.order_by("upload_date"):
 
             if total_downloads >= max_automated_downloads:
                 break
@@ -653,7 +653,7 @@ def automated_archiver():
         total_download_errors__gte=1,
     )
 
-    for video in videos_with_download_errors:
+    for video in videos_with_download_errors.order_by("upload_date"):
 
         if total_downloads >= max_automated_downloads:
             break
@@ -686,12 +686,16 @@ def automated_archiver():
     if app_settings.VIDEO_AUTO_DOWNLOAD_LIVE_AMQ_WHEN_DETECTED:
 
         # AMQ would change from update_video_details task.
-        for video in Video.objects.filter(
-            requested_max_quality=True,
-            at_max_quality=False,
-            date_downloaded__lte=timezone.now() - timezone.timedelta(days=3),
-            system_notes__max_quality_upgraded__isnull=True,
-        ).exclude(file=""):
+        for video in (
+            Video.objects.filter(
+                requested_max_quality=True,
+                at_max_quality=False,
+                date_downloaded__lte=timezone.now() - timezone.timedelta(days=3),
+                system_notes__max_quality_upgraded__isnull=True,
+            )
+            .exclude(file="")
+            .order_by("upload_date")
+        ):
 
             if total_downloads >= max_automated_downloads:
                 break
@@ -720,7 +724,7 @@ def automated_archiver():
 
     hours = app_settings.VIDEO_LIVE_DOWNLOAD_RETRY_HOURS
     hours_ago = timezone.now() - timezone.timedelta(hours=hours)
-    for video in Video.objects.filter(system_notes__video_was_live_at_last_attempt=True, inserted__gte=hours_ago):
+    for video in Video.objects.filter(system_notes__video_was_live_at_last_attempt=True, inserted__lte=hours_ago):
 
         log.info(f"{video.pk=} was live when it attempted its download, trying again now {hours=} later")
 

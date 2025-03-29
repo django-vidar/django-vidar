@@ -545,7 +545,7 @@ settings.py and will bypass the settings getter system.
 ``VIDAR_SLOW_FULL_ARCHIVE_TASK_DOWNLOAD_LIMIT`` (default: ``1``)
     How many videos to download per task run.
 
-``VIDAR_VIDEO_AUTO_DOWNLOAD_LIVE_AMQ_WHEN_DETECTED`` (default: ``False``)
+``VIDAR_VIDEO_AUTO_DOWNLOAD_LIVE_AMQ_WHEN_DETECTED`` (default: ``True``)
     When ``update_video_details`` task is called, a video's live quality may have been
     updated since it was last downloaded. Maybe the download task grabbed 480p while youtube
     was still processing 1080p. If a channel is set to download the best quality available,

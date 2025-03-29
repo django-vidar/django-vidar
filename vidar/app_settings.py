@@ -488,7 +488,7 @@ class AppSettings(object):
         If so, redownload it at max quality."""
         return self._setting(
             "VIDEO_AUTO_DOWNLOAD_LIVE_AMQ_WHEN_DETECTED",
-            False,
+            True,
         )
 
     @property
