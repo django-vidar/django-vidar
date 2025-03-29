@@ -1424,3 +1424,81 @@ class Automated_video_quality_upgrades_tests(TestCase):
 
         video.refresh_from_db()
         self.assertTrue(video.at_max_quality)
+
+
+class Post_download_processing_tests(TestCase):
+
+    @patch("vidar.tasks.convert_video_to_audio")
+    @patch("vidar.tasks.convert_video_to_mp4")
+    @patch("vidar.tasks.write_file_to_storage")
+    @patch("vidar.tasks.delete_cached_file")
+    @patch("vidar.tasks.video_downloaded_successfully")
+    def test_basics(self, mock_success, mock_delete, mock_write, mock_mkv, mock_audio):
+        video = models.Video.objects.create(file="test.mp4")
+
+        tasks.post_download_processing.delay(pk=video.pk, filepath="test.mp4").get()
+
+        mock_write.si.assert_called_once_with(pk=video.pk, filepath="test.mp4", field_name="file")
+        mock_delete.s.assert_called_once()
+        mock_success.si.assert_called_once_with(pk=video.pk)
+
+        mock_mkv.si.assert_not_called()
+        mock_audio.si.assert_not_called()
+
+    @patch("vidar.tasks.convert_video_to_audio")
+    @patch("vidar.tasks.convert_video_to_mp4")
+    @patch("vidar.tasks.write_file_to_storage")
+    @patch("vidar.tasks.delete_cached_file")
+    @patch("vidar.tasks.video_downloaded_successfully")
+    def test_with_convert_to_audio(self, mock_success, mock_delete, mock_write, mock_mkv, mock_audio):
+        filepath = "test.mp4"
+        video = models.Video.objects.create(file=filepath, convert_to_audio=True)
+
+        tasks.post_download_processing.delay(pk=video.pk, filepath=filepath).get()
+
+        mock_audio.si.assert_called_once_with(pk=video.pk, filepath=filepath, return_filepath=True)
+        mock_write.s.assert_called_once_with(pk=video.pk, field_name="audio")
+
+        mock_write.si.assert_called_once_with(pk=video.pk, filepath=filepath, field_name="file")
+        self.assertEqual(2, mock_delete.s.call_count)
+        mock_success.si.assert_called_once_with(pk=video.pk)
+
+        mock_mkv.si.assert_not_called()
+
+    @patch("vidar.tasks.convert_video_to_audio")
+    @patch("vidar.tasks.convert_video_to_mp4")
+    @patch("vidar.tasks.write_file_to_storage")
+    @patch("vidar.tasks.delete_cached_file")
+    @patch("vidar.tasks.video_downloaded_successfully")
+    def test_with_convert_to_audio_and_mp4(self, mock_success, mock_delete, mock_write, mock_mkv, mock_audio):
+        filepath = "test.mkv"
+        video = models.Video.objects.create(file=filepath, convert_to_audio=True)
+
+        tasks.post_download_processing.delay(pk=video.pk, filepath=filepath).get()
+
+        self.assertEqual(1, mock_audio.si.call_count)
+        self.assertEqual(1, mock_mkv.si.call_count)
+        self.assertEqual(2, mock_write.s.call_count)
+        self.assertEqual(2, mock_delete.s.call_count)
+        self.assertEqual(1, mock_delete.si.call_count)
+
+        mock_success.si.assert_called_once_with(pk=video.pk)
+
+    @patch("vidar.tasks.convert_video_to_audio")
+    @patch("vidar.tasks.convert_video_to_mp4")
+    @patch("vidar.tasks.write_file_to_storage")
+    @patch("vidar.tasks.delete_cached_file")
+    @patch("vidar.tasks.video_downloaded_successfully")
+    def test_with_convert_to_mp4(self, mock_success, mock_delete, mock_write, mock_mkv, mock_audio):
+        filepath = "test.mkv"
+        video = models.Video.objects.create(file=filepath)
+
+        tasks.post_download_processing.delay(pk=video.pk, filepath=filepath).get()
+
+        self.assertEqual(0, mock_audio.si.call_count)
+        self.assertEqual(1, mock_mkv.si.call_count)
+        self.assertEqual(1, mock_write.s.call_count)
+        self.assertEqual(1, mock_delete.s.call_count)
+        self.assertEqual(1, mock_delete.si.call_count)
+
+        mock_success.si.assert_called_once_with(pk=video.pk)
