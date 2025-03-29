@@ -21,7 +21,7 @@ def _is_permitted_cached(name):
     #   able to change on the fly and that was not possible. I also discovered the cached_property made
     #   writing tests for redis_services impossible. So I came up with this. It will cache the value by name and
     #   it will recheck the value every 100 calls.
-    global _CALL_COUNTER
+    global _CALL_COUNTER  # noqa: F824
 
     if name not in _CALL_COUNTER:
         _CALL_COUNTER[name] = {"count": 1, "previous": None}
