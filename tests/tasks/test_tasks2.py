@@ -1529,3 +1529,45 @@ class Write_file_to_storage_tests(TestCase):
         opener = SimpleUploadedFile("test.mp3", b"here")
         with patch.object(pathlib.Path, "open", return_value=opener):
             tasks.write_file_to_storage(filepath="test.mp3", pk=video.pk, field_name="audio")
+
+
+class Delete_cached_file_tests(TestCase):
+
+    @override_settings(VIDAR_DELETE_DOWNLOAD_CACHE=False)
+    def test_system_keeps_cache(self):
+        output = tasks.delete_cached_file("test.mp4")
+        self.assertIsNone(output)
+
+    @override_settings(VIDAR_DELETE_DOWNLOAD_CACHE=True)
+    @patch("os.unlink")
+    def test_system_deletes_keeps_cache(self, mock_unlink):
+        output = tasks.delete_cached_file("test.mp4")
+        self.assertTrue(output)
+        mock_unlink.assert_called_once_with("test.mp4")
+
+
+class Load_video_thumbnail_tests(TestCase):
+
+    @patch("vidar.services.video_services.set_thumbnail")
+    def test_basics(self, mock_set):
+        video = models.Video.objects.create()
+        tasks.load_video_thumbnail.delay(pk=video.pk, url="url").get()
+
+        mock_set.assert_called_with(video=video, url="url")
+
+    @patch("vidar.services.video_services.set_thumbnail")
+    def test_no_url_raises(self, mock_set):
+        video = models.Video.objects.create()
+
+        with self.assertRaises(ValueError):
+            tasks.load_video_thumbnail.delay(pk=video.pk, url="").get()
+
+    @patch("vidar.services.video_services.set_thumbnail")
+    def test_connerror_retries(self, mock_set):
+        mock_set.side_effect = requests.exceptions.ConnectionError
+        video = models.Video.objects.create()
+
+        with self.assertRaises(requests.exceptions.ConnectionError):
+            tasks.load_video_thumbnail.delay(pk=video.pk, url="url").get()
+
+        self.assertEqual(4, mock_set.call_count)

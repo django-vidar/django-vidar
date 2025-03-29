@@ -1031,7 +1031,7 @@ def delete_cached_file(filepath):
         return
     try:
         os.unlink(filepath)
-    except OSError:
+    except OSError:  # pragma: no cover
         log.exception("Failure to delete cached file.")
     return True
 
