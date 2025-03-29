@@ -1530,8 +1530,6 @@ def automated_video_quality_upgrades():
         )
 
         for video in videos_potentially_needing_upgrade:
-            if not video.file:
-                continue
 
             if video.is_at_max_quality():
                 continue

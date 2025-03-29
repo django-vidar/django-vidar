@@ -1323,3 +1323,104 @@ class Sync_playlist_data_tests(TestCase):
 
         self.assertFalse(playlist.playlistitem_set.exists())
         mock_notif.assert_called_once_with(video=video, playlist=playlist, removed=True)
+
+
+class Automated_video_quality_upgrades_tests(TestCase):
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_channel_allows_upgrade(self, mock_dl):
+        channel = models.Channel.objects.create(index_videos=True, allow_library_quality_upgrade=True, quality=1080)
+
+        video = channel.videos.create(quality=480, file="test.mp4")
+
+        tasks.automated_video_quality_upgrades()
+
+        mock_dl.delay.assert_called_once()
+
+    @override_settings(VIDAR_AUTOMATED_QUALITY_UPGRADES_PER_TASK_LIMIT=2)
+    @patch("vidar.tasks.download_provider_video")
+    def test_channel_respects_download_limit(self, mock_dl):
+        channel = models.Channel.objects.create(index_videos=True, allow_library_quality_upgrade=True, quality=1080)
+
+        video = channel.videos.create(quality=480, file="test.mp4")
+        video = channel.videos.create(quality=480, file="test.mp4")
+        video = channel.videos.create(quality=480, file="test.mp4")
+        video = channel.videos.create(quality=480, file="test.mp4")
+
+        tasks.automated_video_quality_upgrades()
+
+        self.assertEqual(2, mock_dl.delay.call_count)
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_channel_video_above_channel_quality_does_nothing(self, mock_dl):
+        channel = models.Channel.objects.create(index_videos=True, allow_library_quality_upgrade=True, quality=1080)
+
+        video = channel.videos.create(quality=2160, file="test.mp4")
+
+        tasks.automated_video_quality_upgrades()
+
+        mock_dl.delay.assert_not_called()
+
+    @patch("vidar.services.ytdlp_services.is_quality_at_highest_quality_from_dlp_formats")
+    @patch("vidar.tasks.download_provider_video")
+    def test_channel_video_amq_based_on_formats_and_does_nothing(self, mock_dl, mock_amq):
+        mock_amq.return_value = True
+        channel = models.Channel.objects.create(index_videos=True, allow_library_quality_upgrade=True, quality=1080)
+
+        video = channel.videos.create(quality=2160, file="test.mp4", dlp_formats={"here": "test"})
+
+        tasks.automated_video_quality_upgrades()
+
+        mock_dl.delay.assert_not_called()
+
+        video.refresh_from_db()
+        self.assertTrue(video.at_max_quality)
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_playlist_allows_upgrade(self, mock_dl):
+        playlist = models.Playlist.objects.create(quality=1080)
+
+        playlist.videos.create(quality=480, file="test.mp4")
+
+        tasks.automated_video_quality_upgrades()
+
+        mock_dl.delay.assert_called_once()
+
+    @override_settings(VIDAR_AUTOMATED_QUALITY_UPGRADES_PER_TASK_LIMIT=2)
+    @patch("vidar.tasks.download_provider_video")
+    def test_playlist_respects_download_limit(self, mock_dl):
+        playlist = models.Playlist.objects.create(quality=1080)
+
+        playlist.videos.create(quality=480, file="test.mp4")
+        playlist.videos.create(quality=480, file="test.mp4")
+        playlist.videos.create(quality=480, file="test.mp4")
+        playlist.videos.create(quality=480, file="test.mp4")
+
+        tasks.automated_video_quality_upgrades()
+
+        self.assertEqual(2, mock_dl.delay.call_count)
+
+    @patch("vidar.tasks.download_provider_video")
+    def test_playlist_video_above_playlist_quality_does_nothing(self, mock_dl):
+        playlist = models.Playlist.objects.create(quality=1080)
+
+        playlist.videos.create(quality=2160, file="test.mp4")
+
+        tasks.automated_video_quality_upgrades()
+
+        mock_dl.delay.assert_not_called()
+
+    @patch("vidar.services.ytdlp_services.is_quality_at_highest_quality_from_dlp_formats")
+    @patch("vidar.tasks.download_provider_video")
+    def test_playlist_video_amq_based_on_formats_and_does_nothing(self, mock_dl, mock_amq):
+        mock_amq.return_value = True
+        playlist = models.Playlist.objects.create(quality=1080)
+
+        video = playlist.videos.create(quality=2160, file="test.mp4", dlp_formats={"here": "test"})
+
+        tasks.automated_video_quality_upgrades()
+
+        mock_dl.delay.assert_not_called()
+
+        video.refresh_from_db()
+        self.assertTrue(video.at_max_quality)
