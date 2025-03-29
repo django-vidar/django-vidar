@@ -974,7 +974,7 @@ def write_file_to_storage(filepath, pk, field_name):
                 video.file.delete()
             elif field_name == "audio" and video.audio:
                 video.audio.delete()
-        except OSError:
+        except OSError:  # pragma: no cover
             log.exception(f"Failure to delete existing video.{field_name} {video.pk=}")
 
         log.debug(f"after delete {video.file}")
@@ -1012,7 +1012,7 @@ def write_file_to_storage(filepath, pk, field_name):
         if field_name == "file" and video.file:
             try:
                 video.file_size = filepath.stat().st_size
-            except FileNotFoundError:
+            except FileNotFoundError:  # pragma: no cover
                 log.exception(f"Failure to obtain video.file.size on {video=}")
 
         log.debug(f"before return {video.file=}")

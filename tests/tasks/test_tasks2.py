@@ -1,5 +1,6 @@
 import datetime
 import logging
+import pathlib
 
 import celery.states
 import requests.exceptions
@@ -10,6 +11,7 @@ from unittest.mock import call, patch, MagicMock
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from vidar import models, tasks, app_settings, exceptions
 from vidar.helpers import channel_helpers, celery_helpers
@@ -1502,3 +1504,28 @@ class Post_download_processing_tests(TestCase):
         self.assertEqual(1, mock_delete.si.call_count)
 
         mock_success.si.assert_called_once_with(pk=video.pk)
+
+
+class Write_file_to_storage_tests(TestCase):
+
+    def test_basics_file(self):
+
+        video = models.Video.objects.create(
+            title="test video",
+            provider_object_id="video-id",
+            file="test.mp4",
+        )
+        opener = SimpleUploadedFile("test.mp4", b"here")
+        with patch.object(pathlib.Path, "open", return_value=opener):
+            tasks.write_file_to_storage(filepath="test.mp4", pk=video.pk, field_name="file")
+
+    def test_basics_audio(self):
+
+        video = models.Video.objects.create(
+            title="test video",
+            provider_object_id="video-id",
+            audio="test.mp3",
+        )
+        opener = SimpleUploadedFile("test.mp3", b"here")
+        with patch.object(pathlib.Path, "open", return_value=opener):
+            tasks.write_file_to_storage(filepath="test.mp3", pk=video.pk, field_name="audio")
