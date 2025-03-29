@@ -330,7 +330,12 @@ def assign_oldest_thumbnail_to_channel_year_directories(position="first", commit
 
     log.info("Assigning oldest thumbnail to channel year directories")
 
-    oldest_video_year = Video.objects.all().order_by("-upload_date").last().upload_date.year
+    oldest_video = Video.objects.all().order_by("-upload_date").last()
+    if not oldest_video:
+        log.info("No videos in system, not assigning thumbnails.")
+        return
+
+    oldest_video_year = oldest_video.upload_date.year
     current_year = timezone.now().year
     for channel in Channel.objects.all():
 

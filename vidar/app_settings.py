@@ -1,3 +1,5 @@
+import pathlib
+
 from django.conf import settings
 from django.utils.module_loading import import_string
 
@@ -237,7 +239,7 @@ class AppSettings(object):
 
     @property
     def MEDIA_CACHE(self):
-        return self._setting("MEDIA_CACHE", "")
+        return pathlib.Path(self._setting("MEDIA_CACHE", "cache/"))
 
     @property
     def MEDIA_HARDLINK(self):
@@ -270,6 +272,10 @@ class AppSettings(object):
         return func
 
     @property
+    def MONTHLY_ASSIGN_OLDEST_THUMBNAILS_TO_CHANNEL_YEAR_DIRECTORY(self):
+        return self._setting("MONTHLY_ASSIGN_OLDEST_THUMBNAILS_TO_CHANNEL_YEAR_DIRECTORY", False)
+
+    @property
     def MONTHLY_CHANNEL_UPDATE_BANNERS(self):
         return self._setting("MONTHLY_CHANNEL_UPDATE_BANNERS", False)
 
@@ -278,8 +284,12 @@ class AppSettings(object):
         return self._setting("MONTHLY_CHANNEL_CRONTAB_BALANCING", False)
 
     @property
+    def MONTHLY_CLEAR_DLP_FORMATS(self):
+        return self._setting("MONTHLY_CLEAR_DLP_FORMATS", True)
+
+    @property
     def MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT(self):
-        return self._setting("MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT", True)
+        return self._setting("MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT", False)
 
     @property
     def NOTIFICATIONS_CHANNEL_STATUS_CHANGED(self):
@@ -480,7 +490,7 @@ class AppSettings(object):
         If so, redownload it at max quality."""
         return self._setting(
             "VIDEO_AUTO_DOWNLOAD_LIVE_AMQ_WHEN_DETECTED",
-            False,
+            True,
         )
 
     @property

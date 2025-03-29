@@ -835,7 +835,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             current_title = f"{title_without_the}, {cased_the}"
         return current_title
 
-    def set_details_from_yt_dlp_response(self, data):
+    def set_details_from_yt_dlp_response(self, data, is_video=False, is_short=False, is_livestream=False):
 
         if not self.title:
             if title := data.get("title"):
@@ -890,17 +890,30 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
             self.last_privacy_status_check = timezone.now()
 
-        if not self.is_video and not self.is_short and not self.is_livestream:
-            if orig_url := data.get("original_url"):
-                if "/shorts/" in orig_url:
-                    self.is_short = True
-
-        if not self.is_video and not self.is_short and not self.is_livestream:
-            if data.get("was_live"):
+        if (
+            any([is_video, is_short, is_livestream])
+            and not self.is_video
+            and not self.is_short
+            and not self.is_livestream
+        ):
+            if is_video:
+                self.is_video = True
+            if is_short:
+                self.is_short = True
+            if is_livestream:
                 self.is_livestream = True
+        else:
+            if not self.is_video and not self.is_short and not self.is_livestream:
+                if orig_url := data.get("original_url"):
+                    if "/shorts/" in orig_url:
+                        self.is_short = True
 
-        if not self.is_video and not self.is_short and not self.is_livestream:
-            self.is_video = True
+            if not self.is_video and not self.is_short and not self.is_livestream:
+                if data.get("was_live"):
+                    self.is_livestream = True
+
+            if not self.is_video and not self.is_short and not self.is_livestream:
+                self.is_video = True
 
     def duration_as_timedelta(self):
         return datetime.timedelta(seconds=self.duration)
@@ -1059,7 +1072,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             return True
 
     @classmethod
-    def get_or_create_from_ytdlp_response(cls, data):
+    def get_or_create_from_ytdlp_response(cls, data, is_video=False, is_short=False, is_livestream=False):
         try:
             video = cls.objects.get(provider_object_id=data["id"])
             created = False
@@ -1069,7 +1082,9 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             video.save()
             created = True
 
-        video.set_details_from_yt_dlp_response(data=data)
+        video.set_details_from_yt_dlp_response(
+            data=data, is_video=is_video, is_short=is_short, is_livestream=is_livestream
+        )
         video.save()
 
         return video, created

@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import math
@@ -155,7 +156,6 @@ def check_missed_channel_scans_since_last_ran(start=None, end=None, delta=None, 
     processed_playlists = []
 
     while start <= end:
-        print(start)
 
         output = trigger_crontab_scans(
             now=start,
@@ -187,7 +187,8 @@ def trigger_crontab_scans(
     if not now:
         now = timezone.localtime()
     elif isinstance(now, float):
-        now = timezone.datetime.fromtimestamp(now)
+        now = timezone.datetime.fromtimestamp(now, datetime.timezone.utc)
+        now = now.astimezone(timezone.get_default_timezone())
 
     processed = {
         "channels": processed_channels or [],
@@ -296,11 +297,9 @@ def fully_index_channel(self, pk, limit=None):
 
             video_services.unblock(video_data["id"])
 
-            video, created = Video.get_or_create_from_ytdlp_response(video_data)
+            params = {target_data["video_field"]: True}
 
-            if not video.is_video and not video.is_short and not video.is_livestream:
-                setattr(video, target_data["video_field"], True)
-                video.save()
+            video, created = Video.get_or_create_from_ytdlp_response(video_data, **params)
 
             if video.upload_date:
                 video.inserted = video.inserted.replace(
@@ -376,18 +375,13 @@ def scan_channel_for_new_content(
         if video_services.is_blocked(video_data["id"]):
             continue
 
-        video, created = Video.get_or_create_from_ytdlp_response(video_data)
+        video, created = Video.get_or_create_from_ytdlp_response(
+            data=video_data,
+            is_video=is_video,
+            is_short=is_short,
+            is_livestream=is_livestream,
+        )
         log.info(f"Checking video {video=}")
-
-        if not video.is_video and not video.is_short and not video.is_livestream:
-            if is_video:
-                video.is_video = True
-            if is_short:
-                video.is_short = True
-            if is_livestream:
-                video.is_livestream = True
-
-            video.save()
 
         if video.file:
             log.info("Video already has file, skipping.")
@@ -397,7 +391,7 @@ def scan_channel_for_new_content(
 
         try:
             video.check_and_add_video_to_playlists_based_on_title_matching()
-        except:  # noqa: E722
+        except:  # noqa: E722 ; pragma: no cover
             log.exception("Failure to check and add video to playlists based on title matching")
 
         if not video.permit_download:
@@ -452,7 +446,7 @@ def scan_channel_for_new_videos(self, pk, limit=None):
         channel.last_scanned = timezone.now()
         channel.save(update_fields=["last_scanned"])
 
-    return True
+    return output
 
 
 @shared_task(bind=True, queue="queue-vidar")
@@ -471,7 +465,7 @@ def scan_channel_for_new_shorts(self, pk, limit=None):
             is_short=True,
         )
     except yt_dlp.DownloadError as e:
-        if "This channel does not have a shorts tab" in str(e):
+        if "does not have a shorts tab" in str(e):
             channel.index_shorts = False
             channel.download_shorts = False
             channel.save(update_fields=["index_shorts", "download_shorts"])
@@ -481,7 +475,7 @@ def scan_channel_for_new_shorts(self, pk, limit=None):
         channel.last_scanned_shorts = timezone.now()
         channel.save(update_fields=["last_scanned_shorts"])
 
-    return True
+    return output
 
 
 @shared_task(bind=True, queue="queue-vidar")
@@ -510,7 +504,7 @@ def scan_channel_for_new_livestreams(self, pk, limit=None):
         channel.last_scanned_livestreams = timezone.now()
         channel.save(update_fields=["last_scanned_livestreams"])
 
-    return True
+    return output
 
 
 @shared_task(queue="queue-vidar")
@@ -521,7 +515,7 @@ def automated_archiver():
         channel.full_archive_after = None
         channel.full_archive = True
         channel.slow_full_archive = False
-        channel.send_download_notifications = False
+        channel.send_download_notification = False
         channel.save()
         notification_services.full_archiving_started(channel=channel)
 
@@ -626,7 +620,7 @@ def automated_archiver():
             channel_services.full_archiving_completed(channel=channel)
             notification_services.full_archiving_completed(channel=channel)
 
-        for video in full_archive_videos_to_process:
+        for video in full_archive_videos_to_process.order_by("upload_date"):
 
             if total_downloads >= max_automated_downloads:
                 break
@@ -659,7 +653,7 @@ def automated_archiver():
         total_download_errors__gte=1,
     )
 
-    for video in videos_with_download_errors:
+    for video in videos_with_download_errors.order_by("upload_date"):
 
         if total_downloads >= max_automated_downloads:
             break
@@ -692,12 +686,16 @@ def automated_archiver():
     if app_settings.VIDEO_AUTO_DOWNLOAD_LIVE_AMQ_WHEN_DETECTED:
 
         # AMQ would change from update_video_details task.
-        for video in Video.objects.filter(
-            requested_max_quality=True,
-            at_max_quality=False,
-            date_downloaded__lte=timezone.now() - timezone.timedelta(days=3),
-            system_notes__max_quality_upgraded__isnull=True,
-        ).exclude(file=""):
+        for video in (
+            Video.objects.filter(
+                requested_max_quality=True,
+                at_max_quality=False,
+                date_downloaded__lte=timezone.now() - timezone.timedelta(days=3),
+                system_notes__max_quality_upgraded__isnull=True,
+            )
+            .exclude(file="")
+            .order_by("upload_date")
+        ):
 
             if total_downloads >= max_automated_downloads:
                 break
@@ -726,7 +724,7 @@ def automated_archiver():
 
     hours = app_settings.VIDEO_LIVE_DOWNLOAD_RETRY_HOURS
     hours_ago = timezone.now() - timezone.timedelta(hours=hours)
-    for video in Video.objects.filter(system_notes__video_was_live_at_last_attempt=True, inserted__gte=hours_ago):
+    for video in Video.objects.filter(system_notes__video_was_live_at_last_attempt=True, inserted__lte=hours_ago):
 
         log.info(f"{video.pk=} was live when it attempted its download, trying again now {hours=} later")
 
@@ -774,7 +772,7 @@ def download_provider_video(
             log.info(f"Failure to acquire lock for {video.pk=}. Ending now.")
             raise SystemError(f"Failure to acquire lock for {video.celery_object_lock_key()=}.")
 
-    cache_folder = app_settings.MEDIA_CACHE
+    cache_folder = pathlib.Path(app_settings.MEDIA_CACHE)
 
     if quality is None:
         selected_quality = video_services.quality_to_download(video=video)
@@ -836,7 +834,7 @@ def download_provider_video(
             for file in cache_folder.glob(f"{video.provider_object_id}*"):
                 try:
                     file.unlink()
-                except OSError:
+                except OSError:  # pragma: no cover
                     log.exception("Failed to delete processing file due to invalid data exception raise")
 
         if self.request.retries >= 3:
@@ -892,9 +890,6 @@ def download_provider_video(
         downloaded_file_data=downloaded_file_data,
         overwrite_formats=False,
     )
-
-    if "downloads" not in video.system_notes:
-        video.system_notes["downloads"] = []
 
     video.set_latest_download_stats(
         status="success",
@@ -976,7 +971,7 @@ def write_file_to_storage(filepath, pk, field_name):
                 video.file.delete()
             elif field_name == "audio" and video.audio:
                 video.audio.delete()
-        except OSError:
+        except OSError:  # pragma: no cover
             log.exception(f"Failure to delete existing video.{field_name} {video.pk=}")
 
         log.debug(f"after delete {video.file}")
@@ -1014,7 +1009,7 @@ def write_file_to_storage(filepath, pk, field_name):
         if field_name == "file" and video.file:
             try:
                 video.file_size = filepath.stat().st_size
-            except FileNotFoundError:
+            except FileNotFoundError:  # pragma: no cover
                 log.exception(f"Failure to obtain video.file.size on {video=}")
 
         log.debug(f"before return {video.file=}")
@@ -1033,7 +1028,7 @@ def delete_cached_file(filepath):
         return
     try:
         os.unlink(filepath)
-    except OSError:
+    except OSError:  # pragma: no cover
         log.exception("Failure to delete cached file.")
     return True
 
@@ -1057,21 +1052,21 @@ def video_downloaded_successfully(self, pk):
 
     video = Video.objects.get(pk=pk)
 
-    info_json_data = None
+    info_json_data = {}
     if video.info_json:
         with video.info_json.open() as fo:
             info_json_data = json.load(fo)
 
     try:
         video_services.load_chapters_from_info_json(video=video, reload=True, info_json_data=info_json_data)
-    except:  # noqa: E722
+    except:  # noqa: E722 ; pragma: no cover
         log.exception(f"Failure to load chapters on {video=}")
 
     load_video_thumbnail.apply_async(args=[pk, info_json_data.get("thumbnail")], countdown=30)
 
     try:
         video.search_description_for_related_videos()
-    except:  # noqa: E722
+    except:  # noqa: E722 ; pragma: no cover
         log.exception("Failed to search description for related videos.")
 
     video.log_to_scanhistory()
@@ -1183,7 +1178,7 @@ def download_provider_video_comments(self, pk, all_comments=False):
     default_retry_delay=5,
     queue="queue-vidar",
 )
-def subscribe_to_channel(self, channel_id):
+def subscribe_to_channel(self, channel_id, sleep=True):
 
     obj = Channel.objects.get(provider_object_id=channel_id)
 
@@ -1196,7 +1191,8 @@ def subscribe_to_channel(self, channel_id):
 
     update_channel_banners.delay(obj.pk)
 
-    time.sleep(1)
+    if sleep:  # pragma: no cover
+        time.sleep(1)
 
     Playlist.objects.filter(channel_provider_object_id=obj.provider_object_id).update(channel=obj)
     Video.objects.filter(channel_provider_object_id=obj.provider_object_id, channel__isnull=True).update(channel=obj)
@@ -1227,10 +1223,7 @@ def convert_video_to_audio(self, pk, filepath=None, return_filepath=False):
     clip.audio.write_audiofile(output_filepath, logger="bar" if settings.DEBUG else None)
 
     if was_remote:
-        try:
-            os.unlink(local_filepath)
-        except FileNotFoundError:
-            log.exception(f"Failure to delete remote copied local file after conversion to audio. {local_filepath=}")
+        os.unlink(local_filepath)
 
     with transaction.atomic():
         video = Video.objects.select_for_update().get(id=pk)
@@ -1324,10 +1317,6 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
         if video_created:
             new_videos += 1
 
-        if not video.is_video and not video.is_short and not video.is_livestream:
-            video.is_video = True
-            video.save()
-
         if video in videos_existing:
             videos_existing.remove(video)
 
@@ -1360,7 +1349,7 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
 
         try:
             video.check_and_add_video_to_playlists_based_on_title_matching()
-        except:  # noqa: E722
+        except:  # noqa: E722 ; pragma: no cover
             log.exception("Failure to check and add video to playlists based on title matching")
 
         if video_services.should_download_comments(video=video):
@@ -1400,7 +1389,7 @@ def delete_channel(pk, keep_archived_videos=False, delete_playlists=True):
         if (keep_archived_videos and video.file) or video.playlists.exists():
             video.channel = None
             try:
-                renamers.video_rename_all_files(video)
+                renamers.video_rename_all_files(video=video)
             except FileStorageBackendHasNoMoveError:
                 log.error("Cannot rename video files as storage backend has no move ability")
                 break
@@ -1471,16 +1460,8 @@ def monthly_maintenances(self):
                 new_crontab = crontab_services.generate_weekly(day_of_week=common_week_day)
 
                 log.debug(f"{channel.name:>50} {dslu:>10} {dbr:>10} {channel.scanner_crontab:>20} {new_crontab:>20}")
-                channel.index_videos = True
+
                 channel.scanner_crontab = new_crontab
-
-                if channel.scanner_limit == 2:
-                    channel.scanner_limit = 5
-
-                if channel.index_shorts and channel.scanner_limit_shorts == 2:
-                    channel.scanner_limit_shorts = 5
-                if channel.index_livestreams and channel.scanner_limit_livestreams == 2:
-                    channel.scanner_limit_livestreams = 5
 
                 channel.save()
 
@@ -1492,16 +1473,22 @@ def monthly_maintenances(self):
         except FileStorageBackendHasNoMoveError:
             log.exception("Failure to confirm filenames are correct as File backend does not support move.")
 
-    dlp_formats_cleared = Video.objects.filter(
-        Q(privacy_status_checks__gt=app_settings.PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO)
-        | Q(file="", upload_date__lt=timezone.now().date() - timezone.timedelta(days=6 * 30))
-    )
-    log.info(f"{dlp_formats_cleared=} from video.dlp_formats.")
+    if app_settings.MONTHLY_CLEAR_DLP_FORMATS:
+        dlp_formats_cleared = (
+            Video.objects.filter(
+                Q(privacy_status_checks__gt=app_settings.PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO)
+                | Q(file="", upload_date__lt=timezone.now().date() - timezone.timedelta(days=6 * 30))
+            )
+            .exclude(dlp_formats__isnull=True)
+            .update(dlp_formats=None)
+        )
+        log.info(f"{dlp_formats_cleared=} from video.dlp_formats.")
 
-    try:
-        oneoffs.assign_oldest_thumbnail_to_channel_year_directories()
-    except FileStorageBackendHasNoMoveError:
-        log.error("Cannot assign channel directories cover files as storage backend has no move ability")
+    if app_settings.MONTHLY_ASSIGN_OLDEST_THUMBNAILS_TO_CHANNEL_YEAR_DIRECTORY:
+        try:
+            oneoffs.assign_oldest_thumbnail_to_channel_year_directories()
+        except FileStorageBackendHasNoMoveError:
+            log.error("Cannot assign channel directories cover files as storage backend has no move ability")
 
     signals.post_monthly_maintenance.send(sender=self.__class__, instance=self)
 
@@ -1540,8 +1527,6 @@ def automated_video_quality_upgrades():
         )
 
         for video in videos_potentially_needing_upgrade:
-            if not video.file:
-                continue
 
             if video.is_at_max_quality():
                 continue
@@ -1679,7 +1664,7 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode="m
         try:
             video.quality = ytdlp_services.get_highest_quality_from_video_dlp_formats(video.dlp_formats)
             video.quality = ytdlp_services.fix_quality_values(video.quality)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError):  # pragma: no cover
             log.exception("Failure to obtain video quality during status check.")
 
     if video.quality and video.at_max_quality:
@@ -1728,7 +1713,7 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode="m
 
     try:
         video_services.load_chapters_from_info_json(video=video, info_json_data=dlp_output)
-    except:  # noqa: E722
+    except:  # noqa: E722 ; pragma: no cover
         log.exception(f"Failure to load chapters on {video=}")
 
     if app_settings.LOAD_SPONSORBLOCK_DATA_ON_UPDATE_VIDEO_DETAILS:
@@ -1874,20 +1859,29 @@ def daily_maintenances(self):
         channel_videos_base_qs = (
             channel.videos.exclude(file="")
             .annotate(percentage_of_video=F("duration") * 0.9)
-            .filter(user_playback_history__seconds__gte=F("percentage_of_video"))
+            .filter(starred__isnull=True, user_playback_history__seconds__gte=F("percentage_of_video"))
         )
 
         if channel.delete_videos_after_watching:
             for video in channel_videos_base_qs.filter(is_video=True):
-                video_services.delete_video(video=video, keep_record=True)
+                try:
+                    video_services.delete_video(video=video, keep_record=True)
+                except ValueError:
+                    log.exception("Failed to delete video")
 
         if channel.delete_shorts_after_watching:
             for short in channel_videos_base_qs.filter(is_short=True):
-                video_services.delete_video(video=short, keep_record=True)
+                try:
+                    video_services.delete_video(video=short, keep_record=True)
+                except ValueError:
+                    log.exception("Failed to delete video")
 
         if channel.delete_livestreams_after_watching:
             for livestream in channel_videos_base_qs.filter(is_livestream=True):
-                video_services.delete_video(video=livestream, keep_record=True)
+                try:
+                    video_services.delete_video(video=livestream, keep_record=True)
+                except ValueError:
+                    log.exception("Failed to delete video")
 
     signals.post_daily_maintenance.send(sender=self.__class__, instance=self)
 
@@ -1898,6 +1892,8 @@ def update_video_statuses_and_details():
     # NOTE: Update views.update_video_details_queue with same logic.
 
     log.info("Triggering Video Status Updater tasks")
+    checks_video_age_days = app_settings.PRIVACY_STATUS_CHECK_MIN_AGE
+    thirty_days_ago = (timezone.now() - timezone.timedelta(days=checks_video_age_days)).date()
 
     videos_that_are_checkable = (
         Video.objects.archived()
@@ -1912,11 +1908,10 @@ def update_video_statuses_and_details():
         )
         .filter(
             privacy_status_checks__lt=app_settings.PRIVACY_STATUS_CHECK_MAX_CHECK_PER_VIDEO,
+            inserted__date__lte=thirty_days_ago,
         )
         .order_by("-zero_quality_first", "-last_checked_null_first", "last_privacy_status_check", "upload_date")
     )
-
-    checks_video_age_days = app_settings.PRIVACY_STATUS_CHECK_MIN_AGE
 
     videos_to_check_per_day = math.ceil(videos_that_are_checkable.count() / checks_video_age_days)
 
@@ -1937,8 +1932,6 @@ def update_video_statuses_and_details():
         f"{videos_to_check_per_hour}/hr {videos_to_check_per_ten_minutes}/10min"
     )
     log.info(f"Videos to check today {videos_to_check_per_day} - {tasks_completed_today} = {tasks_to_complete_today}")
-
-    thirty_days_ago = (timezone.localtime() - timezone.timedelta(days=checks_video_age_days)).date()
 
     qs = Q(last_privacy_status_check__date__lt=thirty_days_ago) | Q(last_privacy_status_check__isnull=True)
     if app_settings.SAVE_INFO_JSON_FILE:
@@ -1987,18 +1980,12 @@ def update_video_statuses_and_details():
 def channel_rename_files(self, channel_id, commit=True, remove_empty=True, rename_videos=True):
 
     channel = Channel.objects.get(pk=channel_id)
-
-    try:
-        renamers.channel_rename_all_files(
-            channel=channel,
-            commit=commit,
-            remove_empty=remove_empty,
-            rename_videos=rename_videos,
-        )
-    except FileStorageBackendHasNoMoveError:
-        log.error("Cannot rename channel files as storage backend has no move ability")
-
-    return True
+    renamers.channel_rename_all_files(
+        channel=channel,
+        commit=commit,
+        remove_empty=remove_empty,
+        rename_videos=rename_videos,
+    )
 
 
 @shared_task(bind=True, queue="queue-vidar")
@@ -2031,97 +2018,31 @@ def rename_video_files(self, pk, remove_empty=True):
         raise Ignore()
 
     changed = False
-    with transaction.atomic():
-        video = Video.objects.select_for_update().get(pk=pk)
+    video = Video.objects.get(pk=pk)
 
-        if not video.file:
-            self.update_state(state=states.FAILURE, meta=f"Renaming video.{pk=} does not have a file.")
-            raise Ignore()
+    if not video.file:
+        self.update_state(state=states.FAILURE, meta=f"Renaming video.{pk=} does not have a file.")
+        raise Ignore()
 
-        try:
-            changed = renamers.video_rename_all_files(
-                video=video,
-                commit=False,
-                remove_empty=remove_empty,
-            )
-        except FileStorageBackendHasNoMoveError:
-            log.exception("Attempting to rename files on storage backend that has no `move` functionality")
-            self.update_state(state=states.FAILURE, meta="File storage backend cannot move files")
-            raise Ignore()
-        except:  # noqa: E722
-            video.file_not_found = True
-            changed = True
-            raise
-        finally:
-            if changed:
-                video.save()
+    try:
+        changed = renamers.video_rename_all_files(
+            video=video,
+            commit=False,
+            remove_empty=remove_empty,
+        )
+    except FileStorageBackendHasNoMoveError:
+        log.exception("Attempting to rename files on storage backend that has no `move` functionality")
+        self.update_state(state=states.FAILURE, meta="File storage backend cannot move files")
+        raise Ignore()
+    except OSError:
+        video.file_not_found = True
+        changed = True
+        raise
+    finally:
+        if changed:
+            video.save()
 
     return True
-
-
-@shared_task(queue="queue-vidar")
-def trigger_convert_video_to_mp4(pk=None):
-    # Move to its own task as some conversion can take hours
-    #   so perhaps this should be scheduled once or twice a day?
-
-    max_automated_downloads = app_settings.AUTOMATED_DOWNLOADS_PER_TASK_LIMIT
-    total_downloads = 0
-
-    # If you change mkv to include others, update the convert_to_mp4 task with the same logic.
-    qs = Video.objects.filter(file__endswith=".mkv")
-
-    if pk:
-        Video.objects.filter(pk=pk)
-
-    log.info(f"{qs.count()} videos pending mkv conversion")
-
-    direct_convert_used = False
-    for video in qs:
-
-        if celery_helpers.is_object_locked(obj=video):
-            continue
-
-        is_pubic = video.privacy_status in Video.VideoPrivacyStatuses_Publicly_Visible
-        is_very_large = video.file_size >= 1.5 * 1024 * 1024 * 1024
-
-        time_diff = timezone.now() - video.date_downloaded
-        is_over_a_day_old = time_diff > timezone.timedelta(days=2)
-
-        if "convert_video_to_mp4_started" not in video.system_notes:
-            if not direct_convert_used:
-                log.info(f"Video attempting to direct convert mkv to mp4. {video=}")
-
-                chain(
-                    convert_video_to_mp4.si(pk=video.id),
-                    write_file_to_storage.s(pk=pk, field_name="file"),
-                    delete_cached_file.s(),
-                )()
-
-                # Memory issues limit to doing one at a time.
-                direct_convert_used = True
-
-        elif is_over_a_day_old and is_pubic and "redownload_mkv_to_mp4_attempted" not in video.system_notes:
-
-            if total_downloads >= max_automated_downloads:
-                break
-
-            log.info(f"Video attempting to redownload to convert mkv to mp4. {video=}")
-            video.system_notes["redownload_mkv_to_mp4_attempted"] = timezone.now().isoformat()
-            video.save(update_fields=["system_notes"])
-
-            download_provider_video.apply_async(kwargs=dict(pk=video.pk, task_source="mkv to mp4 conversion"))
-
-            total_downloads += 1
-
-            if utils.should_halve_download_limit(duration=video.duration):
-                max_automated_downloads //= 2
-            elif is_very_large:
-                max_automated_downloads = 0
-
-        else:
-
-            log.info(f"Video attempted to redownload and direct conversion mkv to mp4 and failed. {video=}")
-            continue
 
 
 @shared_task(bind=True, queue="queue-vidar-processor")
@@ -2268,7 +2189,7 @@ def slow_full_archive():
             channel_services.full_archiving_completed(channel=channel)
             notification_services.full_archiving_completed(channel=channel)
 
-        for video in full_archive_videos_to_process:
+        for video in full_archive_videos_to_process.order_by("upload_date"):
 
             if total_downloads >= max_automated_downloads:
                 break
@@ -2287,3 +2208,5 @@ def slow_full_archive():
             )
 
             total_downloads += 1
+
+    return total_downloads

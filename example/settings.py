@@ -9,6 +9,9 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+import pathlib
+import sys
+
 from django.utils import timezone
 from pathlib import Path
 import environ
@@ -190,6 +193,7 @@ MEDIA_URL = env.str('DJANGO_MEDIA_URL', '/media/')
 VIDAR_REDIS_URL = env.str('VIDAR_REDIS_URL', CELERY_BROKER_URL)
 VIDAR_MEDIA_ROOT = env.str('VIDAR_MEDIA_ROOT', MEDIA_ROOT)
 VIDAR_MEDIA_URL = env.str('VIDAR_MEDIA_URL', MEDIA_URL)
+VIDAR_MEDIA_CACHE = pathlib.Path(env.str('VIDAR_MEDIA_CACHE', "cache/"))
 
 GITHUB_WORKFLOW = env.str("GITHUB_WORKFLOW", default=None)
 if GITHUB_WORKFLOW:  # pragma: no cover
@@ -217,3 +221,5 @@ def my_ytdlp_initializer(action, instance=None, **kwargs):
     return yt_dlp.YoutubeDL(kwargs)
 
 VIDAR_YTDLP_INITIALIZER = my_ytdlp_initializer
+
+IS_TESTING = env.bool("IS_TESTING", "test" in sys.argv)

@@ -158,8 +158,10 @@ class Command(BaseCommand):
             app_settings.MEDIA_STORAGE_CLASS
             app_settings.METADATA_ALBUM
             app_settings.METADATA_ARTIST
+            app_settings.MONTHLY_ASSIGN_OLDEST_THUMBNAILS_TO_CHANNEL_YEAR_DIRECTORY
             app_settings.MONTHLY_CHANNEL_UPDATE_BANNERS
             app_settings.MONTHLY_CHANNEL_CRONTAB_BALANCING
+            app_settings.MONTHLY_CLEAR_DLP_FORMATS
             app_settings.MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT
             app_settings.NOTIFICATIONS_CHANNEL_STATUS_CHANGED
             app_settings.NOTIFICATIONS_CONVERT_TO_MP4_COMPLETED

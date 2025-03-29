@@ -633,14 +633,21 @@ class VideoManageViewTests(TestCase):
         else:
             self.fail("No message was logged in view.")
 
-    @patch("vidar.tasks.trigger_convert_video_to_mp4")
-    def test_convert_to_mp4(self, mock_task):
+
+    @patch("vidar.tasks.delete_cached_file")
+    @patch("vidar.tasks.write_file_to_storage")
+    @patch("vidar.tasks.convert_video_to_mp4")
+    @patch("vidar.tasks.download_provider_video")
+    def test_convert_to_mp4(self, mock_dl, mock_convert, mock_write, mock_delete):
 
         video = models.Video.objects.create(file="test.mp4")
         url = reverse('vidar:video-manage', args=[video.pk])
         resp = self.client.post(url, {"convert-to-mp4": True})
 
-        mock_task.delay.assert_called_once()
+        mock_dl.apply_async.assert_not_called()
+        mock_convert.si.assert_called_once_with(pk=video.pk)
+        mock_write.s.assert_called_once_with(pk=video.pk, field_name="file")
+        mock_delete.s.assert_called_once()
 
     def test_block(self):
         video = models.Video.objects.create(file="test.mp4")

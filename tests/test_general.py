@@ -599,7 +599,13 @@ class RenamerTests(TestCase):
         mock_move.assert_not_called()
 
 
+@override_settings(IS_TESTING=False)
 class InteractorTests(SimpleTestCase):
+
+    @override_settings(IS_TESTING=True)
+    def test_call_ytdlp(self):
+        with self.assertRaises(exceptions.YTDLPCalledDuringTests):
+            interactor.channel_details(url="...")
 
     @patch('yt_dlp.YoutubeDL')
     def test_is_ytdlp_interactor_from_settings(self, mock_ytdlp):

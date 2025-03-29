@@ -355,7 +355,7 @@ settings.py and will bypass the settings getter system.
 ``VIDAR_LOAD_SPONSORBLOCK_DATA_ON_UPDATE_VIDEO_DETAILS`` (default: ``True``)
     When checking video status, should it also check sponsorblock for updates?
 
-``VIDAR_MEDIA_CACHE`` (default: ``""``)
+``VIDAR_MEDIA_CACHE`` (default: ``"cache/"``)
     Temporary directory to use when downloading videos before conversion and saving to MEDIA_ROOT.
 
 ``VIDAR_MEDIA_HARDLINK`` (default: ``False``)
@@ -378,11 +378,15 @@ settings.py and will bypass the settings getter system.
     Dot notation path to a function that accepts ``video`` and returns the artist
     for ``navigator.mediaSession.metadata`` used on the video player.
 
-``VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS`` (default: ``True``)
+``VIDAR_MONTHLY_ASSIGN_OLDEST_THUMBNAILS_TO_CHANNEL_YEAR_DIRECTORY`` (default: ``False``)
+
+``VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS`` (default: ``False``)
 
 ``VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING`` (default: ``False``)
 
-``VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT`` (default: ``True``)
+``VIDAR_MONTHLY_CLEAR_DLP_FORMATS`` (default: ``True``)
+
+``VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT`` (default: ``False``)
 
 ``VIDAR_NOTIFICATIONS_CHANNEL_STATUS_CHANGED`` (default: ``True``)
 
@@ -541,7 +545,7 @@ settings.py and will bypass the settings getter system.
 ``VIDAR_SLOW_FULL_ARCHIVE_TASK_DOWNLOAD_LIMIT`` (default: ``1``)
     How many videos to download per task run.
 
-``VIDAR_VIDEO_AUTO_DOWNLOAD_LIVE_AMQ_WHEN_DETECTED`` (default: ``False``)
+``VIDAR_VIDEO_AUTO_DOWNLOAD_LIVE_AMQ_WHEN_DETECTED`` (default: ``True``)
     When ``update_video_details`` task is called, a video's live quality may have been
     updated since it was last downloaded. Maybe the download task grabbed 480p while youtube
     was still processing 1080p. If a channel is set to download the best quality available,
