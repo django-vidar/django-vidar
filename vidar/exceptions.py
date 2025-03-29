@@ -20,3 +20,7 @@ class ConversionOutputFileNotFoundError(Exception):
 
 class FileStorageBackendHasNoMoveError(Exception):
     pass
+
+
+class YTDLPCalledDuringTests(Exception):
+    pass

@@ -9,6 +9,8 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+import sys
+
 from django.utils import timezone
 from pathlib import Path
 import environ
@@ -217,3 +219,5 @@ def my_ytdlp_initializer(action, instance=None, **kwargs):
     return yt_dlp.YoutubeDL(kwargs)
 
 VIDAR_YTDLP_INITIALIZER = my_ytdlp_initializer
+
+IS_TESTING = "test" in sys.argv
