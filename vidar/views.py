@@ -1707,7 +1707,13 @@ class VideoManageView(PermissionRequiredMixin, DetailView):
             form = forms.VideoManualEditor(request.POST, instance=self.object)
             form.save()
         if "convert-to-mp4" in request.POST:
-            tasks.trigger_convert_video_to_mp4.delay(pk=self.object.id)
+
+            tasks.chain(
+                tasks.convert_video_to_mp4.si(pk=self.object.pk),
+                tasks.write_file_to_storage.s(pk=self.object.pk, field_name="file"),
+                tasks.delete_cached_file.s(),
+            )()
+
             messages.success(self.request, "Video sent for rendering, give it time.")
         if "extrafile" in request.POST:
             form = forms.ExtraFileForm(request.POST, self.request.FILES)
