@@ -864,3 +864,47 @@ class Update_video_statuses_and_details(TestCase):
         tasks.update_video_statuses_and_details()
 
         self.assertEqual(2, mock_task.apply_async.call_count)
+
+
+class Load_sponsorblock_data_tests(TestCase):
+
+    @patch("vidar.services.video_services.load_live_sponsorblock_video_data_into_duration_skips")
+    def test_requests_connectionerror_retries(self, mock_load):
+        video = models.Video.objects.create()
+        mock_load.side_effect = requests.exceptions.ConnectionError()
+
+        with self.assertRaises(requests.exceptions.ConnectionError):
+            tasks.load_sponsorblock_data.delay(video.pk).get()
+
+        self.assertEqual(4, mock_load.call_count)
+
+    @patch("vidar.services.video_services.load_live_sponsorblock_video_data_into_duration_skips")
+    def test_requests_httperror_returns(self, mock_load):
+        video = models.Video.objects.create()
+        mock_load.side_effect = requests.exceptions.HTTPError("500 Server Error")
+
+        tasks.load_sponsorblock_data.delay(video.pk).get()
+
+        self.assertEqual(1, mock_load.call_count)
+
+    @patch("vidar.services.video_services.load_live_sponsorblock_video_data_into_duration_skips")
+    def test_requests_httperror_with_unknown_errors_raises(self, mock_load):
+        video = models.Video.objects.create()
+        mock_load.side_effect = requests.exceptions.HTTPError("505 Server Error")
+
+        with self.assertRaises(requests.exceptions.HTTPError):
+            tasks.load_sponsorblock_data.delay(video.pk).get()
+
+        self.assertEqual(4, mock_load.call_count)
+
+    @patch("vidar.services.video_services.load_live_sponsorblock_video_data_into_duration_skips")
+    def test_returns_number_of_created_items(self, mock_load):
+        video = models.Video.objects.create()
+        mock_load.return_value = [1,2,3,4,5]
+
+        output = tasks.load_sponsorblock_data.delay(video.pk).get()
+        self.assertEqual(5, output)
+
+        self.assertEqual(1, mock_load.call_count)
+
+
