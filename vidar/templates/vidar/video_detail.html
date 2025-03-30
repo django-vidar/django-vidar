@@ -447,6 +447,8 @@
     let redirect_prev_url = "";
     let redirect_prev_name = "";
     let url_params = new URLSearchParams();
+    let url_params_next = new URLSearchParams();
+    let url_params_previous = new URLSearchParams();
     let current_url_params = new URLSearchParams(window.location.search);
     let is_audio_view = false;
     let sleep_timer = current_url_params.get('sleep');
@@ -748,15 +750,16 @@
         {% previous_by_playlist playlist video request.GET.view as previous_by_playlist_value %}
         {% next_by_playlist playlist video request.GET.view as next_by_playlist_value %}
         url_params.append("next", "playlist");
-        url_params.append("playlist", {{ playlist.id }});
+        url_params_next.append("playlist", {{ next_by_playlist_value.playlist_id|default:0 }});
+        url_params_previous.append("playlist", {{ previous_by_playlist_value.playlist_id|default:0 }});
 
         // next_by_playlist
         redirect_next_url = "{{ next_by_playlist_value.get_absolute_url|default:"" }}";
-        redirect_next_name = "{{ next_by_playlist_value }}";
+        redirect_next_name = "{{ next_by_playlist_value.video }}";
 
         // previous_by_playlist
         redirect_prev_url = "{{ previous_by_playlist_value.get_absolute_url|default:"" }}";
-        redirect_prev_name = "{{ previous_by_playlist_value }}";
+        redirect_prev_name = "{{ previous_by_playlist_value.video }}";
 
     {% else %}
         {% previous_by_channel video request.GET.view as previous_by_channel_value %}
@@ -772,8 +775,21 @@
 
     {% endif %}
 
-    function build_redirect_url(url) {
-        return url + "?" + url_params.toString()
+    function build_redirect_url(url, url_params_specific) {
+
+        if (url_params_specific.size !== 0) {
+            var combined = new URLSearchParams({
+                ...Object.fromEntries(url_params),
+                ...Object.fromEntries(url_params_specific)
+            });
+        } else {
+            combined = url_params;
+        }
+
+        if (combined.size !== 0) {
+            return url + "?" + combined.toString();
+        }
+        return url;
     }
 
     function vidarHtmlDecode(input) {
@@ -781,19 +797,19 @@
         return doc.documentElement.textContent;
     }
 
-    function build_next_prev_bar_a(element_id, rurl, rname) {
+    function build_next_prev_bar_a(element_id, rurl, rname, rparams) {
         if (rurl !== "" && rname !== "") {
             document.querySelector('#next_prev_bar').classList.remove('hidden');
             let next_div = document.querySelector(element_id);
             let next_a = document.createElement('a');
-            next_a.setAttribute('href', build_redirect_url(rurl));
+            next_a.setAttribute('href', build_redirect_url(rurl, rparams));
             next_a.text = rname;
             next_div.appendChild(next_a);
             next_div.parentElement.classList.remove('hidden');
         }
     }
-    build_next_prev_bar_a("#play-next", redirect_next_url, vidarHtmlDecode(redirect_next_name))
-    build_next_prev_bar_a("#play-prev", redirect_prev_url, vidarHtmlDecode(redirect_prev_name))
+    build_next_prev_bar_a("#play-next", redirect_next_url, vidarHtmlDecode(redirect_next_name), url_params_next)
+    build_next_prev_bar_a("#play-prev", redirect_prev_url, vidarHtmlDecode(redirect_prev_name), url_params_previous)
 
     if ("mediaSession" in navigator) {
         const actionHandlers = [

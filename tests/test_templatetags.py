@@ -47,15 +47,17 @@ class TemplateTagsVideoToolsTests(TestCase):
         video6 = models.Video.objects.create(title='video 6', upload_date=date_to_aware_date('2024-06-06'))
         video7 = models.Video.objects.create(title='video 7', upload_date=date_to_aware_date('2024-06-07'))
 
-        playlist.videos.add(video3, video4, video5)
+        pli3 = playlist.playlistitem_set.create(video=video3)
+        pli4 = playlist.playlistitem_set.create(video=video4)
+        pli5 = playlist.playlistitem_set.create(video=video5)
 
         self.assertIsNone(video_tools.previous_by_playlist(playlist, video3))
-        self.assertEqual(video4, video_tools.next_by_playlist(playlist, video3))
+        self.assertEqual(pli4, video_tools.next_by_playlist(playlist, video3))
 
-        self.assertEqual(video3, video_tools.previous_by_playlist(playlist, video4))
-        self.assertEqual(video5, video_tools.next_by_playlist(playlist, video4))
+        self.assertEqual(pli3, video_tools.previous_by_playlist(playlist, video4))
+        self.assertEqual(pli5, video_tools.next_by_playlist(playlist, video4))
 
-        self.assertEqual(video4, video_tools.previous_by_playlist(playlist, video5))
+        self.assertEqual(pli4, video_tools.previous_by_playlist(playlist, video5))
         self.assertIsNone(video_tools.next_by_playlist(playlist, video5))
 
     def test_display_ordering_by_playlist_upload_date_desc(self):
@@ -72,15 +74,93 @@ class TemplateTagsVideoToolsTests(TestCase):
         video6 = models.Video.objects.create(title='video 6', upload_date=date_to_aware_date('2024-06-06'))
         video7 = models.Video.objects.create(title='video 7', upload_date=date_to_aware_date('2024-06-07'))
 
-        playlist.videos.add(video3, video4, video5)
+        pli3 = playlist.playlistitem_set.create(video=video3)
+        pli4 = playlist.playlistitem_set.create(video=video4)
+        pli5 = playlist.playlistitem_set.create(video=video5)
 
         self.assertIsNone(video_tools.previous_by_playlist(playlist, video5))
-        self.assertEqual(video4, video_tools.next_by_playlist(playlist, video5))
+        self.assertEqual(pli4, video_tools.next_by_playlist(playlist, video5))
 
-        self.assertEqual(video5, video_tools.previous_by_playlist(playlist, video4))
-        self.assertEqual(video3, video_tools.next_by_playlist(playlist, video4))
+        self.assertEqual(pli5, video_tools.previous_by_playlist(playlist, video4))
+        self.assertEqual(pli3, video_tools.next_by_playlist(playlist, video4))
 
-        self.assertEqual(video4, video_tools.previous_by_playlist(playlist, video3))
+        self.assertEqual(pli4, video_tools.previous_by_playlist(playlist, video3))
+        self.assertIsNone(video_tools.next_by_playlist(playlist, video3))
+
+    def test_playlist_with_next_continues_next_by_playlist(self):
+        playlist2 = models.Playlist.objects.create(
+            title="Test Playlist 2",
+            videos_playback_ordering=models.Playlist.PlaylistVideoOrderingChoices.VIDEO_UPLOAD_DATE_DESC,
+        )
+        playlist = models.Playlist.objects.create(
+            title='Test Playlist',
+            next_playlist=playlist2,
+            videos_playback_ordering=models.Playlist.PlaylistVideoOrderingChoices.VIDEO_UPLOAD_DATE_DESC,
+        )
+
+        video1 = models.Video.objects.create(title='video 1', upload_date=date_to_aware_date('2024-06-01'))
+        video2 = models.Video.objects.create(title='video 2', upload_date=date_to_aware_date('2024-06-02'))
+        video3 = models.Video.objects.create(title='video 3', upload_date=date_to_aware_date('2024-06-03'))
+        video4 = models.Video.objects.create(title='video 4', upload_date=date_to_aware_date('2024-06-04'))
+        video5 = models.Video.objects.create(title='video 5', upload_date=date_to_aware_date('2024-06-05'))
+        video6 = models.Video.objects.create(title='video 6', upload_date=date_to_aware_date('2024-06-06'))
+        video7 = models.Video.objects.create(title='video 7', upload_date=date_to_aware_date('2024-06-07'))
+
+        pli3 = playlist.playlistitem_set.create(video=video3)
+        pli4 = playlist.playlistitem_set.create(video=video4)
+        pli5 = playlist.playlistitem_set.create(video=video5)
+
+        video8 = models.Video.objects.create(title='video 8', upload_date=date_to_aware_date('2024-06-08'))
+        video9 = models.Video.objects.create(title='video 9', upload_date=date_to_aware_date('2024-06-09'))
+
+        pli8 = playlist2.playlistitem_set.create(video=video8)
+        pli9 = playlist2.playlistitem_set.create(video=video9)
+
+        self.assertIsNone(video_tools.previous_by_playlist(playlist, video5))
+        self.assertEqual(pli4, video_tools.next_by_playlist(playlist, video5))
+
+        self.assertEqual(pli5, video_tools.previous_by_playlist(playlist, video4))
+        self.assertEqual(pli3, video_tools.next_by_playlist(playlist, video4))
+
+        self.assertEqual(pli4, video_tools.previous_by_playlist(playlist, video3))
+        self.assertEqual(pli8, video_tools.next_by_playlist(playlist, video3))
+
+    def test_playlist_with_previous_continues_previous_by_playlist(self):
+        playlist = models.Playlist.objects.create(
+            title='Test Playlist',
+            videos_playback_ordering=models.Playlist.PlaylistVideoOrderingChoices.VIDEO_UPLOAD_DATE_DESC,
+        )
+        playlist2 = models.Playlist.objects.create(
+            title="Test Playlist 2",
+            next_playlist=playlist,
+            videos_playback_ordering=models.Playlist.PlaylistVideoOrderingChoices.VIDEO_UPLOAD_DATE_DESC,
+        )
+
+        video1 = models.Video.objects.create(title='video 1', upload_date=date_to_aware_date('2024-06-01'))
+        video2 = models.Video.objects.create(title='video 2', upload_date=date_to_aware_date('2024-06-02'))
+        video3 = models.Video.objects.create(title='video 3', upload_date=date_to_aware_date('2024-06-03'))
+        video4 = models.Video.objects.create(title='video 4', upload_date=date_to_aware_date('2024-06-04'))
+        video5 = models.Video.objects.create(title='video 5', upload_date=date_to_aware_date('2024-06-05'))
+        video6 = models.Video.objects.create(title='video 6', upload_date=date_to_aware_date('2024-06-06'))
+        video7 = models.Video.objects.create(title='video 7', upload_date=date_to_aware_date('2024-06-07'))
+
+        pli3 = playlist.playlistitem_set.create(video=video3)
+        pli4 = playlist.playlistitem_set.create(video=video4)
+        pli5 = playlist.playlistitem_set.create(video=video5)
+
+        video8 = models.Video.objects.create(title='video 8', upload_date=date_to_aware_date('2024-06-08'))
+        video9 = models.Video.objects.create(title='video 9', upload_date=date_to_aware_date('2024-06-09'))
+
+        pli8 = playlist2.playlistitem_set.create(video=video8)
+        pli9 = playlist2.playlistitem_set.create(video=video9)
+
+        self.assertEqual(pli9, video_tools.previous_by_playlist(playlist, video5))
+        self.assertEqual(pli4, video_tools.next_by_playlist(playlist, video5))
+
+        self.assertEqual(pli5, video_tools.previous_by_playlist(playlist, video4))
+        self.assertEqual(pli3, video_tools.next_by_playlist(playlist, video4))
+
+        self.assertEqual(pli4, video_tools.previous_by_playlist(playlist, video3))
         self.assertIsNone(video_tools.next_by_playlist(playlist, video3))
 
     def test_display_ordering_by_playlist_returns_none_without_audio_on_audio_playlist(self):
@@ -104,13 +184,13 @@ class TemplateTagsVideoToolsTests(TestCase):
         video6 = models.Video.objects.create(title='video 6', upload_date=date_to_aware_date('2024-06-06'), audio='test/test.mp3')
         video7 = models.Video.objects.create(title='video 7', upload_date=date_to_aware_date('2024-06-07'))
 
-        playlist.videos.add(video1)
-        playlist.videos.add(video2)
-        playlist.videos.add(video3)
-        playlist.videos.add(video4)
-        playlist.videos.add(video5)
-        playlist.videos.add(video6)
-        playlist.videos.add(video7)
+        pli1 = playlist.playlistitem_set.create(video=video1)
+        pli2 = playlist.playlistitem_set.create(video=video2)
+        pli3 = playlist.playlistitem_set.create(video=video3)
+        pli4 = playlist.playlistitem_set.create(video=video4)
+        pli5 = playlist.playlistitem_set.create(video=video5)
+        pli6= playlist.playlistitem_set.create(video=video6)
+        pli7 = playlist.playlistitem_set.create(video=video7)
 
         self.assertIsNone(video_tools.previous_by_playlist(playlist, video1, view="audio"))
         self.assertIsNone(video_tools.next_by_playlist(playlist, video1, view="audio"))
@@ -125,12 +205,111 @@ class TemplateTagsVideoToolsTests(TestCase):
         self.assertIsNone(video_tools.next_by_playlist(playlist, video7, view="audio"))
 
         self.assertIsNone(video_tools.previous_by_playlist(playlist, video2, view="audio"))
-        self.assertEqual(video5, video_tools.next_by_playlist(playlist, video2, view="audio"))
+        self.assertEqual(pli5, video_tools.next_by_playlist(playlist, video2, view="audio"))
 
-        self.assertEqual(video2, video_tools.previous_by_playlist(playlist, video5, view="audio"))
-        self.assertEqual(video6, video_tools.next_by_playlist(playlist, video5, view="audio"))
+        self.assertEqual(pli2, video_tools.previous_by_playlist(playlist, video5, view="audio"))
+        self.assertEqual(pli6, video_tools.next_by_playlist(playlist, video5, view="audio"))
 
-        self.assertEqual(video5, video_tools.previous_by_playlist(playlist, video6, view="audio"))
+        self.assertEqual(pli5, video_tools.previous_by_playlist(playlist, video6, view="audio"))
+        self.assertIsNone(video_tools.next_by_playlist(playlist, video6, view="audio"))
+
+    def test_playlist_with_next_continues_next_by_playlist_with_audio_on_audio_playlist(self):
+        playlist2 = models.Playlist.objects.create()
+        playlist = models.Playlist.objects.create(
+            title='Test Playlist',
+            next_playlist=playlist2,
+        )
+
+        video1 = models.Video.objects.create(title='video 1', upload_date=date_to_aware_date('2024-06-01'))
+        video2 = models.Video.objects.create(title='video 2', upload_date=date_to_aware_date('2024-06-02'), audio='test/test.mp3')
+        video3 = models.Video.objects.create(title='video 3', upload_date=date_to_aware_date('2024-06-03'))
+        video4 = models.Video.objects.create(title='video 4', upload_date=date_to_aware_date('2024-06-04'))
+        video5 = models.Video.objects.create(title='video 5', upload_date=date_to_aware_date('2024-06-05'), audio='test/test.mp3')
+        video6 = models.Video.objects.create(title='video 6', upload_date=date_to_aware_date('2024-06-06'), audio='test/test.mp3')
+        video7 = models.Video.objects.create(title='video 7', upload_date=date_to_aware_date('2024-06-07'))
+
+        pli1 = playlist.playlistitem_set.create(video=video1)
+        pli2 = playlist.playlistitem_set.create(video=video2)
+        pli3 = playlist.playlistitem_set.create(video=video3)
+        pli4 = playlist.playlistitem_set.create(video=video4)
+        pli5 = playlist.playlistitem_set.create(video=video5)
+        pli6= playlist.playlistitem_set.create(video=video6)
+        pli7 = playlist.playlistitem_set.create(video=video7)
+
+        video8 = models.Video.objects.create(title='video 8', upload_date=date_to_aware_date('2024-06-08'), audio='test/test.mp3')
+        video9 = models.Video.objects.create(title='video 9', upload_date=date_to_aware_date('2024-06-09'), audio='test/test.mp3')
+
+        pli8 = playlist2.playlistitem_set.create(video=video8)
+        pli9 = playlist2.playlistitem_set.create(video=video9)
+
+        self.assertIsNone(video_tools.previous_by_playlist(playlist, video1, view="audio"))
+        self.assertIsNone(video_tools.next_by_playlist(playlist, video1, view="audio"))
+
+        self.assertIsNone(video_tools.previous_by_playlist(playlist, video3, view="audio"))
+        self.assertIsNone(video_tools.next_by_playlist(playlist, video3, view="audio"))
+
+        self.assertIsNone(video_tools.previous_by_playlist(playlist, video4, view="audio"))
+        self.assertIsNone(video_tools.next_by_playlist(playlist, video4, view="audio"))
+
+        self.assertIsNone(video_tools.previous_by_playlist(playlist, video7, view="audio"))
+        self.assertIsNone(video_tools.next_by_playlist(playlist, video7, view="audio"))
+
+        self.assertIsNone(video_tools.previous_by_playlist(playlist, video2, view="audio"))
+        self.assertEqual(pli5, video_tools.next_by_playlist(playlist, video2, view="audio"))
+
+        self.assertEqual(pli2, video_tools.previous_by_playlist(playlist, video5, view="audio"))
+        self.assertEqual(pli6, video_tools.next_by_playlist(playlist, video5, view="audio"))
+
+        self.assertEqual(pli5, video_tools.previous_by_playlist(playlist, video6, view="audio"))
+        self.assertEqual(pli8, video_tools.next_by_playlist(playlist, video6, view="audio"))
+
+    def test_playlist_with_previous_continues_previous_by_playlist_with_audio_on_audio_playlist(self):
+        playlist = models.Playlist.objects.create(
+            title='Test Playlist',
+        )
+        playlist2 = models.Playlist.objects.create(next_playlist=playlist)
+
+        video1 = models.Video.objects.create(title='video 1', upload_date=date_to_aware_date('2024-06-01'))
+        video2 = models.Video.objects.create(title='video 2', upload_date=date_to_aware_date('2024-06-02'), audio='test/test.mp3')
+        video3 = models.Video.objects.create(title='video 3', upload_date=date_to_aware_date('2024-06-03'))
+        video4 = models.Video.objects.create(title='video 4', upload_date=date_to_aware_date('2024-06-04'))
+        video5 = models.Video.objects.create(title='video 5', upload_date=date_to_aware_date('2024-06-05'), audio='test/test.mp3')
+        video6 = models.Video.objects.create(title='video 6', upload_date=date_to_aware_date('2024-06-06'), audio='test/test.mp3')
+        video7 = models.Video.objects.create(title='video 7', upload_date=date_to_aware_date('2024-06-07'))
+
+        pli1 = playlist.playlistitem_set.create(video=video1)
+        pli2 = playlist.playlistitem_set.create(video=video2)
+        pli3 = playlist.playlistitem_set.create(video=video3)
+        pli4 = playlist.playlistitem_set.create(video=video4)
+        pli5 = playlist.playlistitem_set.create(video=video5)
+        pli6= playlist.playlistitem_set.create(video=video6)
+        pli7 = playlist.playlistitem_set.create(video=video7)
+
+        video8 = models.Video.objects.create(title='video 8', upload_date=date_to_aware_date('2024-06-08'), audio='test/test.mp3')
+        video9 = models.Video.objects.create(title='video 9', upload_date=date_to_aware_date('2024-06-09'), audio='test/test.mp3')
+
+        pli8 = playlist2.playlistitem_set.create(video=video8)
+        pli9 = playlist2.playlistitem_set.create(video=video9)
+
+        self.assertIsNone(video_tools.previous_by_playlist(playlist, video1, view="audio"))
+        self.assertIsNone(video_tools.next_by_playlist(playlist, video1, view="audio"))
+
+        self.assertIsNone(video_tools.previous_by_playlist(playlist, video3, view="audio"))
+        self.assertIsNone(video_tools.next_by_playlist(playlist, video3, view="audio"))
+
+        self.assertIsNone(video_tools.previous_by_playlist(playlist, video4, view="audio"))
+        self.assertIsNone(video_tools.next_by_playlist(playlist, video4, view="audio"))
+
+        self.assertIsNone(video_tools.previous_by_playlist(playlist, video7, view="audio"))
+        self.assertIsNone(video_tools.next_by_playlist(playlist, video7, view="audio"))
+
+        self.assertEqual(pli9, video_tools.previous_by_playlist(playlist, video2, view="audio"))
+        self.assertEqual(pli5, video_tools.next_by_playlist(playlist, video2, view="audio"))
+
+        self.assertEqual(pli2, video_tools.previous_by_playlist(playlist, video5, view="audio"))
+        self.assertEqual(pli6, video_tools.next_by_playlist(playlist, video5, view="audio"))
+
+        self.assertEqual(pli5, video_tools.previous_by_playlist(playlist, video6, view="audio"))
         self.assertIsNone(video_tools.next_by_playlist(playlist, video6, view="audio"))
 
     def test_get_playlist_position(self):
