@@ -21,7 +21,7 @@
         {% if nuwv %}
             <li class="breadcrumb-item">
                 <a href="{{ nuwv.video.get_absolute_url }}?next=playlist&playlist={{ playlist.pk }}" title="Play Next Unwatched Video" data-toggle="tooltip">
-                    <i class="fa-regular fa-play"></i>
+                    <i class="fas fa-regular fa-play"></i>
                     <i class="fa-solid fa-arrow-right"></i>
                 </a>
             </li>
@@ -31,7 +31,7 @@
         {% if nuwa %}
             <li class="breadcrumb-item">
                 <a href="{{ nuwv.video.get_absolute_url }}?next=playlist&playlist={{ playlist.pk }}&view=audio" title="Play Next Unwatched Audio" data-toggle="tooltip">
-                    <i class="fa-regular fa-music"></i>
+                    <i class="fas fa-regular fa-music"></i>
                     <i class="fa-solid fa-arrow-right"></i>
                 </a>
             </li>
@@ -137,6 +137,18 @@
                         <td>Videos Playback Ordering</td>
                         <td>{{ playlist.get_videos_playback_ordering_display }}</td>
                     </tr>
+                    {% if playlist.next_playlist %}
+                        <tr>
+                            <td>Next Playlist</td>
+                            <td><a href="{{ playlist.next_playlist.get_absolute_url }}">{{ playlist.next_playlist }}</a></td>
+                        </tr>
+                    {% endif %}
+                    {% if playlist.previous_playlist %}
+                        <tr>
+                            <td>Parent Playlist</td>
+                            <td><a href="{{ playlist.previous_playlist.get_absolute_url }}">{{ playlist.previous_playlist }}</a></td>
+                        </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
