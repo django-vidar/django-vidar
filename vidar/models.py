@@ -1658,6 +1658,9 @@ class Highlight(models.Model):
             return reverse("vidar:video-chapter-list", args=[self.video_id])
         return reverse("vidar:video-highlight-list", args=[self.video_id])
 
+    def get_live_url(self):
+        return f"{self.video.url}&t={self.point}s"
+
 
 class ExtraFile(models.Model):
     video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="extra_files")

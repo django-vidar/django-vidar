@@ -51,7 +51,7 @@
                         <td><a href="{{ highlight.video.get_absolute_url }}">{{ highlight.video }}</a></td>
                         <td><a href="{{ highlight.video.get_absolute_url }}?highlight={{ highlight.id }}">{{ highlight.point|convert_seconds_to_hh_mm_ss }}</a></td>
                         <td>{{ highlight.note }}</td>
-                        <td><a href="{{ highlight.video.url }}?t={{ highlight.point }}s" target="_blank" rel="noreferrer nofollow">Live</a></td>
+                        <td><a href="{{ highlight.get_live_url }}" target="_blank" rel="noreferrer nofollow">Live</a></td>
                     </tr>
                 {% endfor %}
                 </tbody>

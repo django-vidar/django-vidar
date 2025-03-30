@@ -1293,3 +1293,9 @@ class HighlightTests(TestCase):
 
         self.assertEqual(h.get_absolute_url(), reverse('vidar:video-highlight-list', args=[v.pk]))
         self.assertEqual(c.get_absolute_url(), reverse('vidar:video-chapter-list', args=[v.pk]))
+
+    def test_get_live_url(self):
+        v = models.Video.objects.create(provider_object_id="video-id")
+        h = models.Highlight.objects.create(video=v, source=models.Highlight.Sources.USER, point=2)
+
+        self.assertEqual("https://www.youtube.com/watch?v=video-id&t=2s", h.get_live_url())
