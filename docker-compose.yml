@@ -45,6 +45,8 @@ services:
   web:
     restart: no
     image: ghcr.io/django-vidar/django-vidar:demo
+    build:
+      context: .
     command: gunicorn example.wsgi:application --bind 0.0.0.0:8000
     # command: python manage.py runserver 0.0.0.0:8000
     environment:
@@ -78,6 +80,8 @@ services:
   celery-beat:
     restart: no
     image: ghcr.io/django-vidar/django-vidar:demo
+    build:
+      context: .
     command: celery -A example beat --loglevel=INFO
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -96,6 +100,8 @@ services:
   celery-worker:
     restart: no
     image: ghcr.io/django-vidar/django-vidar:demo
+    build:
+      context: .
     command: celery -A example worker -Q celery,queue-vidar -O fair --loglevel=INFO  --prefetch-multiplier 1
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -117,6 +123,8 @@ services:
   celery-worker-processor:
     restart: no
     image: ghcr.io/django-vidar/django-vidar:demo
+    build:
+      context: .
     command: celery -A example worker -Q django-vidar-processor --loglevel=INFO  --concurrency 1
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0

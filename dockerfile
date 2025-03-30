@@ -12,7 +12,7 @@ LABEL org.opencontainers.image.source=https://github.com/django-vidar/django-vid
 
 # install dependencies
 COPY ./requirements.txt .
-RUN --mount=type=cache,target=/root/.cache pip install -r requirements.txt psycopg2-binary gunicorn whitenoise
+RUN --mount=type=cache,target=/root/.cache pip install --no-compile -r requirements.txt psycopg2-binary gunicorn whitenoise
 
 # set work directory
 WORKDIR /usr/src/app
