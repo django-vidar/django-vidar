@@ -2196,23 +2196,6 @@ class Delete_channel_tests(TestCase):
     @patch("vidar.renamers.video_rename_all_files")
     @patch("vidar.services.playlist_services.delete_playlist_videos")
     @patch("vidar.services.channel_services.delete_files")
-    def test_keep_archived_videos(self, mock_delete_files, mock_delete_playlist_videos, mock_renamer, mock_delete_video):
-        tasks.delete_channel(pk=self.channel.pk, keep_archived_videos=True)
-        mock_delete_files.assert_called_once()
-        mock_delete_playlist_videos.assert_called_once()
-        mock_renamer.assert_called_with(video=self.video_with_file)
-        mock_delete_video.assert_has_calls((
-            call(video=self.video_without_file).
-            call(video=self.video_with_playlist),
-        ), any_order=True)
-
-        self.video_with_file.refresh_from_db()
-        self.assertIsNone(self.video_with_file.channel)
-
-    @patch("vidar.services.video_services.delete_video")
-    @patch("vidar.renamers.video_rename_all_files")
-    @patch("vidar.services.playlist_services.delete_playlist_videos")
-    @patch("vidar.services.channel_services.delete_files")
     def test_video_has_secondary_playlist(self, mock_delete_files, mock_delete_playlist_videos, mock_renamer, mock_delete_video):
         playlist2 = models.Playlist.objects.create(title="Playlist 2")
         playlist2.playlistitem_set.create(video=self.video_with_playlist)

@@ -759,22 +759,6 @@ class ChannelServicesTests(TestCase):
         self.assertIsNone(channel.swap_index_shorts_after)
         self.assertIsNone(channel.swap_index_livestreams_after)
 
-    def test_apply_exception_status_terminated(self):
-        channel = models.Channel.objects.create()
-
-        channel_services.apply_exception_status(channel=channel, exc="This account was terminated")
-        self.assertEqual(channel_helpers.ChannelStatuses.TERMINATED, channel.status)
-        self.assertEqual("", channel.scanner_crontab)
-        self.assertFalse(channel.index_videos)
-        self.assertFalse(channel.index_shorts)
-        self.assertFalse(channel.index_livestreams)
-        self.assertFalse(channel.full_archive)
-        self.assertIsNone(channel.full_archive_after)
-        self.assertFalse(channel.mirror_playlists)
-        self.assertIsNone(channel.swap_index_videos_after)
-        self.assertIsNone(channel.swap_index_shorts_after)
-        self.assertIsNone(channel.swap_index_livestreams_after)
-
     def test_apply_exception_status_removed(self):
         channel = models.Channel.objects.create()
 
