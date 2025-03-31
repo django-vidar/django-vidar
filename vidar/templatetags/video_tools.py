@@ -31,7 +31,15 @@ def next_by_playlist(playlist: Playlist, video: Video, view=""):
 
     if current_pos < len(object_ids) - 1:
         next_id = object_ids[current_pos + 1]
-        return playlist.videos.get(pk=next_id)
+        return playlist.playlistitem_set.get(video_id=next_id)
+    else:
+        if next_playlist := playlist.next_playlist:
+            qs = next_playlist.playlistitem_set.all()
+            if view == "audio":
+                qs = next_playlist.playlistitem_set.exclude(video__audio="")
+
+            if qs.exists():
+                return qs.first()
 
 
 @register.simple_tag
@@ -52,7 +60,18 @@ def previous_by_playlist(playlist: Playlist, video: Video, view=""):
 
     if current_pos > 0:
         previous_id = object_ids[current_pos - 1]
-        return playlist.videos.get(pk=previous_id)
+        return playlist.playlistitem_set.get(video_id=previous_id)
+    else:
+        try:
+            if previous_playlist := playlist.previous_playlist:
+                qs = previous_playlist.playlistitem_set.all()
+                if view == "audio":
+                    qs = previous_playlist.playlistitem_set.exclude(video__audio="")
+
+                if qs.exists():
+                    return qs.last()
+        except playlist.DoesNotExist:
+            pass
 
 
 @register.filter()

@@ -11,6 +11,7 @@ from django.db.models import F, Q, Sum
 from django.shortcuts import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
+from django.utils.safestring import mark_safe
 from django.utils.text import slugify
 
 from mptt.models import MPTTModel, TreeForeignKey
@@ -1351,6 +1352,15 @@ class Playlist(models.Model):
         default=False, help_text="Watch Later playlist allows videos to be auto-removed from list upon watching."
     )
 
+    next_playlist = models.OneToOneField(
+        "vidar.Playlist",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="previous_playlist",
+        help_text="When auto-playing, you can set the next playlist to automatically go into. " "i.e. music playlists.",
+    )
+
     class Meta:
         ordering = ["channel", "title"]
 
@@ -1497,8 +1507,14 @@ class PlaylistItem(models.Model):
     inserted = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
+    def __repr__(self):
+        return f"PLI:{self.pk} : V:{self.video} : P:{self.playlist}"
+
     def get_absolute_url(self):  # pragma: no cover
         return self.video.get_absolute_url()
+
+    def get_playback_url(self):
+        return mark_safe(f"{self.video.get_absolute_url()}?next=playlist&playlist={self.playlist_id}")
 
 
 class Comment(MPTTModel):
