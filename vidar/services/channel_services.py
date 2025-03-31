@@ -1,6 +1,5 @@
 import logging
 import pathlib
-import shutil
 
 from django.core.files.base import ContentFile
 from django.utils import timezone
@@ -73,7 +72,7 @@ def cleanup_storage(channel, dry_run=False):
     log.info("Channel directory exists, deleting remaining data.")
 
     if not dry_run:
-        shutil.rmtree(channel_directory_path)
+        storages.vidar_storage.delete(channel_directory_path)
 
     return True
 
@@ -182,7 +181,7 @@ def delete_files(channel):
     # Prepare necessary variables to remove channel directory after removing the files.
     deletable_directories = {}
     for x in [channel.thumbnail, channel.banner, channel.tvart]:
-        if x and x.storage.exists(x.name):
+        if x:
             if x.storage not in deletable_directories:
                 deletable_directories[x.storage] = set()
             parent_dir = pathlib.Path(x.path).parent

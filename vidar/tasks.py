@@ -1608,10 +1608,8 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode="m
     log.info(f"Checking status and details of {video=}")
 
     dl_kwargs = {}
-    if app_settings.SAVE_INFO_JSON_FILE:
-        # video must have its file and either missing its info_json or info_json doesn't exist
-        if video.file and (not video.info_json or not video.info_json.storage.exists(video.info_json.path)):
-            dl_kwargs["writeinfojson"] = True
+    if app_settings.SAVE_INFO_JSON_FILE and video.file:
+        dl_kwargs["writeinfojson"] = True
 
     writeinfojson = "writeinfojson" in dl_kwargs
 
@@ -1687,25 +1685,26 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode="m
         log.info("update_video_details expects the video to have its file. Stopping.")
         return "Video has no file"
 
-    if not video.file or not video.file.storage.exists(video.file.path):
-        if video.privacy_status in Video.VideoPrivacyStatuses_Publicly_Visible:
+    if video.privacy_status in Video.VideoPrivacyStatuses_Publicly_Visible:
+
+        if not video.file or not video.file.storage.exists(video.file.path):
             log.info(f"{video.file=} does not exist, requesting replacement. {video=}")
             download_provider_video.delay(pk=video.pk, task_source="update_video_details missing file")
 
             # return because the downloader will do the remaining work.
             return "Video should have had file but does not. Downloading now."
 
-    if writeinfojson and video.privacy_status in Video.VideoPrivacyStatuses_Publicly_Visible:
+        if writeinfojson:
 
-        downloaded_file_data = dlp_output["requested_downloads"][0]
+            downloaded_file_data = dlp_output["requested_downloads"][0]
 
-        video_services.save_infojson_file(
-            video=video,
-            downloaded_file_data=downloaded_file_data,
-            overwrite_formats=False,
-        )
+            video_services.save_infojson_file(
+                video=video,
+                downloaded_file_data=downloaded_file_data,
+                overwrite_formats=False,
+            )
 
-    if not video.thumbnail or not video.thumbnail.storage.exists(video.thumbnail.path):
+    if not video.thumbnail:
         load_video_thumbnail.apply_async(args=[pk, dlp_output.get("thumbnail")], countdown=30)
 
     if video_services.should_download_comments(video=video):

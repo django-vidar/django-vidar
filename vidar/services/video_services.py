@@ -303,7 +303,7 @@ def delete_files(video, save=False):
     # Prepare necessary variables to remove video directory after removing the files.
     deletable_directories = {}
     for x in [video.file, video.thumbnail, video.audio, video.info_json]:
-        if x and x.storage.exists(x.name):
+        if x:
             if x.storage not in deletable_directories:
                 deletable_directories[x.storage] = set()
             parent_dir = pathlib.Path(x.path).parent
@@ -312,7 +312,7 @@ def delete_files(video, save=False):
 
     for ef in video.extra_files.all():
         x = ef.file
-        if x and x.storage.exists(x.name):
+        if x:
             if x.storage not in deletable_directories:
                 deletable_directories[x.storage] = set()
             parent_dir = pathlib.Path(x.path).parent

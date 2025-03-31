@@ -27,6 +27,7 @@ from vidar.services import (
     redis_services,
     notification_services,
 )
+from vidar.storages import vidar_storage
 from vidar.helpers import video_helpers, channel_helpers
 
 UserModel = get_user_model()
@@ -567,8 +568,8 @@ class ChannelServicesTests(TestCase):
             self.assertIsNone(channel_services.cleanup_storage(channel=channel, dry_run=True))
             mock_info.assert_called_with('Skipping channel directory cleanup, directory path returned same as primary storage path.')
 
-    @patch("shutil.rmtree")
-    def test_cleanup_storage_directory_successful(self, mock_rmtree):
+    @patch("vidar.storages.vidar_storage.delete")
+    def test_cleanup_storage_directory_successful(self, mock_delete):
         channel = models.Channel.objects.create(name='test channel')
 
         logger = logging.getLogger('vidar.services.channel_services')
@@ -577,7 +578,8 @@ class ChannelServicesTests(TestCase):
             returns_true = channel_services.cleanup_storage(channel=channel)
             self.assertTrue(returns_true)
             mock_info.assert_called_with('Channel directory exists, deleting remaining data.')
-            mock_rmtree.assert_called_once()
+            path = pathlib.Path(vidar_storage.path("test channel"))
+            mock_delete.assert_called_once_with(path)
 
     def test_cleanup_storage_directory_slash_schema_does_not_remove(self):
         channel = models.Channel.objects.create(

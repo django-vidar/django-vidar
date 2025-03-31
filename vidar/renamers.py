@@ -275,11 +275,6 @@ def video_rename_all_files(video, commit=True, remove_empty=True):
         if remove_empty and pre_exising_file_path:
             pathway = pathlib.Path(pre_exising_file_path).parent
             if pathway != pathlib.Path():
-                try:
-                    vidar_storage.delete(str(pathway))
-                except Exception as e:
-                    print(e)
-                    if "not empty" not in str(e):
-                        log.exception(f"Failure to delete potentially empty directory {pathway=}")
+                vidar_storage.delete(str(pathway))
 
     return changed
