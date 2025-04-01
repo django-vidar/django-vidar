@@ -1019,3 +1019,52 @@ class VideoHighlightsUpdateViewTests(TestCase):
             }
         )
         self.assertEqual(404, resp.status_code)
+
+
+class VideoWatchedViewViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="view_video"),
+        )
+
+        self.client.force_login(self.user)
+
+        self.video = models.Video.objects.create(title="Video 1")
+
+        self.url = reverse('vidar:video-watched', args=[self.video.pk])
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+    def test_basics(self):
+
+        self.client.post(self.url)
+
+        self.video.refresh_from_db()
+
+        self.assertTrue(self.video.watched)
+
+    def test_video_removed_from_playlist_when_option_true(self):
+        playlist = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
+        playlist.playlistitem_set.create(video=self.video)
+
+        self.client.post(self.url)
+
+        self.assertFalse(playlist.playlistitem_set.exists())
+
+    def test_video_not_removed_from_playlist_when_option_false(self):
+        playlist = models.Playlist.objects.create(remove_video_from_playlist_on_watched=False)
+        playlist.playlistitem_set.create(video=self.video)
+
+        self.client.post(self.url)
+
+        self.assertTrue(playlist.playlistitem_set.exists())

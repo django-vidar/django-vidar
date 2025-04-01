@@ -11,7 +11,6 @@ from django.db.models import Avg, Case, CharField, Count, F, Max, Q, Sum, When
 from django.db.models.functions import Coalesce, TruncDate, TruncWeek, TruncYear
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import HttpResponseRedirect, get_object_or_404, redirect, render
-from django.template import Context, Template
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -1172,15 +1171,13 @@ class VideoWatchedView(PermissionRequiredMixin, DetailView):
     model = Video
     permission_required = ["vidar.view_video"]
 
-    def dispatch(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         self.object.watched = timezone.now()
         self.object.save()
         for p in self.object.playlists.filter(remove_video_from_playlist_on_watched=True):
             p.videos.remove(self.object)
-        timer = timezone.localtime(self.object.watched)
-        output = Template("{{ timer }}").render(context=Context({"timer": timer}))
-        return HttpResponse(output)
+        return HttpResponse("success")
 
 
 class VideoUpdateView(PermissionRequiredMixin, UpdateView):

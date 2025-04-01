@@ -588,7 +588,8 @@
         }
 
         var xmlHttp = new XMLHttpRequest();
-        xmlHttp.open( "GET", "{% url 'vidar:video-watched' pk=video.pk %}", true ); // false for synchronous request
+        xmlHttp.open( "POST", "{% url 'vidar:video-watched' pk=video.pk %}", true ); // false for synchronous request
+        xmlHttp.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
         xmlHttp.send( null );
         console.log('mark_as_watched.sending watch time');
         send_watch_time(parseInt(player.currentTime), 'mark_as_watched');
