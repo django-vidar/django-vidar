@@ -45,7 +45,10 @@ def smooth_timedelta(
     seconds_str="seconds",
 ):
     """Convert a datetime.timedelta object into Days, Hours, Minutes, Seconds."""
-    secs = timedeltaobj.total_seconds()
+    secs = int(timedeltaobj.total_seconds())
+
+    if secs == 0:
+        return ""
 
     is_negative = secs < 0
     if is_negative:

@@ -1638,6 +1638,13 @@ class SmoothDatetimePositiveTests(TestCase):
         output = vidar_utils.smooth_timedelta(delta)
         self.assertEqual("60 minutes", output)
 
+        end = timezone.now()
+        start = end - timezone.timedelta(microseconds=5)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(delta)
+        self.assertEqual("", output)
+
     def test_smooth_timedelta_single_day(self):
         end = timezone.now()
         start = end - timezone.timedelta(days=1)
@@ -1674,6 +1681,13 @@ class SmoothDatetimeNegativeTests(TestCase):
 
         output = vidar_utils.smooth_timedelta(delta)
         self.assertEqual("60 minutes", output)
+
+        end = timezone.now()
+        start = end + timezone.timedelta(microseconds=5)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(delta)
+        self.assertEqual("", output)
 
     def test_smooth_timedelta_single_day(self):
         end = timezone.now()
