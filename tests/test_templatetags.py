@@ -1626,3 +1626,139 @@ class CrontabLinksTests(SimpleTestCase):
     def test_basics(self):
         output = crontab_links.crontab_link_to_crontab_guru('10 5 * * *')
         self.assertEqual(f"https://crontab.guru/#10_5_*_*_*", output)
+
+
+class SmoothDatetimePositiveTests(TestCase):
+
+    def test_smooth_timedelta(self):
+        end = timezone.now()
+        start = end - timezone.timedelta(hours=1)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(delta)
+        self.assertEqual("60 minutes", output)
+
+    def test_smooth_timedelta_single_day(self):
+        end = timezone.now()
+        start = end - timezone.timedelta(days=1)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(delta)
+        self.assertEqual("24 hours", output)
+
+    def test_smooth_timedelta_singles(self):
+
+        end = timezone.now()
+        start = end - timezone.timedelta(days=1, hours=1, minutes=1, seconds=1)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(delta)
+        self.assertEqual("1 day 1 hour 1 minute 1 second", output)
+
+    def test_smooth_timedelta_multiples(self):
+
+        end = timezone.now()
+        start = end - timezone.timedelta(days=2, hours=2, minutes=2, seconds=2)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(delta)
+        self.assertEqual("2 days 2 hours 2 minutes 2 seconds", output)
+
+
+class SmoothDatetimeNegativeTests(TestCase):
+
+    def test_smooth_timedelta(self):
+        end = timezone.now()
+        start = end + timezone.timedelta(hours=1)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(delta)
+        self.assertEqual("60 minutes", output)
+
+    def test_smooth_timedelta_single_day(self):
+        end = timezone.now()
+        start = end + timezone.timedelta(days=1)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(delta)
+        self.assertEqual("24 hours", output)
+
+    def test_smooth_timedelta_singles(self):
+
+        end = timezone.now()
+        start = end + timezone.timedelta(days=1, hours=1, minutes=1, seconds=1)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(delta)
+        self.assertEqual("1 day 1 hour 1 minute 1 second", output)
+
+    def test_smooth_timedelta_multiples(self):
+
+        end = timezone.now()
+        start = end + timezone.timedelta(days=2, hours=2, minutes=2, seconds=2)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(delta)
+        self.assertEqual("2 days 2 hours 2 minutes 2 seconds", output)
+
+    def test_smooth_timedelta_with_different_strs_pluralized_spaced_joiner(self):
+
+        end = timezone.now()
+        start = end + timezone.timedelta(days=2, hours=2, minutes=2, seconds=2)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(
+            timedeltaobj=delta,
+            day_str="d", days_str="ds",
+            hour_str="hr", hours_str="hrs",
+            minute_str="min", minutes_str="mins",
+            second_str="sec", seconds_str="secs"
+        )
+        self.assertEqual("2 ds 2 hrs 2 mins 2 secs", output)
+
+    def test_smooth_timedelta_with_different_strs_pluralized_spaceless_joiner(self):
+
+        end = timezone.now()
+        start = end + timezone.timedelta(days=2, hours=2, minutes=2, seconds=2)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(
+            timedeltaobj=delta,
+            day_str="d", days_str="ds",
+            hour_str="hr", hours_str="hrs",
+            minute_str="min", minutes_str="mins",
+            second_str="sec", seconds_str="secs",
+            str_joiner="",
+        )
+        self.assertEqual("2ds 2hrs 2mins 2secs", output)
+
+    def test_smooth_timedelta_with_different_strs_singular_spaced_joiner(self):
+
+        end = timezone.now()
+        start = end + timezone.timedelta(days=1, hours=1, minutes=1, seconds=1)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(
+            timedeltaobj=delta,
+            day_str="d",
+            hour_str="hr",
+            minute_str="min",
+            second_str="sec",
+        )
+        self.assertEqual("1 d 1 hr 1 min 1 sec", output)
+
+    def test_smooth_timedelta_with_different_strs_singular_spaceless_joiner(self):
+
+        end = timezone.now()
+        start = end + timezone.timedelta(days=1, hours=1, minutes=1, seconds=1)
+        delta = end - start
+
+        output = vidar_utils.smooth_timedelta(
+            timedeltaobj=delta,
+            day_str="d",
+            hour_str="hr",
+            minute_str="min",
+            second_str="sec",
+            str_joiner=""
+        )
+        self.assertEqual("1d 1hr 1min 1sec", output)

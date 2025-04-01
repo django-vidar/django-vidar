@@ -5,6 +5,7 @@ from django.template.defaultfilters import filesizeformat
 from django.utils import timezone
 
 from vidar import app_settings
+from vidar.templatetags.vidar_utils import smooth_timedelta
 
 
 log = logging.getLogger(__name__)
@@ -113,26 +114,29 @@ def video_downloaded(video):
         video_duration = None
 
     msg_output = [
-        f"{video.upload_date:%Y-%m-%d} - {video}\n{video_duration}",
+        f"{video.upload_date:%Y-%m-%d} - {video}\n{smooth_timedelta(video_duration)} long",
         f"Filesize: {file_size}",
-        f"Download Timer: {download_timer}",
     ]
 
+    if download_timer:
+        msg_output.append(f"Download Timer: {smooth_timedelta(download_timer)}")
     if convert_to_audio_timer:
-        msg_output.append(f"Convert Audio: {convert_to_audio_timer}")
+        msg_output.append(f"Convert Audio: {smooth_timedelta(convert_to_audio_timer)}")
     if convert_to_mp4_timer:
-        msg_output.append(f"Convert Video: {convert_to_mp4_timer}")
+        msg_output.append(f"Convert Video: {smooth_timedelta(convert_to_mp4_timer)}")
     if processing_timer:
-        msg_output.append(f"Processing: {processing_timer}")
+        msg_output.append(f"Processing: {smooth_timedelta(processing_timer)}")
 
-    msg_output.extend(
-        [
-            f"Task Call Source: {task_source}",
-        ]
-    )
+    if task_source:
+        msg_output.append(f"Task Call Source: {task_source}")
+
+    title = f"{quality}:{video.get_quality_display()}"
+    if video.channel:
+        title = f"{video.channel} @ {title}"
+
     return send_message(
         message="\n".join(msg_output),
-        title=f"{video.channel} @ {quality}:{video.get_quality_display()}",
+        title=title,
     )
 
 
