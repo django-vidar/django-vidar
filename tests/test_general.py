@@ -364,6 +364,58 @@ class RenamerTests(TestCase):
     @patch('vidar.storages.vidar_storage.delete')
     @patch('vidar.storages.vidar_storage.move')
     @patch('vidar.services.video_services.generate_filepaths_for_storage')
+    def test_video_rename_all_files_does_not_raise_on_dir_not_empty(self, mock_generator, mock_move, mock_delete):
+        mock_generator.return_value = 'static value'
+        mock_generator.side_effect = [
+            ('', pathlib.PurePosixPath('video 2.mp4')),
+            ('', pathlib.PurePosixPath('info 2.json')),
+            ('', pathlib.PurePosixPath('thumbnail 2.jpg')),
+        ]
+        mock_move.return_value = 'here in mock 2'
+        mock_delete.side_effect = OSError("Directory not empty ...")
+        channel = models.Channel.objects.create(name='Test Channel')
+        video = models.Video.objects.create(
+            channel=channel,
+            title='Test Video',
+            file='test/dir/video.mp4',
+            thumbnail='test/dir/thumbnail.jpg',
+            info_json='test/dir/info.json',
+            provider_object_id='test vidar id',
+        )
+        output = renamers.video_rename_all_files(video=video, commit=True)
+        self.assertListEqual(['file', 'info_json', 'thumbnail'], output)
+
+        mock_delete.assert_called_once_with(str(pathlib.Path("test/dir")))
+
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    @patch('vidar.services.video_services.generate_filepaths_for_storage')
+    def test_video_rename_all_files_raises_on_dir_not_empty(self, mock_generator, mock_move, mock_delete):
+        mock_generator.return_value = 'static value'
+        mock_generator.side_effect = [
+            ('', pathlib.PurePosixPath('video 2.mp4')),
+            ('', pathlib.PurePosixPath('info 2.json')),
+            ('', pathlib.PurePosixPath('thumbnail 2.jpg')),
+        ]
+        mock_move.return_value = 'here in mock 2'
+        mock_delete.side_effect = OSError("Permissions error here")
+        channel = models.Channel.objects.create(name='Test Channel')
+        video = models.Video.objects.create(
+            channel=channel,
+            title='Test Video',
+            file='test/dir/video.mp4',
+            thumbnail='test/dir/thumbnail.jpg',
+            info_json='test/dir/info.json',
+            provider_object_id='test vidar id',
+        )
+        with self.assertRaises(OSError):
+            output = renamers.video_rename_all_files(video=video, commit=True)
+
+        mock_delete.assert_called_once_with(str(pathlib.Path("test/dir")))
+
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    @patch('vidar.services.video_services.generate_filepaths_for_storage')
     def test_video_rename_all_files_storage_already_exists(self, mock_generator, mock_move, mock_delete):
         mock_generator.return_value = 'static value'
         mock_generator.side_effect = [
@@ -502,6 +554,56 @@ class RenamerTests(TestCase):
         self.assertEqual('thumbnail 2.jpg', channel.thumbnail.name)
         self.assertEqual('tvart 2.jpg', channel.tvart.name)
         self.assertEqual('banner 2.jpg', channel.banner.name)
+
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    @patch('vidar.services.channel_services.generate_filepaths_for_storage')
+    def test_channel_rename_all_files_does_not_raise_on_dir_not_empty(self, mock_generator, mock_move, mock_delete):
+        mock_generator.return_value = 'static value'
+        mock_generator.side_effect = [
+            ('', pathlib.PurePosixPath('thumbnail 2.jpg')),
+            ('', pathlib.PurePosixPath('tvart 2.jpg')),
+            ('', pathlib.PurePosixPath('banner 2.jpg')),
+        ]
+        mock_move.return_value = 'here in mock 2'
+        mock_delete.side_effect = OSError("Directory not empty ...")
+
+        channel = models.Channel.objects.create(
+            name='Test Channel',
+            thumbnail='test/dir/thumbnail.jpg',
+            tvart='test/dir/tvart.jpg',
+            banner='test/dir/banner.jpg',
+        )
+
+        output = renamers.channel_rename_all_files(channel=channel, commit=True)
+        self.assertListEqual(['thumbnail', 'tvart', 'banner'], output)
+
+        mock_delete.assert_called_once_with(str(pathlib.Path("test/dir")))
+
+    @patch('vidar.storages.vidar_storage.delete')
+    @patch('vidar.storages.vidar_storage.move')
+    @patch('vidar.services.channel_services.generate_filepaths_for_storage')
+    def test_channel_rename_all_files_raises_oserror_when_dir_not_empty(self, mock_generator, mock_move, mock_delete):
+        mock_generator.return_value = 'static value'
+        mock_generator.side_effect = [
+            ('', pathlib.PurePosixPath('thumbnail 2.jpg')),
+            ('', pathlib.PurePosixPath('tvart 2.jpg')),
+            ('', pathlib.PurePosixPath('banner 2.jpg')),
+        ]
+        mock_move.return_value = 'here in mock 2'
+        mock_delete.side_effect = OSError("Permissions error here!")
+
+        channel = models.Channel.objects.create(
+            name='Test Channel',
+            thumbnail='test/dir/thumbnail.jpg',
+            tvart='test/dir/tvart.jpg',
+            banner='test/dir/banner.jpg',
+        )
+
+        with self.assertRaises(OSError):
+            renamers.channel_rename_all_files(channel=channel, commit=True)
+
+        mock_delete.assert_called_once_with(str(pathlib.Path("test/dir")))
 
     @patch('vidar.storages.vidar_storage.delete')
     @patch('vidar.storages.vidar_storage.move')
