@@ -3,9 +3,9 @@ import datetime
 import logging
 import random
 import requests
+import urllib.parse
 import warnings
 from collections import defaultdict
-from urllib.parse import parse_qs
 
 from django.db.models import When
 from django.utils import timezone
@@ -55,12 +55,15 @@ def get_video_id_from_url(url, playlist=False):
             return yid
         return data
 
-    if f"?{key}=" in url or f"&{key}=" in url:
-        _, params = url.split("?", 1)
-        d = parse_qs(params)
-        return strip_extra_params(d[key][0])
+    if qs := urllib.parse.urlparse(url).query:
+        if d := urllib.parse.parse_qs(qs):
+            if value := d.get(key):
+                try:
+                    return value[0]
+                except IndexError:
+                    pass
 
-    elif f"{key}/" in url:
+    if f"{key}/" in url:
         _, messy = url.split(f"{key}/", 1)
         return strip_extra_params(messy)
 
@@ -82,7 +85,13 @@ def get_video_id_from_url(url, playlist=False):
 
 
 def get_channel_id_from_url(url):
-    channel_id = url.replace("http://www.youtube.com/channel/", "").rsplit("/", 1)[-1]
+    qs = urllib.parse.urlparse(url)
+
+    # /channel/U... or /channel/@Nickname
+    path = qs.path
+
+    # remainder could be U.../about strip that ending bit
+    channel_id = path.replace("/channel/", "").split("/", 1)[0]
 
     if not channel_id or not channel_id.startswith("U") and "http" in url:
         try:
