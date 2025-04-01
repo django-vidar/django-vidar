@@ -1989,7 +1989,7 @@ def channel_rename_files(self, channel_id, commit=True, remove_empty=True, renam
 
 @shared_task(bind=True, queue="queue-vidar")
 @celery_helpers.prevent_asynchronous_task_execution(lock_key="rename-archived-files", lock_expiry=2 * 60 * 60)
-def rename_all_archived_video_files(self, commit=True, remove_empty=True):
+def rename_all_archived_video_files(self, remove_empty=True):
 
     if not file_helpers.can_file_be_moved(Video.file.field):
         raise FileStorageBackendHasNoMoveError("videos_rename_files called but files cannot be renamed")
@@ -2001,7 +2001,6 @@ def rename_all_archived_video_files(self, commit=True, remove_empty=True):
         if video_services.does_file_need_fixing(video=video):
             rename_video_files.delay(
                 pk=video.pk,
-                commit=commit,
                 remove_empty=remove_empty,
             )
 

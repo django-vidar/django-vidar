@@ -2804,7 +2804,7 @@ class Rename_all_archived_video_files_tests(TestCase):
 
         tasks.rename_all_archived_video_files.delay().get()
 
-        mock_renamer.delay.assert_called_once_with(pk=video.pk, commit=True, remove_empty=True)
+        mock_renamer.delay.assert_called_once_with(pk=video.pk, remove_empty=True)
 
 
 class Rename_video_files_tests(TestCase):
@@ -3037,10 +3037,26 @@ class Monthly_maintenances_tests(TestCase):
         VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING=False,
         VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT=True,
     )
-    @patch("vidar.tasks.rename_all_archived_video_files")
+    @patch("vidar.tasks.rename_video_files")
     def test_rename_all_files_calls_task(self, mock_task):
+        video = models.Video.objects.create(file="test.mp4")
         tasks.monthly_maintenances.delay().get()
-        mock_task.assert_called_once()
+        mock_task.delay.assert_called_once_with(pk=video.pk, remove_empty=True)
+
+    @override_settings(
+        VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=False,
+        VIDAR_MONTHLY_CHANNEL_CRONTAB_BALANCING=False,
+        VIDAR_MONTHLY_VIDEO_CONFIRM_FILENAMES_ARE_CORRECT=True,
+    )
+    @patch("vidar.tasks.rename_video_files")
+    def test_rename_all_files_calls_task_for_each_video(self, mock_task):
+        video1 = models.Video.objects.create(file="test.mp4")
+        video2 = models.Video.objects.create(file="test.mp4")
+        tasks.monthly_maintenances.delay().get()
+        mock_task.delay.assert_has_calls([
+            call(pk=video1.pk, remove_empty=True),
+            call(pk=video2.pk, remove_empty=True)
+        ], any_order=True)
 
     @override_settings(
         VIDAR_MONTHLY_CHANNEL_UPDATE_BANNERS=False,
