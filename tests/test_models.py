@@ -477,32 +477,6 @@ class VideoTests(TestCase):
         latest = video.get_latest_download_stats()
         self.assertEqual(ts2.isoformat(), latest["another"])
 
-    def test_get_or_create_from_ytdlp_response_creates(self):
-
-        video, created = models.Video.get_or_create_from_ytdlp_response({
-            "id": "provider-id",
-            "title": "video title",
-            "description": "video desc",
-        })
-        self.assertTrue(created)
-        self.assertEqual("provider-id", video.provider_object_id)
-        self.assertEqual("video title", video.title)
-        self.assertEqual("video desc", video.description)
-
-    def test_get_or_create_from_ytdlp_response_existing(self):
-
-        models.Video.objects.create(provider_object_id="provider-id")
-
-        video, created = models.Video.get_or_create_from_ytdlp_response({
-            "id": "provider-id",
-            "title": "video title",
-            "description": "video desc",
-        })
-        self.assertFalse(created)
-        self.assertEqual("provider-id", video.provider_object_id)
-        self.assertEqual("video title", video.title)
-        self.assertEqual("video desc", video.description)
-
     def test_set_details_from_yt_dlp_response(self):
         with open('tests/fixtures/dlp_response.json') as fo:
             data = json.load(fo)
@@ -975,6 +949,44 @@ class VideoTests(TestCase):
     def test_metadata_album_user_override(self):
         v1 = models.Video.objects.create()
         self.assertEqual("user assigned func for album", v1.metadata_album())
+
+
+class VideoObjectsManagerTests(TestCase):
+
+    def test_get_or_create_from_ytdlp_response_creates(self):
+
+        video, created = models.Video.objects.get_or_create_from_ytdlp_response({
+            "id": "provider-id",
+            "title": "video title",
+            "description": "video desc",
+        })
+        self.assertTrue(created)
+        self.assertEqual("provider-id", video.provider_object_id)
+        self.assertEqual("video title", video.title)
+        self.assertEqual("video desc", video.description)
+
+    def test_get_or_create_from_ytdlp_response_existing(self):
+
+        models.Video.objects.create(provider_object_id="provider-id")
+
+        video, created = models.Video.objects.get_or_create_from_ytdlp_response({
+            "id": "provider-id",
+            "title": "video title",
+            "description": "video desc",
+        })
+        self.assertFalse(created)
+        self.assertEqual("provider-id", video.provider_object_id)
+        self.assertEqual("video title", video.title)
+        self.assertEqual("video desc", video.description)
+
+    def test_archived(self):
+        v1 = models.Video.objects.create(provider_object_id="provider-id", file="test.mp4")
+        v2 = models.Video.objects.create(provider_object_id="provider-id")
+
+        qs = models.Video.objects.archived()
+
+        self.assertEqual(1, qs.count())
+        self.assertIn(v1, qs)
 
 
 class VideoBlockedTests(TestCase):

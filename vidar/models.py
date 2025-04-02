@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import difflib
 import functools
@@ -582,6 +584,24 @@ class VideoObjectsManager(models.Manager):
     def archived(self):
         return self.exclude(file="")
 
+    def get_or_create_from_ytdlp_response(
+        self, data, is_video=False, is_short=False, is_livestream=False
+    ) -> [Video, bool]:
+        try:
+            video = self.get(provider_object_id=data["id"])
+            created = False
+        except self.model.DoesNotExist:
+            # Don't use get_or_create, we need Video.save to be called.
+            video = self.model(provider_object_id=data["id"])
+            created = True
+
+        video.set_details_from_yt_dlp_response(
+            data=data, is_video=is_video, is_short=is_short, is_livestream=is_livestream
+        )
+        video.save()
+
+        return video, created
+
 
 class Video(model_helpers.CeleryLockableModel, models.Model):
 
@@ -1071,24 +1091,6 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             self.last_privacy_status_check = timezone.now()
             self.save()
             return True
-
-    @classmethod
-    def get_or_create_from_ytdlp_response(cls, data, is_video=False, is_short=False, is_livestream=False):
-        try:
-            video = cls.objects.get(provider_object_id=data["id"])
-            created = False
-        except cls.DoesNotExist:
-            # Don't use get_or_create, we need Video.save to be called.
-            video = cls(provider_object_id=data["id"])
-            video.save()
-            created = True
-
-        video.set_details_from_yt_dlp_response(
-            data=data, is_video=is_video, is_short=is_short, is_livestream=is_livestream
-        )
-        video.save()
-
-        return video, created
 
     def set_latest_download_stats(self, commit=True, **kwargs):
         if "downloads" not in self.system_notes:

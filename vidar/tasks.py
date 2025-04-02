@@ -299,7 +299,7 @@ def fully_index_channel(self, pk, limit=None):
 
             params = {target_data["video_field"]: True}
 
-            video, created = Video.get_or_create_from_ytdlp_response(video_data, **params)
+            video, created = Video.objects.get_or_create_from_ytdlp_response(video_data, **params)
 
             if video.upload_date:
                 video.inserted = video.inserted.replace(
@@ -375,7 +375,7 @@ def scan_channel_for_new_content(
         if video_services.is_blocked(video_data["id"]):
             continue
 
-        video, created = Video.get_or_create_from_ytdlp_response(
+        video, created = Video.objects.get_or_create_from_ytdlp_response(
             data=video_data,
             is_video=is_video,
             is_short=is_short,
@@ -1312,7 +1312,7 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
             log.info("video is blocked.")
             continue
 
-        video, video_created = Video.get_or_create_from_ytdlp_response(video_data)  # type: Video, bool
+        video, video_created = Video.objects.get_or_create_from_ytdlp_response(video_data)
 
         if video_created:
             new_videos += 1
