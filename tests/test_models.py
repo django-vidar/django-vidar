@@ -1146,7 +1146,7 @@ class PlaylistTests(TestCase):
         user = UserModel.objects.create(username='test')
         self.assertEqual(0, models.Playlist.objects.count())
 
-        wl = models.Playlist.get_user_watch_later(user=user)
+        wl = models.Playlist.objects.get_user_watch_later(user=user)
         self.assertEqual(1, models.Playlist.objects.count())
 
         self.assertEqual(user, wl.user)

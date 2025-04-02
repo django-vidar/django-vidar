@@ -696,7 +696,7 @@ class TemplateTagsVideoToolsTests(TestCase):
 
     def test_is_on_watch_later(self):
         user = UserModel.objects.create(username='test')
-        playlist = models.Playlist.get_user_watch_later(user=user)
+        playlist = models.Playlist.objects.get_user_watch_later(user=user)
 
         v = models.Video.objects.create(title=f"Video 1")
 

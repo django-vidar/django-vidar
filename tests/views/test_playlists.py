@@ -579,5 +579,5 @@ class PlaylistWatchLaterViewTests(TestCase):
 
     def test_basics(self):
         resp = self.client.get(self.url)
-        wl = models.Playlist.get_user_watch_later(user=self.user)
+        wl = models.Playlist.objects.get_user_watch_later(user=self.user)
         self.assertEqual(wl, resp.context_data["object"])

@@ -1246,7 +1246,22 @@ class VideoHistory(models.Model):
         return "\n".join(line_diffs)
 
 
+class PlaylistObjectsManager(models.Manager):
+
+    @functools.lru_cache(maxsize=50)
+    def get_user_watch_later(self, user) -> Playlist:
+        playlist, _ = self.get_or_create(
+            user=user,
+            title="Watch Later",
+            provider_object_id="",
+        )
+        return playlist
+
+
 class Playlist(models.Model):
+
+    objects = PlaylistObjectsManager()
+
     provider_object_id = models.CharField(max_length=255, blank=True)
     provider_object_id_old = models.CharField(
         max_length=255,
@@ -1373,16 +1388,6 @@ class Playlist(models.Model):
 
     def get_absolute_url(self):  # pragma: no cover
         return reverse("vidar:playlist-detail", args=[self.pk])
-
-    @classmethod
-    @functools.lru_cache(maxsize=50)
-    def get_user_watch_later(cls, user):
-        playlist, _ = cls.objects.get_or_create(
-            user=user,
-            title="Watch Later",
-            provider_object_id="",
-        )
-        return playlist
 
     def save(self, *args, **kwargs):
 

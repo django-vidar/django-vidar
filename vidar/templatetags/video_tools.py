@@ -402,7 +402,7 @@ def next_by_starred(video: Video, view=""):
 
 @register.simple_tag
 def is_on_watch_later(video: Video, user):
-    playlist = Playlist.get_user_watch_later(user=user)
+    playlist = Playlist.objects.get_user_watch_later(user=user)
     return playlist.videos.filter(pk=video.pk).exists()
 
 

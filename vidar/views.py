@@ -869,7 +869,7 @@ class VideoListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin,
         kwargs = super().get_context_data(*args, **kwargs)
 
         if self.request.user.is_authenticated:
-            wlp = Playlist.get_user_watch_later(user=self.request.user)
+            wlp = Playlist.objects.get_user_watch_later(user=self.request.user)
             kwargs["watch_later_videos"] = wlp.videos.values_list("pk", flat=True)
 
         qs = self.get_queryset()
@@ -1408,7 +1408,7 @@ class AddVideoToWatchLaterPlaylistView(PermissionRequiredMixin, DetailView):
     def dispatch(self, request, *args, **kwargs):
         if not self.has_permission():
             return self.handle_no_permission()
-        playlist = Playlist.get_user_watch_later(user=request.user)
+        playlist = Playlist.objects.get_user_watch_later(user=request.user)
         video = self.get_object()
 
         if playlist.videos.filter(pk=video.pk).exists():
@@ -2011,7 +2011,7 @@ class PlaylistAddVideosBySearch(PermissionRequiredMixin, DetailView):
 class PlaylistWatchLaterView(PlaylistDetailView):
 
     def get_object(self, queryset=None):
-        return Playlist.get_user_watch_later(user=self.request.user)
+        return Playlist.objects.get_user_watch_later(user=self.request.user)
 
 
 class VideoHistoryListView(PermissionRequiredMixin, ListView):
