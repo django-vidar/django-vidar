@@ -1,0 +1,20 @@
+django>=5.1
+django-bootstrap4
+django-celery-beat
+django-celery-results
+django-environ
+django-mathfilters
+django-positions
+django-mptt
+
+celery
+redis
+requests
+beautifulsoup4
+yt-dlp
+
+# tasks, convert audio and mp4
+moviepy
+
+# image_services
+Pillow>=10.0.0
