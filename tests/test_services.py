@@ -3114,9 +3114,10 @@ class NotificationServicesTests(TestCase):
     @override_settings(VIDAR_NOTIFICATIONS_VIDEO_DOWNLOADED=True)
     def test_video_downloaded_with_channel_in_title(self, mock_post):
         channel = models.Channel.objects.create(name="Test Channel")
+        upload_date = timezone.now().date()
         video = models.Video.objects.create(
             channel=channel,
-            upload_date=timezone.now().date(),
+            upload_date=upload_date,
             at_max_quality=True,
             quality=1080,
             file_size=200,
@@ -3143,7 +3144,7 @@ class NotificationServicesTests(TestCase):
         mock_post.assert_called_once_with(
             "url here/message?token=None",
             json={
-                "message": "2025-04-01 - <Title Placeholder>\n"
+                "message": f"{upload_date} - <Title Placeholder>\n"
                            "2 minutes long\n"
                            "Filesize: 200\xa0bytes\n"
                            "Download Timer: 2 hours 5 minutes\n"

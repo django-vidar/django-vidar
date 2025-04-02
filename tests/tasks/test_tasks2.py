@@ -777,7 +777,7 @@ class Automated_archiver_tests(TestCase):
         mock_dl.delay.assert_has_calls([
             call(pk=video1.pk, task_source="automated_archiver - Video Quality Changed Afterwards"),
             call(pk=video2.pk, task_source="automated_archiver - Video Quality Changed Afterwards"),
-        ])
+        ], any_order=True)
 
     @override_settings(
         VIDAR_AUTOMATED_DOWNLOADS_DURATION_LIMIT_SPLIT=30,
