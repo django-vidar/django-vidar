@@ -11,8 +11,8 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 LABEL org.opencontainers.image.source=https://github.com/django-vidar/django-vidar
 
 # install dependencies
-COPY ./requirements.txt .
-RUN --mount=type=cache,target=/root/.cache pip install --no-compile -r requirements.txt psycopg2-binary gunicorn whitenoise
+COPY ./requirements/docker.txt .
+RUN --mount=type=cache,target=/root/.cache pip install --no-compile -r docker.txt
 
 # set work directory
 WORKDIR /usr/src/app
