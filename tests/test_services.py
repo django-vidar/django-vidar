@@ -3160,6 +3160,98 @@ class NotificationServicesTests(TestCase):
 
     @patch("requests.post")
     @override_settings(VIDAR_NOTIFICATIONS_VIDEO_DOWNLOADED=True)
+    def test_video_downloaded_processing_timer_less_than_one_second_not_included(self, mock_post):
+        channel = models.Channel.objects.create(name="Test Channel")
+        upload_date = timezone.now().date()
+        video = models.Video.objects.create(
+            channel=channel,
+            upload_date=upload_date,
+            at_max_quality=True,
+            quality=1080,
+            file_size=200,
+            duration=120,
+            system_notes={
+                "downloads": [
+                    {
+                        "convert_video_to_audio_started": timezone.now().isoformat(),
+                        "convert_video_to_audio_finished": (timezone.now() + timezone.timedelta(minutes=1)).isoformat(),
+                        "convert_video_to_mp4_started": timezone.now().isoformat(),
+                        "convert_video_to_mp4_finished": (timezone.now() + timezone.timedelta(minutes=1)).isoformat(),
+                        "processing_started": timezone.now().isoformat(),
+                        "processing_finished": (timezone.now() + timezone.timedelta(microseconds=500)).isoformat(),
+                        "download_started": timezone.now().isoformat(),
+                        "download_finished": (timezone.now() + timezone.timedelta(minutes=(2*60)+5)).isoformat(),
+                        "task_source": "Test Cases",
+                    }
+                ]
+            }
+        )
+
+        notification_services.video_downloaded(video=video)
+
+        mock_post.assert_called_once_with(
+            "url here/message?token=None",
+            json={
+                "message": f"{upload_date} - <Title Placeholder>\n"
+                           "2 minutes long\n"
+                           "Filesize: 200\xa0bytes\n"
+                           "Download Timer: 2 hours 5 minutes\n"
+                           "Convert Audio: 60 seconds\n"
+                           "Convert Video: 60 seconds\n"
+                           "Task Call Source: Test Cases",
+                "title": "Test Channel @ AMQ:1080p (HD)",
+                "priority": 5,
+            },
+            verify=True
+        )
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_VIDEO_DOWNLOADED=True)
+    def test_video_downloaded_processing_times_missing(self, mock_post):
+        channel = models.Channel.objects.create(name="Test Channel")
+        upload_date = timezone.now().date()
+        video = models.Video.objects.create(
+            channel=channel,
+            upload_date=upload_date,
+            at_max_quality=True,
+            quality=1080,
+            file_size=200,
+            duration=120,
+            system_notes={
+                "downloads": [
+                    {
+                        "convert_video_to_audio_started": timezone.now().isoformat(),
+                        "convert_video_to_audio_finished": (timezone.now() + timezone.timedelta(minutes=1)).isoformat(),
+                        "convert_video_to_mp4_started": timezone.now().isoformat(),
+                        "convert_video_to_mp4_finished": (timezone.now() + timezone.timedelta(minutes=1)).isoformat(),
+                        "download_started": timezone.now().isoformat(),
+                        "download_finished": (timezone.now() + timezone.timedelta(minutes=(2*60)+5)).isoformat(),
+                        "task_source": "Test Cases",
+                    }
+                ]
+            }
+        )
+
+        notification_services.video_downloaded(video=video)
+
+        mock_post.assert_called_once_with(
+            "url here/message?token=None",
+            json={
+                "message": f"{upload_date} - <Title Placeholder>\n"
+                           "2 minutes long\n"
+                           "Filesize: 200\xa0bytes\n"
+                           "Download Timer: 2 hours 5 minutes\n"
+                           "Convert Audio: 60 seconds\n"
+                           "Convert Video: 60 seconds\n"
+                           "Task Call Source: Test Cases",
+                "title": "Test Channel @ AMQ:1080p (HD)",
+                "priority": 5,
+            },
+            verify=True
+        )
+
+    @patch("requests.post")
+    @override_settings(VIDAR_NOTIFICATIONS_VIDEO_DOWNLOADED=True)
     def test_video_downloaded_quality_zero(self, mock_post):
         video = models.Video.objects.create(
             upload_date=timezone.now().date(),

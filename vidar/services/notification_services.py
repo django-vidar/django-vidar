@@ -86,6 +86,8 @@ def video_downloaded(video):
             started = isoformat_or_now(started)
             finished = isoformat_or_now(finished)
             timer = finished - started
+            if timer and int(timer.total_seconds()) < 1:
+                timer = None
         return started, finished, timer
 
     convert_to_audio_started, convert_to_audio_finished, convert_to_audio_timer = calculate_timer(
