@@ -290,7 +290,7 @@ class ChannelDetailViewTests(TestCase):
 
         mock_download.delay.assert_called_with(
             pk=video.pk,
-            quality="",
+            quality=None,
             task_source="Manual Download Selection",
         )
 

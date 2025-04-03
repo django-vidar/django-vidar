@@ -326,11 +326,11 @@ class ChannelDetailView(PermissionRequiredMixin, UseProviderObjectIdMatchingMixi
         for video in self.object.videos.filter(file=""):
             if f"video-{video.pk}" in request.POST:
 
-                if quality := self.request.POST["quality"]:
-                    try:
-                        quality = int(quality)
-                    except (TypeError, ValueError):
-                        quality = None
+                quality = self.request.POST.get("quality")
+                try:
+                    quality = int(quality)
+                except (TypeError, ValueError):
+                    quality = None
 
                 download_video(request, video, quality=quality)
 
