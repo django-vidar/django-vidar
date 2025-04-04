@@ -7,6 +7,7 @@ import os
 from unittest.mock import patch, call, MagicMock, mock_open
 
 import requests.exceptions
+import yt_dlp
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, SimpleTestCase, override_settings
@@ -2125,6 +2126,112 @@ class VideoServicesTests(TestCase):
         video_services.set_thumbnail(video=video, url="test")
 
         mock_func.assert_called_once()
+
+    def test_download_exception_video_is_live_and_cannot_be_downloaded(self):
+
+        video = models.Video.objects.create()
+
+        video_services.download_exception(
+            video=video,
+            exception=yt_dlp.DownloadError("Live event will be ready in x time."),
+            dl_kwargs={},
+            quality=0, selected_quality=0,
+            cache_folder="", retries=0,
+        )
+
+        video.refresh_from_db()
+        self.assertIn("video_was_live_at_last_attempt", video.system_notes)
+        self.assertTrue(video.system_notes["video_was_live_at_last_attempt"])
+
+    def test_download_exception_video_is_live_and_cannot_be_downloaded_stop_playlist_requesting_it(self):
+
+        playlist = models.Playlist.objects.create()
+
+        video = models.Video.objects.create(system_notes={
+            "downloads_live_exc": [1, 2, 3, 4, 5],
+        })
+
+        pli = playlist.playlistitem_set.create(video=video)
+
+        video_services.download_exception(
+            video=video,
+            exception=yt_dlp.DownloadError("Live event will be ready in x time."),
+            dl_kwargs={},
+            quality=0, selected_quality=0,
+            cache_folder="", retries=0,
+        )
+
+        pli.refresh_from_db()
+        self.assertFalse(pli.download)
+
+    def test_download_exception_video_is_blocked_in_country(self):
+
+        video = models.Video.objects.create(provider_object_id="video-id")
+
+        video_services.download_exception(
+            video=video,
+            exception=yt_dlp.DownloadError("Video is blocked in your country"),
+            dl_kwargs={},
+            quality=0, selected_quality=0,
+            cache_folder="", retries=0,
+        )
+
+        video.refresh_from_db()
+        self.assertEqual(models.Video.VideoPrivacyStatuses.BLOCKED, video.privacy_status)
+
+    def test_download_exception_video_downloaded_invalid_data(self):
+
+        file = pathlib.Path(app_settings.MEDIA_CACHE) / "video-id.mp4"
+        file.parent.mkdir(parents=True, exist_ok=True)
+        with file.open('wb') as fw:
+            fw.write(b'test data')
+
+        video = models.Video.objects.create(provider_object_id="video-id")
+
+        video_services.download_exception(
+            video=video,
+            exception=yt_dlp.DownloadError("Invalid data found when processing input"),
+            dl_kwargs={},
+            quality=0, selected_quality=0,
+            cache_folder=file.parent, retries=0,
+        )
+
+        self.assertFalse(file.exists())
+
+    def test_download_exception_video_failed_download_more_than_x_times_sets_error(self):
+
+        video = models.Video.objects.create(provider_object_id="video-id")
+
+        video_services.download_exception(
+            video=video,
+            exception=yt_dlp.DownloadError("Some other error"),
+            dl_kwargs={},
+            quality=0, selected_quality=0,
+            cache_folder="", retries=4,
+        )
+
+        self.assertTrue(video.download_errors.exists())
+
+    def test_download_exception_video_total_download_failure_logs_exception(self):
+
+        video = models.Video.objects.create(provider_object_id="video-id")
+
+        for x in range(app_settings.VIDEO_DOWNLOAD_ERROR_DAILY_ATTEMPTS+1):
+            video.download_errors.create()
+
+        with self.assertLogs("vidar.services.video_services") as logger:
+
+            video_services.download_exception(
+                video=video,
+                exception=yt_dlp.DownloadError("Some other error"),
+                dl_kwargs={},
+                quality=0, selected_quality=0,
+                cache_folder="", retries=4,
+            )
+
+        last_log = logger.output[-1]
+
+        self.assertIn("Total failure to download video.", last_log)
 
 
 class YtdlpServicesTests(TestCase):

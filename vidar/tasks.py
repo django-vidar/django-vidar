@@ -8,7 +8,6 @@ import random
 import requests.exceptions
 import tempfile
 import time
-import traceback
 from functools import partial
 
 from django.conf import settings
@@ -801,60 +800,24 @@ def download_provider_video(
 
         celery_helpers.object_lock_release(obj=video)
 
-        video.set_latest_download_stats(
+        if video_services.download_exception(
+            video=video,
+            exception=exc,
             dl_kwargs=dl_kwargs,
-            status="failure",
-            traceback=traceback.format_exc(),
-            timestamp=timezone.now(),
-            commit=False,
-        )
-        video.save_system_notes(dl_kwargs, commit=False)
-        video.save()
-
-        if ytdlp_services.exception_is_live_event(exc):
-            log.info("Video is a live event, waiting on that event.")
-            if "downloads_live_exc" not in video.system_notes:
-                video.system_notes["downloads_live_exc"] = []
-            video.system_notes["downloads_live_exc"].append(timezone.now().isoformat())
-            video.system_notes["video_was_live_at_last_attempt"] = True
-            video.save()
-
-            if len(video.system_notes["downloads_live_exc"]) >= 5:
-                video.playlistitem_set.update(download=False)
-
-            return
-
-        if video.apply_privacy_status_based_on_dlp_exception_message(exc):
-            log.info(f"Video is {video.privacy_status}, privacy_status updated.")
-
-            if video.privacy_status in Video.VideoPrivacyStatuses_Not_Accessible:
-                return
-
-        if "Invalid data found when processing input" in str(exc):
-            for file in cache_folder.glob(f"{video.provider_object_id}*"):
-                try:
-                    file.unlink()
-                except OSError:  # pragma: no cover
-                    log.exception("Failed to delete processing file due to invalid data exception raise")
-
-        if self.request.retries >= 3:
-            de = video.download_errors.create(
-                traceback=traceback.format_exc(),
-                quality=str(quality),
-                selected_quality=str(selected_quality),
-                retries=self.request.retries,
-            )
-            de.save_kwargs(dl_kwargs)
-
-            log.info(f"Failure to download video. {selected_quality=} {video.id=}")
-
-            if video.at_max_download_errors_for_period():
-                log.exception(f"Total failure to download video. {selected_quality=} {video.id=}")
-
+            quality=quality,
+            selected_quality=selected_quality,
+            cache_folder=cache_folder,
+            retries=self.request.retries,
+        ):
             return
 
         # Retry in 1 minutes.
         raise self.retry(countdown=1 * 60)
+
+    except:  # noqa: E722 ; pragma: no cover
+        # All other exceptions needs to unlock the video.
+        celery_helpers.object_lock_release(obj=video)
+        raise
 
     video.set_details_from_yt_dlp_response(info)
 

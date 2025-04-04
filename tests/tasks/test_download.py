@@ -1,24 +1,14 @@
-import datetime
-import logging
-import pathlib
-
-import celery.states
-import requests.exceptions
 import yt_dlp
 
-from unittest.mock import call, patch, MagicMock
+from unittest.mock import patch
 
-from django.test import TestCase, override_settings
-from django.utils import timezone
+from django.test import TestCase
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
+
+from celery.exceptions import MaxRetriesExceededError
 
 from vidar import models, tasks, app_settings, exceptions
-from vidar.helpers import channel_helpers, celery_helpers
-from vidar.services import crontab_services
-from vidar.storages import vidar_storage
-
-from ..test_functions import date_to_aware_date
+from vidar.helpers import celery_helpers
 
 User = get_user_model()
 
@@ -42,59 +32,31 @@ class Download_provider_video_tests(TestCase):
         with self.assertRaises(SystemError):
             tasks.download_provider_video.delay(pk=video.pk).get()
 
+    @patch("vidar.services.video_services.download_exception")
     @patch("vidar.interactor.video_download")
-    def test_video_is_live_and_cannot_be_downloaded(self, mock_dl):
+    def test_ytdlp_downloaderror_handled_no_retries(self, mock_dl, mock_dl_exc):
         mock_dl.side_effect = yt_dlp.DownloadError("Live event will be ready in x time.")
+        mock_dl_exc.return_value = True
 
         video = models.Video.objects.create()
         tasks.download_provider_video.delay(pk=video.pk).get()
 
-        video.refresh_from_db()
-        self.assertIn("video_was_live_at_last_attempt", video.system_notes)
-        self.assertTrue(video.system_notes["video_was_live_at_last_attempt"])
+        mock_dl.assert_called_once()
+        mock_dl_exc.assert_called_once()
 
+    @patch("vidar.services.video_services.download_exception")
     @patch("vidar.interactor.video_download")
-    def test_video_is_live_and_cannot_be_downloaded_stop_playlist_requesting_it(self, mock_dl):
-        mock_dl.side_effect = yt_dlp.DownloadError("Live event will be ready in x time.")
+    def test_ytdlp_downloaderror_not_handled_has_retries(self, mock_dl, mock_dl_exc):
+        mock_dl.side_effect = yt_dlp.DownloadError("Unknown error occurs")
+        mock_dl_exc.return_value = False
 
-        playlist = models.Playlist.objects.create()
+        video = models.Video.objects.create()
 
-        video = models.Video.objects.create(system_notes={
-            "downloads_live_exc": [1, 2, 3, 4, 5],
-        })
+        with self.assertRaises(MaxRetriesExceededError):
+            tasks.download_provider_video.delay(pk=video.pk).get()
 
-        pli = playlist.playlistitem_set.create(video=video)
-
-        tasks.download_provider_video.delay(pk=video.pk).get()
-
-        pli.refresh_from_db()
-        self.assertFalse(pli.download)
-
-    @patch("vidar.interactor.video_download")
-    def test_video_is_blocked_in_country(self, mock_dl):
-        mock_dl.side_effect = yt_dlp.DownloadError("Video is blocked in your country")
-
-        video = models.Video.objects.create(provider_object_id="video-id")
-
-        tasks.download_provider_video.delay(pk=video.pk).get()
-
-        video.refresh_from_db()
-        self.assertEqual(models.Video.VideoPrivacyStatuses.BLOCKED, video.privacy_status)
-
-    @patch("vidar.interactor.video_download")
-    def test_video_downloaded_invalid_data(self, mock_dl):
-        mock_dl.side_effect = yt_dlp.DownloadError("Invalid data found when processing input")
-
-        file = pathlib.Path(app_settings.MEDIA_CACHE) / "video-id.mp4"
-        file.parent.mkdir(parents=True, exist_ok=True)
-        with file.open('wb') as fw:
-            fw.write(b'test data')
-
-        video = models.Video.objects.create(provider_object_id="video-id")
-
-        tasks.download_provider_video.delay(pk=video.pk).get()
-
-        self.assertFalse(file.exists())
+        self.assertEqual(4, mock_dl.call_count)
+        self.assertEqual(4, mock_dl_exc.call_count)
 
     @patch("vidar.services.ytdlp_services.get_video_downloader_args")
     @patch("vidar.interactor.video_download")

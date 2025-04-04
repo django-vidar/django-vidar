@@ -1,6 +1,7 @@
 import json
 import logging
 import pathlib
+import traceback
 
 from django.core.files.base import ContentFile
 from django.db.models import F
@@ -9,7 +10,7 @@ from django.utils import timezone
 from vidar import app_settings, models, utils
 from vidar.exceptions import DownloadedInfoJsonFileNotFoundError
 from vidar.helpers import video_helpers
-from vidar.services import image_services, schema_services
+from vidar.services import image_services, schema_services, ytdlp_services
 from vidar.storages import vidar_storage
 
 
@@ -589,3 +590,57 @@ def metadata_artist(video: models.Video):
     if video.channel:
         return str(video.channel)
     return ""
+
+
+def download_exception(video: models.Video, exception, dl_kwargs, quality, selected_quality, cache_folder, retries):
+    video.set_latest_download_stats(
+        dl_kwargs=dl_kwargs,
+        status="failure",
+        traceback=traceback.format_exc(),
+        timestamp=timezone.now(),
+        commit=False,
+    )
+    video.save_system_notes(dl_kwargs, commit=False)
+    video.save()
+
+    if ytdlp_services.exception_is_live_event(exception):
+        log.info("Video is a live event, waiting on that event.")
+        if "downloads_live_exc" not in video.system_notes:
+            video.system_notes["downloads_live_exc"] = []
+        video.system_notes["downloads_live_exc"].append(timezone.now().isoformat())
+        video.system_notes["video_was_live_at_last_attempt"] = True
+        video.save()
+
+        if len(video.system_notes["downloads_live_exc"]) >= 5:
+            video.playlistitem_set.update(download=False)
+
+        return True
+
+    if video.apply_privacy_status_based_on_dlp_exception_message(exception):
+        log.info(f"Video is {video.privacy_status}, privacy_status updated.")
+
+        if video.privacy_status in models.Video.VideoPrivacyStatuses_Not_Accessible:
+            return True
+
+    if "Invalid data found when processing input" in str(exception):
+        for file in cache_folder.glob(f"{video.provider_object_id}*"):
+            try:
+                file.unlink()
+            except OSError:  # pragma: no cover
+                log.exception("Failed to delete processing file due to invalid data exception raise")
+
+    if retries >= 3:
+        de = video.download_errors.create(
+            traceback=traceback.format_exc(),
+            quality=str(quality),
+            selected_quality=str(selected_quality),
+            retries=retries,
+        )
+        de.save_kwargs(dl_kwargs)
+
+        log.info(f"Failure to download video. {selected_quality=} {video.id=}")
+
+        if video.at_max_download_errors_for_period():
+            log.exception(f"Total failure to download video. {selected_quality=} {video.id=}")
+
+        return True
