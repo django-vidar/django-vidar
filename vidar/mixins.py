@@ -34,6 +34,14 @@ class RequestBasedCustomQuerysetFilteringMixin:
     RequestBaseFilteringSearchValueSeparator: str = ":"
     RequestBaseFilteringQueryParameter: str = "q"
 
+    """Adds a way to add our own shortcuts for searching.
+        Let's say we want to search by channel__name__icontains easily without typing the entire string.
+        Here we can map a shortcut to the long django name.
+        >>> RequestBaseFilteringSearchValueMapping = {"c": "channel__name__icontains"}
+        Entering the search value of c:blah will now search channels with name containing "blah"
+    """
+    RequestBaseFilteringSearchValueMapping = {}
+
     def get_default_queryset_filters(self, query, fields: list = None):
         if fields is None:
             fields = self.RequestBaseFilteringDefaultFields
@@ -68,6 +76,9 @@ class RequestBasedCustomQuerysetFilteringMixin:
                 elif q.lower() == "none":
                     q = None
                     comparator = ""
+
+                if mapping := self.RequestBaseFilteringSearchValueMapping:
+                    field = mapping.get(field, field)
 
                 if "__" not in field:
                     field = f"{field}{comparator}"

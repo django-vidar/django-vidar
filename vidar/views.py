@@ -864,6 +864,9 @@ class VideoListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin,
     paginate_by = 10
     ordering = ["-upload_date", "-inserted"]
     RequestBaseFilteringDefaultFields = ["title", "provider_object_id"]
+    RequestBaseFilteringSearchValueMapping = {
+        "c": "channel__name__icontains",
+    }
 
     def get_context_data(self, *args, **kwargs):
         kwargs = super().get_context_data(*args, **kwargs)
