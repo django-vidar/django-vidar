@@ -1142,7 +1142,7 @@ class PlaylistTests(TestCase):
         self.assertEqual('', playlist.video_indexing_add_by_title, "hidden playlists cannot add based on indexing")
         self.assertEqual('', playlist.disable_when_string_found_in_video_title, "hidden playlists cannot be disabled")
 
-    def test_get_user_watch_later(self):
+    def test_objects_manager_get_user_watch_later(self):
         user = UserModel.objects.create(username='test')
         self.assertEqual(0, models.Playlist.objects.count())
 
@@ -1152,6 +1152,17 @@ class PlaylistTests(TestCase):
         self.assertEqual(user, wl.user)
         self.assertEqual('', wl.provider_object_id)
         self.assertEqual("Watch Later", wl.title)
+
+    def test_objects_manager_already_exists(self):
+
+        playlist = models.Playlist.objects.create(
+            provider_object_id="provider-id-1",
+            provider_object_id_old="old-id",
+        )
+
+        self.assertEqual(playlist, models.Playlist.objects.already_exists("provider-id-1"))
+        self.assertEqual(playlist, models.Playlist.objects.already_exists("old-id"))
+        self.assertIsNone(models.Playlist.objects.already_exists("provider-id-missing"))
 
     def test_next_runtime(self):
         playlist = models.Playlist.objects.create(

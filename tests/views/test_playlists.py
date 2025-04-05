@@ -255,6 +255,13 @@ class PlaylistCreateViewTests(TestCase):
         else:
             self.fail("PlaylistCreateView should have told user how many scans per month were happening.")
 
+    def test_url_param_supplied_playlist_exists_redirect_to_object(self):
+        playlist = models.Playlist.objects.create(provider_object_id="playlist-id")
+        resp = self.client.get(self.url + f"?url=https://www.youtube.com/playlist?list={playlist.provider_object_id}")
+
+        self.assertEqual(302, resp.status_code)
+        self.assertEqual(playlist.get_absolute_url(), resp.url)
+
 
 class PlaylistEditViewTests(TestCase):
 

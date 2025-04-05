@@ -1273,6 +1273,12 @@ class PlaylistObjectsManager(models.Manager):
         )
         return playlist
 
+    def already_exists(self, provider_object_id):
+        try:
+            return self.get(Q(provider_object_id=provider_object_id) | Q(provider_object_id_old=provider_object_id))
+        except Playlist.DoesNotExist:
+            pass
+
 
 class Playlist(models.Model):
 

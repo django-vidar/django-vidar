@@ -21,6 +21,18 @@
         <h1>New {% if custom_playlist %}Custom{% endif %} Playlist</h1>
     {% endif %}
 
+    {% if not form.instance.pk %}
+    <div class="row">
+        <div class="col"></div>
+        <div class="col-justify-right">
+            <p>
+                Bookmark this link to quickly subscribe to a playlist:
+                <a href="javascript:void(window.open('{{ request.build_absolute_uri }}?url='+encodeURIComponent(document.location.href)));">Subscribe To Playlist</a>
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
     <form method="post" class="form">{% csrf_token %}
         {% bootstrap_form form %}
         <div class="row">

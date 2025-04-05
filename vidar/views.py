@@ -1861,8 +1861,20 @@ class PlaylistCreateView(PermissionRequiredMixin, CreateView):
     # success_url = reverse_lazy("vidar:playlist-index")
     permission_required = ["vidar.add_playlist"]
 
+    def dispatch(self, *args, **kwargs):
+
+        self.provider_id = None
+        if youtube_url := self.request.GET.get("url"):
+            if provider_id := utils.get_video_id_from_url(youtube_url, playlist=True):
+                self.provider_id = provider_id
+                if obj := Playlist.objects.already_exists(provider_id):
+                    messages.info(self.request, "Already subscribed to playlist")
+                    return redirect(obj)
+
+        return super().dispatch(*args, **kwargs)
+
     def get_initial(self):
-        youtube_id = self.request.GET.get("youtube_id", "")
+        youtube_id = self.request.GET.get("youtube_id", self.provider_id) or ""
         return {
             "provider_object_id": f"https://www.youtube.com/playlist?list={youtube_id}",
         }
