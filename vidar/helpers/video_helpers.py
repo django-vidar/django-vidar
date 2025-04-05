@@ -26,14 +26,17 @@ def get_video_upload_to_directory(instance):
             path /= schema_services.video_directory_name(video=instance)
 
     else:
-        path = pathlib.PurePosixPath("public")
-
-        if instance.upload_date:
-            year = instance.upload_date.year
+        if schema_services.video_uses_custom_directory_schema(video=instance):
+            path = schema_services.video_directory_name(video=instance)
         else:
-            year = timezone.now().year
+            path = pathlib.PurePosixPath("public")
 
-        path /= str(year)
+            if instance.upload_date:
+                year = instance.upload_date.year
+            else:
+                year = timezone.now().year
+
+            path /= str(year)
 
     return path
 

@@ -98,6 +98,8 @@ class PlaylistAdderForm(forms.ModelForm):
             "restrict_to_assigned_channel",
             "download_comments_on_index",
             "next_playlist",
+            "filename_schema",
+            "directory_schema",
         ]
         labels = {"provider_object_id": "Link To Playlist"}
         widgets = {
@@ -155,6 +157,8 @@ class PlaylistEditForm(forms.ModelForm):
             "provider_object_id",
             "provider_object_id_old",
             "next_playlist",
+            "filename_schema",
+            "directory_schema",
         ]
         widgets = {
             "title_skips": forms.Textarea(attrs={"rows": 2}),
@@ -196,6 +200,8 @@ class PlaylistManualAddForm(forms.ModelForm):
             "restrict_to_assigned_channel",
             "remove_video_from_playlist_on_watched",
             "next_playlist",
+            "filename_schema",
+            "directory_schema",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 2}),
@@ -233,6 +239,8 @@ class PlaylistManualEditForm(PlaylistManualAddForm):
             "provider_object_id_old",
             "remove_video_from_playlist_on_watched",
             "next_playlist",
+            "filename_schema",
+            "directory_schema",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 2}),

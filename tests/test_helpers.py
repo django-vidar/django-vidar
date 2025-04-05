@@ -191,6 +191,15 @@ class VideoHelpersTests(TestCase):
         output = video_helpers.get_video_upload_to_directory(instance=video)
         self.assertEqual('public/2023', str(output))
 
+    def test_get_video_upload_to_directory_without_channel_uses_custom_directory_schema(self):
+        video = models.Video.objects.create(
+            title="test video 1",
+            directory_schema="test video/{{video.upload_date.year}}",
+            upload_date=date_to_aware_date("2024-05-24")
+        )
+        output = video_helpers.get_video_upload_to_directory(instance=video)
+        self.assertEqual(f'test video/2024', str(output))
+
     def test_get_video_upload_to_directory_without_channel_nor_upload_date(self):
         video = models.Video.objects.create(title="test video 1")
         output = video_helpers.get_video_upload_to_directory(instance=video)

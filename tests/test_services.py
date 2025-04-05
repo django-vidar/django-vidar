@@ -2545,6 +2545,69 @@ class SchemaServicesTests(TestCase):
             self.assertEqual(1, len(logger.output))
             self.assertIn('invalid schema', logger.output[0])
 
+    def test_video_directory_name_playlist_schema_overrides_default(self):
+        playlist = models.Playlist.objects.create(
+            title="test playlist",
+            directory_schema="overridden dir schema 1"
+        )
+        video = models.Video.objects.create(title="test video")
+        playlist.playlistitem_set.create(video=video)
+        output = schema_services.video_directory_name(video=video)
+        self.assertEqual("overridden dir schema 1", output)
+
+    def test_video_file_name_playlist_video_schema_overrides_default(self):
+        playlist = models.Playlist.objects.create(
+            title="test playlist",
+            filename_schema="overridden filename schema 1"
+        )
+        video = models.Video.objects.create(title="test video")
+        playlist.playlistitem_set.create(video=video)
+        output = schema_services.video_file_name(video=video, ext='mp3')
+        self.assertEqual("overridden filename schema 1.mp3", output)
+
+    def test_video_file_name_first_playlist_video_schema_overrides_default(self):
+        playlist1 = models.Playlist.objects.create(
+            title="test playlist",
+            filename_schema="overridden filename schema 1/{{playlist.title}}"
+        )
+        playlist2 = models.Playlist.objects.create(
+            title="test playlist 2",
+            filename_schema="overridden filename schema 2"
+        )
+        video = models.Video.objects.create(title="test video")
+        playlist1.playlistitem_set.create(video=video)
+        playlist2.playlistitem_set.create(video=video)
+        output = schema_services.video_file_name(video=video, ext='mp3')
+        self.assertEqual("overridden filename schema 1/test playlist.mp3", output)
+
+    def test_video_playlist_file_name_warning_warn_on_invalid_schemas(self):
+
+        playlist = models.Playlist.objects.create(
+            title="Test Playlist",
+            filename_schema="{{ instance.bad_property }}",
+        )
+        video = models.Video.objects.create()
+        playlist.playlistitem_set.create(video=video)
+
+        with self.assertLogs('vidar.services.schema_services') as logger:
+            schema_services.video_file_name(video=video, ext='mp3')
+            self.assertEqual(1, len(logger.output))
+            self.assertIn('invalid schema', logger.output[0])
+
+    def test_video_playlist_directory_name_warning_warn_on_invalid_schemas(self):
+
+        playlist = models.Playlist.objects.create(
+            title="Test Playlist",
+            directory_schema="{{ instance.bad_property }}",
+        )
+        video = models.Video.objects.create()
+        playlist.playlistitem_set.create(video=video)
+
+        with self.assertLogs('vidar.services.schema_services') as logger:
+            schema_services.video_directory_name(video=video)
+            self.assertEqual(1, len(logger.output))
+            self.assertIn('invalid value', logger.output[0])
+
     def test_video_file_name_warning_warn_on_invalid_schemas(self):
 
         channel = models.Channel.objects.create(
@@ -2599,6 +2662,44 @@ class SchemaServicesTests(TestCase):
         rendered_string = schema_services._render_string_using_object_data(template_string, **context_data)
         expected_output = "This is &lt;&gt;&amp; string: $."
         self.assertEqual(rendered_string, expected_output)
+
+    def test_video_uses_custom_filename_schema_none(self):
+        video = models.Video.objects.create()
+        self.assertIsNone(schema_services.video_uses_custom_filename_schema(video=video))
+
+    def test_video_uses_custom_filename_schema_video(self):
+        video = models.Video.objects.create(filename_schema="test schema")
+        self.assertEqual("test schema", schema_services.video_uses_custom_filename_schema(video=video))
+
+    def test_video_uses_custom_filename_schema_channel(self):
+        channel = models.Channel.objects.create(video_filename_schema="channel file schema")
+        video = models.Video.objects.create(channel=channel)
+        self.assertEqual("channel file schema", schema_services.video_uses_custom_filename_schema(video=video))
+
+    def test_video_uses_custom_filename_schema_playlist(self):
+        playlist = models.Playlist.objects.create(filename_schema="playlist file schema")
+        video = models.Video.objects.create()
+        playlist.playlistitem_set.create(video=video)
+        self.assertEqual("playlist file schema", schema_services.video_uses_custom_filename_schema(video=video))
+
+    def test_video_uses_custom_directory_schema_none(self):
+        video = models.Video.objects.create()
+        self.assertIsNone(schema_services.video_uses_custom_directory_schema(video=video))
+
+    def test_video_uses_custom_directory_schema_video(self):
+        video = models.Video.objects.create(directory_schema="test schema")
+        self.assertEqual("test schema", schema_services.video_uses_custom_directory_schema(video=video))
+
+    def test_video_uses_custom_directory_schema_channel(self):
+        channel = models.Channel.objects.create(video_directory_schema="channel file schema")
+        video = models.Video.objects.create(channel=channel)
+        self.assertEqual("channel file schema", schema_services.video_uses_custom_directory_schema(video=video))
+
+    def test_video_uses_custom_directory_schema_playlist(self):
+        playlist = models.Playlist.objects.create(directory_schema="playlist file schema")
+        video = models.Video.objects.create()
+        playlist.playlistitem_set.create(video=video)
+        self.assertEqual("playlist file schema", schema_services.video_uses_custom_directory_schema(video=video))
 
 
 class YtdlpServicesDLPFormatsTest(SimpleTestCase):

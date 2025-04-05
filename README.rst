@@ -603,3 +603,51 @@ settings.py and will bypass the settings getter system.
         # or put it in a file such as myproj/ytdlp.py and then
 
         VIDAR_YOUTUBEDL_INITIALIZER = 'myproj.ytdlp.my_ytdlp_instance'
+
+Video File and Directory Schemas
+================================
+
+The **Video** file and directory structure can be controlled in various ways.
+
+The default is the system value of ``VIDAR_VIDEO_DIRECTORY_SCHEMA`` and ``VIDAR_VIDEO_FILENAME_SCHEMA``.
+
+These values can be overridden on the follow objects in descending order of application:
+
+- Video object
+    - **video** - the video being worked on
+- Channel object (if assigned)
+    - **video** - the video being worked on
+    - **channel** - the channel being worked on
+- Playlist object (first playlist with a schema value, ordered by inserted id)
+    - **video** - the video being worked on
+    - **playlist** - the playlist being worked on
+- System default
+    - **video** - the video being worked on
+
+The bolded sub-items represent the values available through python's string formatting style::
+
+    {{ video.title }}
+    {{ channel.name }}
+    {{ playlist.title }}
+
+You can review ``vidar/models.py`` models to find all fields available to you.
+
+Channel Directory Schemas
+================================
+
+The directory structure can be controlled in various ways.
+
+The default is the system value of ``VIDAR_CHANNEL_DIRECTORY_SCHEMA``.
+
+These values can be overridden on the follow objects in descending order of application:
+
+- Channel object
+    - **channel** - the channel being worked on
+- System default
+    - **channel** - the channel being worked on
+
+The bolded sub-items represent the values available through python's string formatting style::
+
+    {{ channel.name }}
+
+You can review ``vidar/models.py`` models to find all fields available to you.

@@ -251,8 +251,16 @@ class Channel(models.Model):
         help_text="Should videos be stored in separate directories for each video? Each directory will then "
         "contain the video file, info.json, and it's thumbnail.",
     )
-    video_filename_schema = models.CharField(max_length=500, blank=True)
-    video_directory_schema = models.CharField(max_length=500, blank=True)
+    video_filename_schema = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text=model_helpers.FILENAME_SCHEMA_HELP_TEXT,
+    )
+    video_directory_schema = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text=model_helpers.DIRECTORY_SCHEMA_HELP_TEXT,
+    )
 
     directory_schema = models.CharField(max_length=500, blank=True)
 
@@ -764,8 +772,16 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
     download_requested_by = models.CharField(
         max_length=255, blank=True, help_text="What triggered this video to download?"
     )
-    filename_schema = models.CharField(max_length=500, blank=True)
-    directory_schema = models.CharField(max_length=500, blank=True)
+    filename_schema = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text=model_helpers.FILENAME_SCHEMA_HELP_TEXT,
+    )
+    directory_schema = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text=model_helpers.DIRECTORY_SCHEMA_HELP_TEXT,
+    )
 
     needs_cookies = models.BooleanField(
         default=False,
@@ -1313,6 +1329,16 @@ class Playlist(models.Model):
         max_length=10,
         blank=True,
         choices=model_helpers.PlaybackVolume.choices,
+    )
+    filename_schema = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text=model_helpers.FILENAME_SCHEMA_HELP_TEXT,
+    )
+    directory_schema = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text=model_helpers.DIRECTORY_SCHEMA_HELP_TEXT,
     )
 
     class PlaylistVideoOrderingChoices(models.TextChoices):

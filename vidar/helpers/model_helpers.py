@@ -1,6 +1,10 @@
 from django.db import models
 
 
+FILENAME_SCHEMA_HELP_TEXT = "Filename schema. Order of application is Video, Channel, First Playlist by ID, System."
+DIRECTORY_SCHEMA_HELP_TEXT = "Directory schema. Order of application is Video, Channel, First Playlist by ID, System."
+
+
 class CeleryLockableModel(models.Model):
     class Meta:
         abstract = True
