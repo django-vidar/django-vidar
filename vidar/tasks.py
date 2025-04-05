@@ -1172,8 +1172,7 @@ def convert_video_to_audio(self, pk, filepath=None, return_filepath=False):
 
     with transaction.atomic():
         video = Video.objects.select_for_update().get(id=pk)
-        video.system_notes["convert_video_to_audio_started"] = timezone.now().isoformat()
-        video.save()
+        video.append_to_latest_download_stats(convert_video_to_audio_started=timezone.now())
 
     local_filepath = filepath
     was_remote = False
@@ -1190,8 +1189,7 @@ def convert_video_to_audio(self, pk, filepath=None, return_filepath=False):
 
     with transaction.atomic():
         video = Video.objects.select_for_update().get(id=pk)
-        video.system_notes["convert_video_to_audio_finished"] = timezone.now().isoformat()
-        video.save()
+        video.append_to_latest_download_stats(convert_video_to_audio_finished=timezone.now())
 
     if return_filepath:
         return str(output_filepath)
@@ -2005,8 +2003,7 @@ def convert_video_to_mp4(self, pk, filepath=None, ext="mp4"):
 
     with transaction.atomic():
         video = Video.objects.select_for_update().get(id=pk)
-        video.system_notes["convert_video_to_mp4_started"] = timezone.now().isoformat()
-        video.save()
+        video.append_to_latest_download_stats(convert_video_to_mp4_started=timezone.now())
 
     try:
 
@@ -2031,8 +2028,7 @@ def convert_video_to_mp4(self, pk, filepath=None, ext="mp4"):
 
     with transaction.atomic():
         video = Video.objects.select_for_update().get(id=pk)
-        video.system_notes["convert_video_to_mp4_finished"] = timezone.now().isoformat()
-        video.save()
+        video.append_to_latest_download_stats(convert_video_to_mp4_finished=timezone.now())
 
     return str(output_filepath)
 

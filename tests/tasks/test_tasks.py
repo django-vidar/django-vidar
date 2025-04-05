@@ -2917,8 +2917,10 @@ class Convert_video_to_mp4_tests(TestCase):
 
         video.refresh_from_db()
 
-        self.assertIn("convert_video_to_mp4_started", video.system_notes)
-        self.assertIn("convert_video_to_mp4_finished", video.system_notes)
+        latest_download_stats = video.get_latest_download_stats()
+
+        self.assertIn("convert_video_to_mp4_started", latest_download_stats)
+        self.assertIn("convert_video_to_mp4_finished", latest_download_stats)
 
     @patch("vidar.services.redis_services.video_conversion_to_mp4_finished")
     @patch("vidar.services.redis_services.video_conversion_to_mp4_started")
@@ -2948,8 +2950,10 @@ class Convert_video_to_mp4_tests(TestCase):
 
         video.refresh_from_db()
 
-        self.assertIn("convert_video_to_mp4_started", video.system_notes)
-        self.assertIn("convert_video_to_mp4_finished", video.system_notes)
+        latest_download_stats = video.get_latest_download_stats()
+
+        self.assertIn("convert_video_to_mp4_started", latest_download_stats)
+        self.assertIn("convert_video_to_mp4_finished", latest_download_stats)
 
 
 class Monthly_maintenances_tests(TestCase):
@@ -3167,8 +3171,10 @@ class Convert_video_to_audio_tests(TestCase):
 
         video.refresh_from_db()
 
-        self.assertIn("convert_video_to_audio_started", video.system_notes)
-        self.assertIn("convert_video_to_audio_finished", video.system_notes)
+        latest_download_stats = video.get_latest_download_stats()
+
+        self.assertIn("convert_video_to_audio_started", latest_download_stats)
+        self.assertIn("convert_video_to_audio_finished", latest_download_stats)
 
     @patch("os.unlink")
     @patch("moviepy.VideoFileClip")
@@ -3220,8 +3226,10 @@ class Convert_video_to_audio_tests(TestCase):
 
         video.refresh_from_db()
 
-        self.assertIn("convert_video_to_audio_started", video.system_notes)
-        self.assertIn("convert_video_to_audio_finished", video.system_notes)
+        latest_download_stats = video.get_latest_download_stats()
+
+        self.assertIn("convert_video_to_audio_started", latest_download_stats)
+        self.assertIn("convert_video_to_audio_finished", latest_download_stats)
 
 
 class Slow_full_archive_test(TestCase):
