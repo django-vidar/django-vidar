@@ -1457,19 +1457,6 @@ def monthly_maintenances(self):
 
 
 @shared_task(queue="queue-vidar")
-def warn_no_videos_downloaded_today():
-    raise NotImplementedError("Needs fixing for email")
-    if Video.objects.filter(upload_date=timezone.localdate()).exists():
-        return
-
-    notification_services.no_videos_archived_today()
-
-    # EmailQueue.queue_email(
-    #     template_name='vidar - alert no archived videos',
-    # )
-
-
-@shared_task(queue="queue-vidar")
 def automated_video_quality_upgrades():
 
     downloaded = 0
