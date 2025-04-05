@@ -20,7 +20,6 @@ from vidar import app_settings, forms, helpers, interactor, oneoffs, storages, t
 from vidar.exceptions import FileStorageBackendHasNoMoveError
 from vidar.helpers import celery_helpers, channel_helpers, statistics_helpers
 from vidar.mixins import (
-    FieldFilteringMixin,
     HTMXIconBooleanSwapper,
     PublicOrLoggedInUserMixin,
     RequestBasedCustomQuerysetFilteringMixin,
@@ -98,36 +97,7 @@ class GeneralUtilitiesView(UserPassesTestMixin, TemplateView):
         return redirect("vidar:utilities")
 
 
-class ChannelListViewContextData(FieldFilteringMixin):
-    # paginate_by = 20
-
-    FILTERING_SKIP_FIELDS = ["o", "show"]
-
-    def get_context_data(self, *args, **kwargs):
-        kwargs = super().get_context_data(*args, **kwargs)
-        qs = self.model.objects.all()
-        kwargs["active_count"] = qs.filter(active=True).count()
-        kwargs["download_videos_true_count"] = qs.filter(download_videos=True).count()
-        kwargs["download_shorts_true_count"] = qs.filter(download_shorts=True).count()
-        kwargs["download_livestreams_true_count"] = qs.filter(download_livestreams=True).count()
-
-        kwargs["index_videos_true_count"] = qs.filter(index_videos=True).count()
-        kwargs["index_shorts_true_count"] = qs.filter(index_shorts=True).count()
-        kwargs["index_livestreams_true_count"] = qs.filter(index_livestreams=True).count()
-
-        kwargs["full_archive_count"] = qs.filter(full_archive=True).count()
-
-        kwargs["show_download_notification_column"] = qs.filter(send_download_notification=False).exists()
-
-        kwargs["download_comments_with_video_count"] = qs.filter(download_comments_with_video=True).count()
-        kwargs["download_comments_during_scan_count"] = qs.filter(download_comments_during_scan=True).count()
-
-        return kwargs
-
-
-class ChannelListView(
-    PermissionRequiredMixin, ChannelListViewContextData, RequestBasedQuerysetFilteringMixin, ListView
-):
+class ChannelListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin, ListView):
     model = Channel
     permission_required = ["vidar.view_channel"]
     queryset = Channel.objects.annotate(
@@ -151,6 +121,7 @@ class ChannelListView(
     )
     ordering = ["name_sort"]
     RequestBaseFilteringDefaultFields = ["name", "provider_object_id"]
+    FILTERING_SKIP_FIELDS = ["o", "show"]
 
     def get_context_data(self, *args, **kwargs):
         kwargs = super().get_context_data(*args, **kwargs)
@@ -173,6 +144,22 @@ class ChannelListView(
         kwargs["has_full_archive"] = qs.filter(full_archive=True).exists()
         kwargs["has_download_comments_with_video"] = qs.filter(download_comments_with_video=True).exists()
         kwargs["has_download_comments_during_scan"] = qs.filter(download_comments_during_scan=True).exists()
+        kwargs["active_count"] = qs.filter(active=True).count()
+
+        kwargs["download_videos_true_count"] = qs.filter(download_videos=True).count()
+        kwargs["download_shorts_true_count"] = qs.filter(download_shorts=True).count()
+        kwargs["download_livestreams_true_count"] = qs.filter(download_livestreams=True).count()
+
+        kwargs["index_videos_true_count"] = qs.filter(index_videos=True).count()
+        kwargs["index_shorts_true_count"] = qs.filter(index_shorts=True).count()
+        kwargs["index_livestreams_true_count"] = qs.filter(index_livestreams=True).count()
+
+        kwargs["full_archive_count"] = qs.filter(full_archive=True).count()
+
+        kwargs["show_download_notification_column"] = qs.filter(send_download_notification=False).exists()
+
+        kwargs["download_comments_with_video_count"] = qs.filter(download_comments_with_video=True).count()
+        kwargs["download_comments_during_scan_count"] = qs.filter(download_comments_during_scan=True).count()
 
         return kwargs
 

@@ -1,6 +1,6 @@
 import warnings
 
-from django.core.exceptions import FieldDoesNotExist, FieldError
+from django.core.exceptions import FieldError
 from django.db.models import Q
 from django.shortcuts import Http404, HttpResponse, get_object_or_404
 
@@ -161,25 +161,3 @@ class HTMXIconBooleanSwapper:
         icon = self.HTMX_ICON_TRUE if new_val else self.HTMX_ICON_FALSE
 
         return HttpResponse(f'<i class="{icon}"></i>')
-
-
-class FieldFilteringMixin:
-
-    FILTERING_SKIP_FIELDS: list = None
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        for k, v in self.request.GET.items():
-            if self.FILTERING_SKIP_FIELDS and k in self.FILTERING_SKIP_FIELDS:
-                continue
-            try:
-                field_data = self.model._meta.get_field(k)
-                if v in ["1", "True"]:
-                    v = True
-                elif v in ["0", "False"]:
-                    v = False
-                print(field_data.attname, v)
-                qs = qs.filter(**{field_data.attname: v})
-            except FieldDoesNotExist:
-                print(f"Field {k} does not exist")
-        return qs
