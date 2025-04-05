@@ -57,6 +57,22 @@ class Download_provider_video_tests(TestCase):
 
         self.assertEqual(4, mock_dl.call_count)
         self.assertEqual(4, mock_dl_exc.call_count)
+        self.assertFalse(celery_helpers.is_object_locked(obj=video))
+
+    @patch("vidar.services.video_services.download_exception")
+    @patch("vidar.interactor.video_download")
+    def test_ytdlp_other_error_releases_celery_lock(self, mock_dl, mock_dl_exc):
+        mock_dl.side_effect = ValueError("Unknown error occurs")
+
+        video = models.Video.objects.create()
+
+        with self.assertRaises(ValueError):
+            tasks.download_provider_video.delay(pk=video.pk).get()
+
+        mock_dl.assert_called_once()
+        mock_dl_exc.assert_not_called()
+
+        self.assertFalse(celery_helpers.is_object_locked(obj=video))
 
     @patch("vidar.services.ytdlp_services.get_video_downloader_args")
     @patch("vidar.interactor.video_download")

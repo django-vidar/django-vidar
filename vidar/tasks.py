@@ -814,7 +814,7 @@ def download_provider_video(
         # Retry in 1 minutes.
         raise self.retry(countdown=1 * 60)
 
-    except:  # noqa: E722 ; pragma: no cover
+    except:  # noqa: E722
         # All other exceptions needs to unlock the video.
         celery_helpers.object_lock_release(obj=video)
         raise
