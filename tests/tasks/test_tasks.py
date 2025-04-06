@@ -3136,15 +3136,11 @@ class Monthly_maintenances_tests(TestCase):
 
 class Convert_video_to_audio_tests(TestCase):
 
-    @patch("moviepy.VideoFileClip")
-    @patch("tempfile.mkstemp")
+    @patch("vidar.app_settings.AppSettings.CONVERT_FILE_TO_AUDIO_FORMAT")
     @patch("vidar.helpers.file_helpers.ensure_file_is_local")
-    def test_successful(self, mock_ensure, mock_mkstemp, mock_moviepy):
-        clipper = MagicMock()
-        mock_moviepy.return_value = clipper
+    def test_successful(self, mock_ensure, mock_convert_func):
         video = models.Video.objects.create(file="test.mp4")
-
-        mock_mkstemp.return_value = ("", "output dir/test.mp3")
+        mock_convert_func.return_value = "output dir/test.mp3"
 
         output = tasks.convert_video_to_audio.delay(
             pk=video.pk,
@@ -3153,9 +3149,6 @@ class Convert_video_to_audio_tests(TestCase):
         ).get()
 
         self.assertEqual("output dir/test.mp3", output)
-
-        mock_moviepy.assert_called_once_with("test.mp4")
-        clipper.audio.write_audiofile.assert_called_once_with("output dir/test.mp3", logger=None)
 
         mock_ensure.assert_not_called()
 
@@ -3167,38 +3160,29 @@ class Convert_video_to_audio_tests(TestCase):
         self.assertIn("convert_video_to_audio_finished", latest_download_stats)
 
     @patch("os.unlink")
-    @patch("moviepy.VideoFileClip")
-    @patch("tempfile.mkstemp")
+    @patch("vidar.app_settings.AppSettings.CONVERT_FILE_TO_AUDIO_FORMAT")
     @patch("vidar.helpers.file_helpers.ensure_file_is_local")
-    def test_successful_when_not_passing_filepath(self, mock_ensure, mock_mkstemp, mock_moviepy, mock_unlink):
-        clipper = MagicMock()
-        mock_moviepy.return_value = clipper
+    def test_successful_when_not_passing_filepath(self, mock_ensure, mock_convert_func, mock_unlink):
         mock_ensure.return_value = "test.mp4", True
         video = models.Video.objects.create(file="test.mp4")
 
-        mock_mkstemp.return_value = ("", "output dir/test.mp3")
+        mock_convert_func.return_value = "output dir/test.mp3"
 
         output = tasks.convert_video_to_audio.delay(pk=video.pk, return_filepath=True).get()
 
         self.assertEqual("output dir/test.mp3", output)
-
-        mock_moviepy.assert_called_once_with("test.mp4")
-        clipper.audio.write_audiofile.assert_called_once_with("output dir/test.mp3", logger=None)
 
         mock_ensure.assert_called_once()
         mock_unlink.assert_called_once()
 
     @patch("vidar.tasks.write_file_to_storage")
     @patch("vidar.tasks.delete_cached_file")
-    @patch("moviepy.VideoFileClip")
-    @patch("tempfile.mkstemp")
+    @patch("vidar.app_settings.AppSettings.CONVERT_FILE_TO_AUDIO_FORMAT")
     @patch("vidar.helpers.file_helpers.ensure_file_is_local")
-    def test_successful_writes_direct_to_drive(self, mock_ensure, mock_mkstemp, mock_moviepy, mock_delete, mock_write):
-        clipper = MagicMock()
-        mock_moviepy.return_value = clipper
+    def test_successful_writes_direct_to_drive(self, mock_ensure, mock_convert_func, mock_delete, mock_write):
         video = models.Video.objects.create(file="test.mp4")
 
-        mock_mkstemp.return_value = ("", "output dir/test.mp3")
+        mock_convert_func.return_value = "output dir/test.mp3"
 
         output = tasks.convert_video_to_audio.delay(
             pk=video.pk,
@@ -3207,19 +3191,9 @@ class Convert_video_to_audio_tests(TestCase):
 
         self.assertTrue(output)
 
-        mock_moviepy.assert_called_once_with("test.mp4")
-        clipper.audio.write_audiofile.assert_called_once_with("output dir/test.mp3", logger=None)
-
         mock_ensure.assert_not_called()
         mock_delete.s.assert_called_once()
         mock_write.s.assert_called_once()
-
-        video.refresh_from_db()
-
-        latest_download_stats = video.get_latest_download_stats()
-
-        self.assertIn("convert_video_to_audio_started", latest_download_stats)
-        self.assertIn("convert_video_to_audio_finished", latest_download_stats)
 
 
 class Slow_full_archive_test(TestCase):

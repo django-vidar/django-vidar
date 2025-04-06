@@ -128,6 +128,12 @@ class AppSettings(object):
         )
 
     @property
+    def CONVERT_FILE_TO_AUDIO_FORMAT(self):
+        user_func = self._setting("CONVERT_FILE_TO_AUDIO_FORMAT", "vidar.helpers.file_helpers.convert_to_audio_format")
+        func = import_callable(user_func)
+        return func
+
+    @property
     def CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT(self):
         user_func = self._setting(
             "CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT", "vidar.helpers.file_helpers.convert_to_html_playable_format"

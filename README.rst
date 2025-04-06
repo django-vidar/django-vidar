@@ -242,11 +242,17 @@ settings.py and will bypass the settings getter system.
     If a channel is scanned and then the automated system tries to scan again within this window,
     the channel is skipped.
 
+``VIDAR_CONVERT_FILE_TO_AUDIO_FORMAT`` (default: ``"vidar.helpers.file_helpers.convert_to_audio_format"``)
+    Dot notation path to a function that accepts ``filepath`` which generates
+    an audio file using the given filepath.
+
+    You should only generate the audio file stored in a local path and return the path.
+
 ``VIDAR_CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT`` (default: ``"vidar.helpers.file_helpers.convert_to_html_playable_format"``)
     Dot notation path to a function that accepts ``filepath`` which converts the given filepath into
     a playable format for an HTML5 video player.
 
-    You should only convert the file stored in a local path and return the path.
+    You should only generate the conversion file stored in a local path and return the path.
 
 ``VIDAR_COOKIES`` (default: ``None``)
     String of cookies to supply to yt-dlp.

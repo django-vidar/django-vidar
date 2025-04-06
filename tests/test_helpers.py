@@ -550,6 +550,22 @@ class FileHelpersTests(TestCase):
 
         self.assertEqual("output dir/test.mp4", output)
 
+    @patch("moviepy.VideoFileClip")
+    @patch("tempfile.mkstemp")
+    def test_convert_to_audio_format(self, mock_mkstemp, mock_moviepy):
+        mock_mkstemp.return_value = ("", "output dir/test.mp3")
+
+        clipper = MagicMock()
+        mock_moviepy.return_value = clipper
+
+        filepath = pathlib.Path("/test/file.mkv")
+        output = file_helpers.convert_to_audio_format(filepath=filepath)
+
+        mock_moviepy.assert_called_once_with(filepath)
+        clipper.audio.write_audiofile.assert_called_once_with("output dir/test.mp3", logger=None)
+
+        self.assertEqual("output dir/test.mp3", output)
+
 
 class ChannelHelpersTests(TestCase):
     def test_watched_percentage_minimum(self):

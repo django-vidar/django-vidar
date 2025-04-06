@@ -2,6 +2,7 @@ import os
 import pathlib
 import tempfile
 
+from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 
 import moviepy
@@ -49,5 +50,15 @@ def convert_to_html_playable_format(filepath):
 
     clip = moviepy.VideoFileClip(filepath)
     clip.write_videofile(str(output_filepath))
+
+    return output_filepath
+
+
+def convert_to_audio_format(filepath):
+
+    _, output_filepath = tempfile.mkstemp(dir=app_settings.MEDIA_CACHE, suffix=".mp3")
+
+    clip = moviepy.VideoFileClip(filepath)
+    clip.audio.write_audiofile(output_filepath, logger="bar" if settings.DEBUG else None)
 
     return output_filepath

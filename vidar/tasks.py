@@ -6,16 +6,13 @@ import os
 import pathlib
 import random
 import requests.exceptions
-import tempfile
 import time
 from functools import partial
 
-from django.conf import settings
 from django.db import transaction
 from django.db.models import Case, Count, F, Q, When
 from django.utils import timezone
 
-import moviepy
 import yt_dlp
 from celery import chain, shared_task, states
 from celery.exceptions import Ignore
@@ -1179,10 +1176,7 @@ def convert_video_to_audio(self, pk, filepath=None, return_filepath=False):
     if not local_filepath:
         local_filepath, was_remote = file_helpers.ensure_file_is_local(file_field=video.file)
 
-    _, output_filepath = tempfile.mkstemp(dir=app_settings.MEDIA_CACHE, suffix=f"{pk}.mp3")
-
-    clip = moviepy.VideoFileClip(local_filepath)
-    clip.audio.write_audiofile(output_filepath, logger="bar" if settings.DEBUG else None)
+    output_filepath = app_settings.CONVERT_FILE_TO_AUDIO_FORMAT(filepath=local_filepath)
 
     if was_remote:
         os.unlink(local_filepath)
