@@ -894,7 +894,7 @@ def post_download_processing(self, pk, filepath):
         c |= write_file_to_storage.s(pk=pk, field_name="audio")
         c |= delete_cached_file.s()
 
-    if video_services.should_convert_to_mp4(video=video, filepath=filepath):
+    if app_settings.SHOULD_CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT(filepath=filepath):
         log.info("Adding convert_video_to_mp4 to the chain")
         c |= convert_video_to_mp4.si(pk=pk, filepath=str(filepath))
         c |= write_file_to_storage.s(pk=pk, field_name="file")
@@ -1993,10 +1993,10 @@ def rename_video_files(self, pk, remove_empty=True):
 
 @shared_task(bind=True, queue="queue-vidar-processor")
 @celery_helpers.prevent_asynchronous_task_execution(lock_key="convert-video-to-mp4-{pk}", lock_expiry=4 * 60 * 60)
-def convert_video_to_mp4(self, pk, filepath=None, ext="mp4"):
+def convert_video_to_mp4(self, pk, filepath=None):
     # NOTE: update celery_helpers if you change this task name
 
-    if filepath and not filepath.endswith(".mkv"):
+    if filepath and not app_settings.SHOULD_CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT(filepath=filepath):
         return filepath
 
     task_started = timezone.now()
@@ -2007,16 +2007,13 @@ def convert_video_to_mp4(self, pk, filepath=None, ext="mp4"):
 
     try:
 
+        redis_services.video_conversion_to_mp4_started(video=video)
+
         local_filepath = filepath
         if not local_filepath:
             local_filepath, was_remote = file_helpers.ensure_file_is_local(file_field=video.file)
 
-        redis_services.video_conversion_to_mp4_started(video=video)
-
-        _, output_filepath = tempfile.mkstemp(dir=app_settings.MEDIA_CACHE, suffix=f"{pk}.{ext}")
-
-        clip = moviepy.VideoFileClip(local_filepath)
-        clip.write_videofile(str(output_filepath))
+        output_filepath = app_settings.CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT(filepath=local_filepath)
 
         notification_services.convert_to_mp4_complete(
             video=video,

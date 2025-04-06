@@ -2890,15 +2890,11 @@ class Convert_video_to_mp4_tests(TestCase):
     @patch("vidar.services.redis_services.video_conversion_to_mp4_finished")
     @patch("vidar.services.redis_services.video_conversion_to_mp4_started")
     @patch("vidar.services.notification_services.convert_to_mp4_complete")
-    @patch("moviepy.VideoFileClip")
-    @patch("tempfile.mkstemp")
+    @patch("vidar.app_settings.AppSettings.CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT")
     @patch("vidar.helpers.file_helpers.ensure_file_is_local")
-    def test_successful(self, mock_ensure, mock_mkstemp, mock_moviepy, mock_notif_finished, mock_redis_started, mock_redis_finished):
-        clipper = MagicMock()
-        mock_moviepy.return_value = clipper
+    def test_successful(self, mock_ensure, mock_convert_func, mock_notif_finished, mock_redis_started, mock_redis_finished):
         video = models.Video.objects.create(file="test.mkv")
-
-        mock_mkstemp.return_value = ("", "output dir/test.mp4")
+        mock_convert_func.return_value = "output dir/test.mp4"
 
         output = tasks.convert_video_to_mp4.delay(
             pk=video.pk,
@@ -2907,8 +2903,7 @@ class Convert_video_to_mp4_tests(TestCase):
 
         self.assertEqual("output dir/test.mp4", output)
 
-        mock_moviepy.assert_called_once_with("test.mkv")
-        clipper.write_videofile.assert_called_once_with("output dir/test.mp4")
+        mock_convert_func.assert_called_once_with(filepath="test.mkv")
 
         mock_notif_finished.assert_called_once()
         mock_redis_started.assert_called_once()
@@ -2925,23 +2920,18 @@ class Convert_video_to_mp4_tests(TestCase):
     @patch("vidar.services.redis_services.video_conversion_to_mp4_finished")
     @patch("vidar.services.redis_services.video_conversion_to_mp4_started")
     @patch("vidar.services.notification_services.convert_to_mp4_complete")
-    @patch("moviepy.VideoFileClip")
-    @patch("tempfile.mkstemp")
+    @patch("vidar.app_settings.AppSettings.CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT")
     @patch("vidar.helpers.file_helpers.ensure_file_is_local")
-    def test_successful_when_not_passing_filepath(self, mock_ensure, mock_mkstemp, mock_moviepy, mock_notif_finished, mock_redis_started, mock_redis_finished):
-        clipper = MagicMock()
-        mock_moviepy.return_value = clipper
+    def test_successful_when_not_passing_filepath(self, mock_ensure, mock_convert_func, mock_notif_finished, mock_redis_started, mock_redis_finished):
+        mock_convert_func.return_value = "output dir/test.mp4"
         mock_ensure.return_value = "test.mkv", False
         video = models.Video.objects.create(file="test.mkv")
-
-        mock_mkstemp.return_value = ("", "output dir/test.mp4")
 
         output = tasks.convert_video_to_mp4.delay(pk=video.pk).get()
 
         self.assertEqual("output dir/test.mp4", output)
 
-        mock_moviepy.assert_called_once_with("test.mkv")
-        clipper.write_videofile.assert_called_once_with("output dir/test.mp4")
+        mock_convert_func.assert_called_once_with(filepath="test.mkv")
 
         mock_notif_finished.assert_called_once()
         mock_redis_started.assert_called_once()

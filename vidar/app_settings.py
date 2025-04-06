@@ -128,6 +128,14 @@ class AppSettings(object):
         )
 
     @property
+    def CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT(self):
+        user_func = self._setting(
+            "CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT", "vidar.helpers.file_helpers.convert_to_html_playable_format"
+        )
+        func = import_callable(user_func)
+        return func
+
+    @property
     def COOKIES(self):
         return self._setting("COOKIES", None)
 
@@ -464,6 +472,15 @@ class AppSettings(object):
             "SAVE_INFO_JSON_FILE",
             True,
         )
+
+    @property
+    def SHOULD_CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT(self):
+        user_func = self._setting(
+            "SHOULD_CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT",
+            "vidar.helpers.file_helpers.should_convert_to_html_playable_format",
+        )
+        func = import_callable(user_func)
+        return func
 
     @property
     def SHORTS_FORCE_MAX_QUALITY(self):

@@ -132,6 +132,7 @@ class Command(BaseCommand):
             app_settings.COMMENTS_MAX_REPLIES_PER_THREAD
             app_settings.COMMENTS_SORTING
             app_settings.COMMENTS_TOTAL_MAX_COMMENTS
+            app_settings.CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT
             app_settings.COOKIES
             app_settings.COOKIES_ALWAYS_REQUIRED
             app_settings.COOKIES_APPLY_ON_RETRIES
@@ -192,6 +193,7 @@ class Command(BaseCommand):
             app_settings.REDIS_VIDEO_CONVERSION_STARTED
             app_settings.REQUESTS_RATE_LIMIT
             app_settings.SAVE_INFO_JSON_FILE
+            app_settings.SHOULD_CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT
             app_settings.SHORTS_FORCE_MAX_QUALITY
             app_settings.SLOW_FULL_ARCHIVE_TASK_DOWNLOAD_LIMIT
             app_settings.VIDEO_AUTO_DOWNLOAD_LIVE_AMQ_WHEN_DETECTED

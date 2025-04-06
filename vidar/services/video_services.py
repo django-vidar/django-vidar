@@ -491,12 +491,6 @@ def should_convert_to_audio(video):
     return video.playlists.filter(convert_to_audio=True).exists()
 
 
-def should_convert_to_mp4(video, filepath):
-    if isinstance(filepath, pathlib.PurePath):
-        filepath = filepath.name
-    return filepath.endswith(".mkv")
-
-
 def is_blocked(provider_object_id):
     if models.VideoBlocked.objects.filter(provider_object_id=provider_object_id).exists():
         log.debug(f'Video id "{provider_object_id}" is blocked.')

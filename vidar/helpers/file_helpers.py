@@ -1,7 +1,10 @@
 import os
+import pathlib
 import tempfile
 
 from django.core.files.storage import FileSystemStorage
+
+import moviepy
 
 from vidar import app_settings
 
@@ -32,3 +35,19 @@ def ensure_file_is_local(file_field):
         fw.write(fo.read())
 
     return path, True
+
+
+def should_convert_to_html_playable_format(filepath):
+    if isinstance(filepath, pathlib.PurePath):
+        filepath = filepath.name
+    return filepath.endswith(".mkv")
+
+
+def convert_to_html_playable_format(filepath):
+
+    _, output_filepath = tempfile.mkstemp(dir=app_settings.MEDIA_CACHE, suffix=".mp4")
+
+    clip = moviepy.VideoFileClip(filepath)
+    clip.write_videofile(str(output_filepath))
+
+    return output_filepath

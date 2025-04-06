@@ -242,6 +242,12 @@ settings.py and will bypass the settings getter system.
     If a channel is scanned and then the automated system tries to scan again within this window,
     the channel is skipped.
 
+``VIDAR_CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT`` (default: ``"vidar.helpers.file_helpers.convert_to_html_playable_format"``)
+    Dot notation path to a function that accepts ``filepath`` which converts the given filepath into
+    a playable format for an HTML5 video player.
+
+    You should only convert the file stored in a local path and return the path.
+
 ``VIDAR_COOKIES`` (default: ``None``)
     String of cookies to supply to yt-dlp.
 
@@ -538,6 +544,10 @@ settings.py and will bypass the settings getter system.
 
     Note: ``VIDAR_SETTING_GETTER`` does not use settings getter as that causes infinite loops, it
     uses ``django.conf.settings`` directly. Place your configuration within your projects ``settings.py``.
+
+``VIDAR_SHOULD_CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT`` (default: ``"vidar.helpers.file_helpers.should_convert_to_html_playable_format"``)
+    Dot notation path to a function that accepts ``filepath`` which returns boolean if the given
+    filepath is considered a format that requires conversion into a playable format for an HTML5 video player.
 
 ``VIDAR_SHORTS_FORCE_MAX_QUALITY`` (default: ``True``)
     When downloading shorts, grab max quality available?

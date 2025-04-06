@@ -1,5 +1,7 @@
 import datetime
 import io
+import pathlib
+
 from unittest.mock import patch, MagicMock
 from celery import states
 from celery.exceptions import Ignore
@@ -519,6 +521,34 @@ class FileHelpersTests(TestCase):
 
         mock_fdopen.assert_called_once()
         mock_temp.assert_called_once()
+
+    def test_should_should_convert_to_html_playable_format(self):
+        filepath = '/test/file.mkv'
+        self.assertTrue(file_helpers.should_convert_to_html_playable_format(filepath=filepath))
+
+    def test_should_should_convert_to_html_playable_format_as_pathlib(self):
+        filepath = pathlib.Path('/test/file.mkv')
+        self.assertTrue(file_helpers.should_convert_to_html_playable_format(filepath=filepath))
+
+    def test_should_should_convert_to_html_playable_format_as_mp4(self):
+        filepath = pathlib.Path('/test/file.mp4')
+        self.assertFalse(file_helpers.should_convert_to_html_playable_format(filepath=filepath))
+
+    @patch("moviepy.VideoFileClip")
+    @patch("tempfile.mkstemp")
+    def test_convert_to_html_playable_format(self, mock_mkstemp, mock_moviepy):
+        mock_mkstemp.return_value = ("", "output dir/test.mp4")
+
+        clipper = MagicMock()
+        mock_moviepy.return_value = clipper
+
+        filepath = pathlib.Path("/test/file.mkv")
+        output = file_helpers.convert_to_html_playable_format(filepath=filepath)
+
+        mock_moviepy.assert_called_once_with(filepath)
+        clipper.write_videofile.assert_called_once_with("output dir/test.mp4")
+
+        self.assertEqual("output dir/test.mp4", output)
 
 
 class ChannelHelpersTests(TestCase):

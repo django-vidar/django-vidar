@@ -1619,21 +1619,6 @@ class VideoServicesTests(TestCase):
 
         self.assertTrue(video_services.should_download_comments(video=video))
 
-    def test_should_convert_to_mp4(self):
-        video = models.Video.objects.create(title='Test Video')
-        filepath = '/test/file.mkv'
-        self.assertTrue(video_services.should_convert_to_mp4(video=video, filepath=filepath))
-
-    def test_should_convert_to_mp4_as_pathlib(self):
-        video = models.Video.objects.create(title='Test Video')
-        filepath = pathlib.Path('/test/file.mkv')
-        self.assertTrue(video_services.should_convert_to_mp4(video=video, filepath=filepath))
-
-    def test_should_convert_to_mp4_as_mp4(self):
-        video = models.Video.objects.create(title='Test Video')
-        filepath = pathlib.Path('/test/file.mp4')
-        self.assertFalse(video_services.should_convert_to_mp4(video=video, filepath=filepath))
-
     def test_video_not_blocked(self):
         self.assertFalse(video_services.is_blocked("vidar id here"))
 
