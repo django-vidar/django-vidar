@@ -1895,7 +1895,7 @@ class PlaylistCreateView(PermissionRequiredMixin, CreateView):
 
 class PlaylistCustomCreateView(PermissionRequiredMixin, CreateView):
     model = Playlist
-    form_class = forms.PlaylistManualAddForm
+    form_class = forms.PlaylistCustomForm
     permission_required = ["vidar.add_playlist"]
 
     def get_initial(self):
@@ -1920,7 +1920,7 @@ class PlaylistEditView(PermissionRequiredMixin, UpdateView):
 
     def get_form_class(self):
         if not self.object.provider_object_id:
-            return forms.PlaylistManualEditForm
+            return forms.PlaylistCustomForm
         return super().get_form_class()
 
     def form_valid(self, form):

@@ -154,11 +154,11 @@ class PlaylistEditForm(forms.ModelForm):
             "hidden",
             "restrict_to_assigned_channel",
             "download_comments_on_index",
-            "provider_object_id",
-            "provider_object_id_old",
             "next_playlist",
             "filename_schema",
             "directory_schema",
+            "provider_object_id",
+            "provider_object_id_old",
         ]
         widgets = {
             "title_skips": forms.Textarea(attrs={"rows": 2}),
@@ -180,7 +180,7 @@ class PlaylistEditForm(forms.ModelForm):
         self.fields["disable_when_string_found_in_video_title"].strip = False
 
 
-class PlaylistManualAddForm(forms.ModelForm):
+class PlaylistCustomForm(forms.ModelForm):
 
     title = forms.CharField(max_length=500, required=True)
 
@@ -202,6 +202,8 @@ class PlaylistManualAddForm(forms.ModelForm):
             "next_playlist",
             "filename_schema",
             "directory_schema",
+            "provider_object_id",
+            "provider_object_id_old",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 2}),
@@ -211,41 +213,13 @@ class PlaylistManualAddForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["video_indexing_add_by_title"].strip = False
+
         if instance := kwargs.get("instance"):
-            if instance.id:
+            if instance.pk:
                 original_label = self.fields["video_indexing_add_by_title_limit_to_channels"].label
                 num_sel_channels = instance.video_indexing_add_by_title_limit_to_channels.count()
                 label = f"{original_label} ({num_sel_channels} selected)"
                 self.fields["video_indexing_add_by_title_limit_to_channels"].label = label
-
-
-class PlaylistManualEditForm(PlaylistManualAddForm):
-
-    class Meta:
-        model = Playlist
-        fields = [
-            "title",
-            "description",
-            "convert_to_audio",
-            "channel",
-            "quality",
-            "videos_display_ordering",
-            "videos_playback_ordering",
-            "video_indexing_add_by_title",
-            "video_indexing_add_by_title_limit_to_channels",
-            "download_comments_on_index",
-            "restrict_to_assigned_channel",
-            "provider_object_id",
-            "provider_object_id_old",
-            "remove_video_from_playlist_on_watched",
-            "next_playlist",
-            "filename_schema",
-            "directory_schema",
-        ]
-        widgets = {
-            "description": forms.Textarea(attrs={"rows": 2}),
-            "video_indexing_add_by_title": forms.Textarea(attrs={"rows": 3}),
-        }
 
 
 class PlaylistDeleteForm(forms.Form):

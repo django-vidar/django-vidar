@@ -297,7 +297,7 @@ class PlaylistEditViewTests(TestCase):
         playlist = models.Playlist.objects.create()
 
         resp = self.client.get(reverse("vidar:playlist-edit", args=[playlist.pk]))
-        self.assertEqual(forms.PlaylistManualEditForm, type(resp.context_data['form']))
+        self.assertEqual(forms.PlaylistCustomForm, type(resp.context_data['form']))
 
     def test_save_messages_x_runtimes_per_day(self):
         resp = self.client.post(self.url, {
