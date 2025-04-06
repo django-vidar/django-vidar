@@ -340,6 +340,17 @@ settings.py and will bypass the settings getter system.
 ``VIDAR_DOWNLOAD_SPEED_RATE_LIMIT`` (default: ``5000``)
     See `yt-dlp Download Option <https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#download-options>`_ ``--limit-rate``
 
+``VIDAR_ENSURE_FILE_IS_LOCAL`` (default: ``"vidar.helpers.file_helpers.ensure_file_is_local"``)
+    Dot notation path to a function that accepts ``file_field``.
+
+    ``file_field`` is the FileField of the file being worked on. Be it ``video.file`` or similar.
+
+    This idea here is, if the system is configured with remote based storage and we need to work on the
+    file for conversion purposes, this function will copy the file into a local location.
+
+    The function must return ``filepath, boolean`` where ``filepath`` is the local path and ``boolean`` indicates
+    if the filepath returned is copied from a remote location.
+
 ``VIDAR_GOTIFY_PRIORITY`` (default: ``5``)
     Gotify message with priority >= 5
 

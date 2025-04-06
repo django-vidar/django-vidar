@@ -2891,7 +2891,7 @@ class Convert_video_to_mp4_tests(TestCase):
     @patch("vidar.services.redis_services.video_conversion_to_mp4_started")
     @patch("vidar.services.notification_services.convert_to_mp4_complete")
     @patch("vidar.app_settings.AppSettings.CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT")
-    @patch("vidar.helpers.file_helpers.ensure_file_is_local")
+    @patch("vidar.app_settings.AppSettings.ENSURE_FILE_IS_LOCAL")
     def test_successful(self, mock_ensure, mock_convert_func, mock_notif_finished, mock_redis_started, mock_redis_finished):
         video = models.Video.objects.create(file="test.mkv")
         mock_convert_func.return_value = "output dir/test.mp4"
@@ -2921,7 +2921,7 @@ class Convert_video_to_mp4_tests(TestCase):
     @patch("vidar.services.redis_services.video_conversion_to_mp4_started")
     @patch("vidar.services.notification_services.convert_to_mp4_complete")
     @patch("vidar.app_settings.AppSettings.CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT")
-    @patch("vidar.helpers.file_helpers.ensure_file_is_local")
+    @patch("vidar.app_settings.AppSettings.ENSURE_FILE_IS_LOCAL")
     def test_successful_when_not_passing_filepath(self, mock_ensure, mock_convert_func, mock_notif_finished, mock_redis_started, mock_redis_finished):
         mock_convert_func.return_value = "output dir/test.mp4"
         mock_ensure.return_value = "test.mkv", False
@@ -3137,7 +3137,7 @@ class Monthly_maintenances_tests(TestCase):
 class Convert_video_to_audio_tests(TestCase):
 
     @patch("vidar.app_settings.AppSettings.CONVERT_FILE_TO_AUDIO_FORMAT")
-    @patch("vidar.helpers.file_helpers.ensure_file_is_local")
+    @patch("vidar.app_settings.AppSettings.ENSURE_FILE_IS_LOCAL")
     def test_successful(self, mock_ensure, mock_convert_func):
         video = models.Video.objects.create(file="test.mp4")
         mock_convert_func.return_value = "output dir/test.mp3"
@@ -3161,7 +3161,7 @@ class Convert_video_to_audio_tests(TestCase):
 
     @patch("os.unlink")
     @patch("vidar.app_settings.AppSettings.CONVERT_FILE_TO_AUDIO_FORMAT")
-    @patch("vidar.helpers.file_helpers.ensure_file_is_local")
+    @patch("vidar.app_settings.AppSettings.ENSURE_FILE_IS_LOCAL")
     def test_successful_when_not_passing_filepath(self, mock_ensure, mock_convert_func, mock_unlink):
         mock_ensure.return_value = "test.mp4", True
         video = models.Video.objects.create(file="test.mp4")
@@ -3178,7 +3178,7 @@ class Convert_video_to_audio_tests(TestCase):
     @patch("vidar.tasks.write_file_to_storage")
     @patch("vidar.tasks.delete_cached_file")
     @patch("vidar.app_settings.AppSettings.CONVERT_FILE_TO_AUDIO_FORMAT")
-    @patch("vidar.helpers.file_helpers.ensure_file_is_local")
+    @patch("vidar.app_settings.AppSettings.ENSURE_FILE_IS_LOCAL")
     def test_successful_writes_direct_to_drive(self, mock_ensure, mock_convert_func, mock_delete, mock_write):
         video = models.Video.objects.create(file="test.mp4")
 

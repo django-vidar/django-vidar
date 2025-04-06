@@ -1174,7 +1174,7 @@ def convert_video_to_audio(self, pk, filepath=None, return_filepath=False):
     local_filepath = filepath
     was_remote = False
     if not local_filepath:
-        local_filepath, was_remote = file_helpers.ensure_file_is_local(file_field=video.file)
+        local_filepath, was_remote = app_settings.ENSURE_FILE_IS_LOCAL(file_field=video.file)
 
     output_filepath = app_settings.CONVERT_FILE_TO_AUDIO_FORMAT(filepath=local_filepath)
 
@@ -2005,7 +2005,7 @@ def convert_video_to_mp4(self, pk, filepath=None):
 
         local_filepath = filepath
         if not local_filepath:
-            local_filepath, was_remote = file_helpers.ensure_file_is_local(file_field=video.file)
+            local_filepath, was_remote = app_settings.ENSURE_FILE_IS_LOCAL(file_field=video.file)
 
         output_filepath = app_settings.CONVERT_FILE_TO_HTML_PLAYABLE_FORMAT(filepath=local_filepath)
 

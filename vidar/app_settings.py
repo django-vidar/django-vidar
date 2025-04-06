@@ -218,6 +218,12 @@ class AppSettings(object):
         )
 
     @property
+    def ENSURE_FILE_IS_LOCAL(self):
+        user_func = self._setting("ENSURE_FILE_IS_LOCAL", "vidar.helpers.file_helpers.ensure_file_is_local")
+        func = import_callable(user_func)
+        return func
+
+    @property
     def GOTIFY_PRIORITY(self):
         return self._setting("GOTIFY_PRIORITY", 5)
 
