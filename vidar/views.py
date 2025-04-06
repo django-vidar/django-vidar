@@ -910,17 +910,19 @@ class VideoListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin,
             elif ordering.endswith("last_privacy_status_check"):
                 qs = qs.exclude(last_privacy_status_check__isnull=True)
 
-        if selected_date := self.request.GET.get("date"):
-            qs = qs.filter(date_downloaded__date=selected_date)
+        skipped_fields = ["watched", "starred", "channel"]
+        for k, v in self.request.GET.items():
+            if k in skipped_fields:
+                continue
+            field_name = k
+            if "__" in field_name:
+                field_name, _ = field_name.split("__", 1)
 
-        if upload_date := self.request.GET.get("upload_date"):
-            qs = qs.filter(upload_date=upload_date)
-
-        if date_downloaded := self.request.GET.get("date_downloaded"):
-            qs = qs.filter(date_downloaded__date=date_downloaded)
-
-        if quality := self.request.GET.get("quality"):
-            qs = qs.filter(quality=quality)
+            try:
+                self.model._meta.get_field(field_name)
+                qs = qs.filter(**{k: v})
+            except FieldDoesNotExist:
+                pass
 
         if channel_id := self.request.GET.get("channel"):
             if channel_id.lower() in ["none", "0"]:
@@ -928,10 +930,8 @@ class VideoListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin,
             else:
                 qs = qs.filter(channel_id=channel_id)
 
-        if year := self.request.GET.get("year"):
-            qs = qs.filter(upload_date__year=year)
-        if month := self.request.GET.get("month"):
-            qs = qs.filter(upload_date__month=month)
+        if week := self.request.GET.get("week"):
+            qs = qs.annotate(week=TruncWeek("date_downloaded")).filter(week__week=week)
 
         if self.request.GET.get("view") == "audio":
             return qs.exclude(audio="")

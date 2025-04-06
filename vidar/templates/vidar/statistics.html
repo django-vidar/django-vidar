@@ -93,9 +93,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in average_ddl_week_size|slice:5 %}
+                    {% for item in average_ddl_week_size %}
                         <tr>
-                            <td>{{ item.dl|date:"W (m-d)" }}</td>
+                            <td>
+                                <a href="{% url 'vidar:index' %}?week={{ item.dl|date:"W" }}&date_downloaded__year={{ item.dl.year }}" title="See videos downloaded on this week">
+                                    {{ item.dl|date:"W (m-d)" }}
+                                </a>
+                            </td>
                             <td>{{ item.count }}</td>
                             <td>{{ item.fs|filesizeformat }}</td>
                         </tr>
@@ -118,7 +122,7 @@
                 <tbody>
                     {% for item in average_year_date_downloaded_size %}
                         <tr>
-                            <td><a href="{% url 'vidar:index' %}?year={{ item.dl.year }}">{{ item.dl.year }}</a></td>
+                            <td><a href="{% url 'vidar:index' %}?date_downloaded__year={{ item.dl.year }}">{{ item.dl.year }}</a></td>
                             <td>{{ item.count }}</td>
                             <td>{{ item.fs|filesizeformat }}</td>
                         </tr>
@@ -139,7 +143,7 @@
                 <tbody>
                     {% for item in average_year_upload_date_size %}
                         <tr>
-                            <td><a href="{% url 'vidar:index' %}?year={{ item.dl.year }}">{{ item.dl.year }}</a></td>
+                            <td><a href="{% url 'vidar:index' %}?upload_date__year={{ item.dl.year }}">{{ item.dl.year }}</a></td>
                             <td>{{ item.count }}</td>
                             <td>{{ item.fs|filesizeformat }}</td>
                         </tr>

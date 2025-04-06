@@ -272,7 +272,7 @@ class VideoListViewTests(TestCase):
             upload_date=date_to_aware_date('2025-03-01')
         )
 
-        resp = self.client.get(self.url + "?date=2025-02-01")
+        resp = self.client.get(self.url + "?date_downloaded__date=2025-02-01")
         queryset = resp.context_data["object_list"]
         self.assertEqual(1, queryset.count())
         self.assertIn(self.video2, queryset)
@@ -287,17 +287,17 @@ class VideoListViewTests(TestCase):
         self.assertEqual(1, queryset.count())
         self.assertIn(self.video1, queryset)
 
-        resp = self.client.get(self.url + "?year=2025")
+        resp = self.client.get(self.url + "?upload_date__year=2025")
         queryset = resp.context_data["object_list"]
         self.assertEqual(1, queryset.count())
         self.assertIn(video, queryset)
 
-        resp = self.client.get(self.url + "?year=2025&month=3")
+        resp = self.client.get(self.url + "?upload_date__year=2025&month=3")
         queryset = resp.context_data["object_list"]
         self.assertEqual(1, queryset.count())
         self.assertIn(video, queryset)
 
-        resp = self.client.get(self.url + "?year=2025&month=2")
+        resp = self.client.get(self.url + "?upload_date__year=2025&upload_date__month=2")
         queryset = resp.context_data["object_list"]
         self.assertEqual(0, queryset.count())
 
@@ -331,6 +331,19 @@ class VideoListViewTests(TestCase):
         queryset = resp.context_data["object_list"]
         self.assertEqual(1, queryset.count())
         self.assertIn(video, queryset)
+
+    def test_week_filtering(self):
+        video1 = models.Video.objects.create(date_downloaded=date_to_aware_date("2024-04-06"))
+        video2 = models.Video.objects.create(date_downloaded=date_to_aware_date("2024-04-07"))
+        video3 = models.Video.objects.create(date_downloaded=date_to_aware_date("2023-04-06"))
+        video4 = models.Video.objects.create(date_downloaded=date_to_aware_date("2023-04-06"))
+        video5 = models.Video.objects.create(date_downloaded=date_to_aware_date("2023-04-06"))
+
+        resp = self.client.get(self.url + "?week=14&date_downloaded__year=2024")
+        queryset = resp.context_data["object_list"]
+        self.assertEqual(2, queryset.count())
+        self.assertIn(video1, queryset)
+        self.assertIn(video2, queryset)
 
 
 class VideoListViewUnauthenticatedTests(TestCase):
