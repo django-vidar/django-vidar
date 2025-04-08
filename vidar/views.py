@@ -20,6 +20,7 @@ from vidar import app_settings, forms, helpers, interactor, oneoffs, storages, t
 from vidar.exceptions import FileStorageBackendHasNoMoveError
 from vidar.helpers import celery_helpers, channel_helpers, statistics_helpers
 from vidar.mixins import (
+    FieldFilteringMixin,
     HTMXIconBooleanSwapper,
     PublicOrLoggedInUserMixin,
     RequestBasedCustomQuerysetFilteringMixin,
@@ -97,7 +98,7 @@ class GeneralUtilitiesView(UserPassesTestMixin, TemplateView):
         return redirect("vidar:utilities")
 
 
-class ChannelListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin, ListView):
+class ChannelListView(PermissionRequiredMixin, FieldFilteringMixin, RequestBasedQuerysetFilteringMixin, ListView):
     model = Channel
     permission_required = ["vidar.view_channel"]
     queryset = Channel.objects.annotate(
@@ -121,7 +122,7 @@ class ChannelListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixi
     )
     ordering = ["name_sort"]
     RequestBaseFilteringDefaultFields = ["name", "provider_object_id"]
-    FILTERING_SKIP_FIELDS = ["o", "show"]
+    FILTERING_SKIP_FIELDS = ["o", "show", "q"]
 
     def get_context_data(self, *args, **kwargs):
         kwargs = super().get_context_data(*args, **kwargs)
@@ -845,7 +846,7 @@ class ChannelVideosManagerView(PermissionRequiredMixin, UseProviderObjectIdMatch
         return kwargs
 
 
-class VideoListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin, ListView):
+class VideoListView(PermissionRequiredMixin, FieldFilteringMixin, RequestBasedQuerysetFilteringMixin, ListView):
     model = Video
     permission_required = ["vidar.access_vidar"]
     paginate_by = 10
@@ -854,6 +855,7 @@ class VideoListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin,
     RequestBaseFilteringSearchValueMapping = {
         "c": "channel__name__icontains",
     }
+    FILTERING_SKIP_FIELDS = ["watched", "starred", "channel", "user", "user_id", "o", "q"]
 
     def get_context_data(self, *args, **kwargs):
         kwargs = super().get_context_data(*args, **kwargs)
@@ -909,20 +911,6 @@ class VideoListView(PermissionRequiredMixin, RequestBasedQuerysetFilteringMixin,
                 qs = qs.exclude(file="")
             elif ordering.endswith("last_privacy_status_check"):
                 qs = qs.exclude(last_privacy_status_check__isnull=True)
-
-        skipped_fields = ["watched", "starred", "channel"]
-        for k, v in self.request.GET.items():
-            if k in skipped_fields:
-                continue
-            field_name = k
-            if "__" in field_name:
-                field_name, _ = field_name.split("__", 1)
-
-            try:
-                self.model._meta.get_field(field_name)
-                qs = qs.filter(**{k: v})
-            except FieldDoesNotExist:
-                pass
 
         if channel_id := self.request.GET.get("channel"):
             if channel_id.lower() in ["none", "0"]:

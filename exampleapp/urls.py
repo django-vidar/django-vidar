@@ -44,4 +44,19 @@ urlpatterns = [
         views.TestModelHTMXIconBooleanSwapperRaisesErrorView.as_view(),
         name="mixin-TestModelHTMXIconBooleanSwapperView-raises",
     ),
+    path(
+        "mixin-TestModelFieldFilteringMixinView/",
+        views.TestModelFieldFilteringMixinView.as_view(),
+        name="mixin-TestModelFieldFilteringMixinView",
+    ),
+    path(
+        "mixin-TestModelFieldFilteringMixinSkippedFieldsView/",
+        views.TestModelFieldFilteringMixinSkippedFieldsView.as_view(),
+        name="mixin-TestModelFieldFilteringMixinSkippedFieldsView",
+    ),
+    path(
+        "mixin-TestModelFieldFilteringMixinOnlyFieldsView/",
+        views.TestModelFieldFilteringMixinOnlyFieldsView.as_view(),
+        name="mixin-TestModelFieldFilteringMixinOnlyFieldsView",
+    ),
 ]

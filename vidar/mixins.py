@@ -1,8 +1,12 @@
+import logging
 import warnings
 
-from django.core.exceptions import FieldError
+from django.core.exceptions import FieldDoesNotExist, FieldError
 from django.db.models import Q
 from django.shortcuts import Http404, HttpResponse, get_object_or_404
+
+
+log = logging.getLogger(__name__)
 
 
 class PublicOrLoggedInUserMixin:
@@ -161,3 +165,52 @@ class HTMXIconBooleanSwapper:
         icon = self.HTMX_ICON_TRUE if new_val else self.HTMX_ICON_FALSE
 
         return HttpResponse(f'<i class="{icon}"></i>')
+
+
+class FieldFilteringMixin:
+
+    FILTERING_SKIP_FIELDS: list = None
+    FILTERING_ONLY_FIELDS: list = None
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        filterings = {}
+        excludings = {}
+        for k, v in self.request.GET.items():
+            k, v = k.lower(), v.lower()
+
+            filter_type = "filter"
+            if "!" in k:
+                filter_type = "exclude"
+                k = k.replace("!", "")
+
+            field_name = k
+            if "__" in field_name:
+                field_name, _ = field_name.split("__", 1)
+
+            if self.FILTERING_SKIP_FIELDS and field_name in self.FILTERING_SKIP_FIELDS:
+                log.info(f"Field {k} skipped, not permitted for searching.")
+                continue
+            if self.FILTERING_ONLY_FIELDS and field_name not in self.FILTERING_ONLY_FIELDS:
+                log.info(f"Field {k} not in only fields, not permitted for searching.")
+                continue
+
+            try:
+                self.model._meta.get_field(field_name)
+            except FieldDoesNotExist:
+                log.info(f"Field {k} does not exist")
+                continue
+
+            if v in ["1", "true"]:
+                v = True
+            elif v in ["0", "false"]:
+                v = False
+            if filter_type == "filter":
+                filterings[k] = v
+            else:
+                excludings[k] = v
+        if filterings:
+            qs = qs.filter(**filterings)
+        if excludings:
+            qs = qs.exclude(**excludings)
+        return qs

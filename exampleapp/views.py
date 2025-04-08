@@ -3,6 +3,7 @@ from django.views.generic import DetailView, ListView, UpdateView
 
 from exampleapp.models import TestModel
 from vidar.mixins import (
+    FieldFilteringMixin,
     HTMXIconBooleanSwapper,
     PublicOrLoggedInUserMixin,
     RequestBasedQuerysetFilteringMixin,
@@ -49,3 +50,17 @@ class TestModelHTMXIconBooleanSwapperRaisesErrorView(HTMXIconBooleanSwapper, Upd
     model = TestModel
     HTMX_RAISE_404 = True
     fields = '__all__'
+
+
+class TestModelFieldFilteringMixinView(FieldFilteringMixin, ListView):
+    model = TestModel
+
+
+class TestModelFieldFilteringMixinSkippedFieldsView(FieldFilteringMixin, ListView):
+    model = TestModel
+    FILTERING_SKIP_FIELDS = ["search_field"]
+
+
+class TestModelFieldFilteringMixinOnlyFieldsView(FieldFilteringMixin, ListView):
+    model = TestModel
+    FILTERING_ONLY_FIELDS = ["search_field"]
