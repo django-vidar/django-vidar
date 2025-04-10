@@ -61,7 +61,7 @@
                     {% if playlist.crontab %}
                     <tr>
                         <td>Crontab (<a href="{{ playlist.crontab|crontab_link_to_crontab_guru }}" target="_blank">{{ playlist.crontab }}</a>)</td>
-                        <td>{{ playlist.next_runtime }}</td>
+                        <td><a href="{% url "vidar:schedule" %}?playlist={{ playlist.pk }}">{{ playlist.next_runtime }}</a></td>
                     </tr>
                     {% endif %}
                     {% if playlist.provider_object_id %}
