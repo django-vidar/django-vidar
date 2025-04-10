@@ -116,12 +116,13 @@ def video_downloaded(video):
         video_duration = None
 
     msg_output = [
-        f"{video.upload_date:%Y-%m-%d} - {video}\n{smooth_timedelta(video_duration)} long",
+        f"{video.upload_date:%Y-%m-%d} - {video}",
+        f"Video Duration: {smooth_timedelta(video_duration)}",
         f"Filesize: {file_size}",
     ]
 
     if download_timer:
-        msg_output.append(f"Download Timer: {smooth_timedelta(download_timer)}")
+        msg_output.append(f"Downloaded In: {smooth_timedelta(download_timer)}")
     if convert_to_audio_timer:
         msg_output.append(f"Convert Audio: {smooth_timedelta(convert_to_audio_timer)}")
     if convert_to_mp4_timer:

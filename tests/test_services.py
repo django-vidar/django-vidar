@@ -3338,9 +3338,9 @@ class NotificationServicesTests(TestCase):
             "url here/message?token=None",
             json={
                 "message": f"{upload_date} - <Title Placeholder>\n"
-                           "2 minutes long\n"
+                           "Video Duration: 2 minutes\n"
                            "Filesize: 200\xa0bytes\n"
-                           "Download Timer: 2 hours 5 minutes\n"
+                           "Downloaded In: 2 hours 5 minutes\n"
                            "Convert Audio: 60 seconds\n"
                            "Convert Video: 60 seconds\n"
                            "Processing: 60 seconds\n"
@@ -3386,9 +3386,9 @@ class NotificationServicesTests(TestCase):
             "url here/message?token=None",
             json={
                 "message": f"{upload_date} - <Title Placeholder>\n"
-                           "2 minutes long\n"
+                           "Video Duration: 2 minutes\n"
                            "Filesize: 200\xa0bytes\n"
-                           "Download Timer: 2 hours 5 minutes\n"
+                           "Downloaded In: 2 hours 5 minutes\n"
                            "Convert Audio: 60 seconds\n"
                            "Convert Video: 60 seconds\n"
                            "Task Call Source: Test Cases",
@@ -3431,9 +3431,9 @@ class NotificationServicesTests(TestCase):
             "url here/message?token=None",
             json={
                 "message": f"{upload_date} - <Title Placeholder>\n"
-                           "2 minutes long\n"
+                           "Video Duration: 2 minutes\n"
                            "Filesize: 200\xa0bytes\n"
-                           "Download Timer: 2 hours 5 minutes\n"
+                           "Downloaded In: 2 hours 5 minutes\n"
                            "Convert Audio: 60 seconds\n"
                            "Convert Video: 60 seconds\n"
                            "Task Call Source: Test Cases",
