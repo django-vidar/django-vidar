@@ -7,11 +7,18 @@
         <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
         {% if channel.pk %}
             <li class="breadcrumb-item"><a href="{{ channel.get_absolute_url }}">{{ channel }}</a></li>
-        <li class="breadcrumb-item active">Schedule History</li>
             <li class="breadcrumb-item"><a href="{% url 'vidar:schedule' %}?channel={{ channel.pk }}">Schedule</a></li>
+            <li class="breadcrumb-item active">History</li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-calendar' %}?channel={{ channel.pk }}">Calendar</a></li>
+        {% elif playlist.pk %}
+            <li class="breadcrumb-item"><a href="{{ playlist.get_absolute_url }}">{{ playlist }}</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule' %}?playlist={{ playlist.pk }}">Schedule</a></li>
+            <li class="breadcrumb-item active">History</li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-calendar' %}?playlist={{ playlist.pk }}">Calendar</a></li>
         {% else %}
-        <li class="breadcrumb-item active">Schedule History</li>
             <li class="breadcrumb-item"><a href="{% url 'vidar:schedule' %}">Schedule</a></li>
+            <li class="breadcrumb-item active">History</li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-calendar' %}">Calendar</a></li>
         {% endif %}
     </ul>
 

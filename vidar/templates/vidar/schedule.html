@@ -11,6 +11,12 @@
             <li class="breadcrumb-item"><a href="{{ channel.get_absolute_url }}">{{ channel }}</a></li>
             <li class="breadcrumb-item active">{% if date_selected %}{{ date_selected }} {% endif %}Schedule</li>
             <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-history' %}?channel={{ channel.pk }}">History</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-calendar' %}?channel={{ channel.pk }}">Calendar</a></li>
+        {% elif playlist.pk %}
+            <li class="breadcrumb-item"><a href="{{ playlist.get_absolute_url }}">{{ playlist }}</a></li>
+            <li class="breadcrumb-item active">{% if date_selected %}{{ date_selected }} {% endif %}Schedule</li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-history' %}?playlist={{ playlist.pk }}">History</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-calendar' %}?playlist={{ playlist.pk }}">Calendar</a></li>
         {% else %}
             <li class="breadcrumb-item active">{% if date_selected %}{{ date_selected }} {% endif %}Schedule</li>
             <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-history' %}">History</a></li>

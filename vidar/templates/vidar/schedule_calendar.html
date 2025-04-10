@@ -2,6 +2,23 @@
 
 {% block content %}
 
+    <ul class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if channel.pk %}
+            <li class="breadcrumb-item"><a href="{{ channel.get_absolute_url }}">{{ channel }}</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule' %}?channel={{ channel.pk }}">Schedule</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-history' %}?channel={{ channel.pk }}">History</a></li>
+        {% elif playlist.pk %}
+            <li class="breadcrumb-item"><a href="{{ playlist.get_absolute_url }}">{{ playlist }}</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule' %}?playlist={{ playlist.pk }}">Schedule</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-history' %}?playlist={{ playlist.pk }}">History</a></li>
+        {% else %}
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule' %}">Schedule</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'vidar:schedule-history' %}">History</a></li>
+        {% endif %}
+        <li class="breadcrumb-item active">Calendar</li>
+    </ul>
+
     <h1>Schedule - Calendar View</h1>
 
 
@@ -29,9 +46,9 @@
               {% for dt, objects in datetimes_to_objects.items %}
                   {% for item in objects %}
                     {
-                      title: '{{ item }}',
-                      start: new Date('{{ dt|date:"Y-m-d G:i:s" }}'),
-                    url: "{{ item.get_absolute_url }}",
+                        title: '{{ item }}',
+                        start: new Date('{{ dt|date:"Y-m-d G:i:s" }}'),
+                        url: "{{ item.get_absolute_url }}",
                     },
                   {% endfor %}
               {% endfor %}

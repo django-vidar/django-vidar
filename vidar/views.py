@@ -2271,24 +2271,27 @@ class ScheduleView(PermissionRequiredMixin, TemplateView):
         kwargs["schedule"] = {}
         todays_schedule = {}
 
-        channel_qs = Channel.objects.exclude(scanner_crontab="")
-        playlist_qs = Playlist.objects.exclude(crontab="")
-        if "sparse" in self.request.GET:
-            channel_qs = channel_qs.exclude(scanner_crontab__endswith="* * *")
-            playlist_qs = playlist_qs.exclude(crontab__endswith="* * *")
+        if channel_id := self.request.GET.get("channel"):
+            kwargs["channel"] = get_object_or_404(Channel, id=channel_id)
+            channel_qs = Channel.objects.filter(id=channel_id)
+            playlist_qs = Playlist.objects.filter(id=0)
 
-        if "channels" in self.request.GET:
-            playlist_qs = playlist_qs.filter(id=0)
-        if "playlists" in self.request.GET:
-            channel_qs = channel_qs.filter(id=0)
+        elif playlist_id := self.request.GET.get("playlist"):
+            kwargs["playlist"] = get_object_or_404(Playlist, id=playlist_id)
+            playlist_qs = Playlist.objects.filter(id=playlist_id)
+            channel_qs = Channel.objects.filter(id=0)
 
-        if cid := self.request.GET.get("channel"):
-            kwargs["channel"] = get_object_or_404(Channel, id=cid)
-            channel_qs = channel_qs.filter(id=cid)
-            playlist_qs = playlist_qs.filter(id=0)
-        if pid := self.request.GET.get("playlist"):
-            playlist_qs = playlist_qs.filter(id=pid)
-            channel_qs = channel_qs.filter(id=0)
+        else:
+            channel_qs = Channel.objects.exclude(scanner_crontab="")
+            playlist_qs = Playlist.objects.exclude(crontab="")
+            if "sparse" in self.request.GET:
+                channel_qs = channel_qs.exclude(scanner_crontab__endswith="* * *")
+                playlist_qs = playlist_qs.exclude(crontab__endswith="* * *")
+
+            if "channels" in self.request.GET:
+                playlist_qs = playlist_qs.filter(id=0)
+            if "playlists" in self.request.GET:
+                channel_qs = channel_qs.filter(id=0)
 
         total_scans_per_day = 0
 
@@ -2337,15 +2340,22 @@ class ScheduleCalendarView(PermissionRequiredMixin, TemplateView):
 
         datetimes_to_objects = defaultdict(list)
 
-        playlist_qs = Playlist.objects.exclude(crontab__endswith="* * *")
-        channel_qs = Channel.objects.exclude(scanner_crontab__endswith="* * *")
+        if channel_id := self.request.GET.get("channel"):
+            channel_qs = Channel.objects.filter(pk=channel_id)
+            playlist_qs = Playlist.objects.filter(pk=0)
 
-        if "all" in self.request.GET:
+            kwargs["channel"] = get_object_or_404(Channel, pk=channel_id)
+
+        elif playlist_id := self.request.GET.get("playlist"):
+            playlist_qs = Playlist.objects.filter(pk=playlist_id)
+            channel_qs = Channel.objects.filter(pk=0)
+
+            kwargs["playlist"] = get_object_or_404(Playlist, pk=playlist_id)
+
+        else:
+
             playlist_qs = Playlist.objects.exclude(crontab="")
             channel_qs = Channel.objects.exclude(scanner_crontab="")
-        elif "daily" in self.request.GET:
-            playlist_qs = Playlist.objects.filter(crontab__endswith="* * *")
-            channel_qs = Channel.objects.filter(scanner_crontab__endswith="* * *")
 
         for playlist in playlist_qs:
             if not playlist.crontab:
