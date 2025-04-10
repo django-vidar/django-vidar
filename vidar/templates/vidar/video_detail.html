@@ -828,7 +828,7 @@
         ];
         if (redirect_next_url !== "") {
             actionHandlers.push(['nexttrack', () => {
-                let new_redirect_url = build_redirect_url(redirect_next_url);
+                let new_redirect_url = build_redirect_url(redirect_next_url, url_params_next);
                 console.log('Sending to', new_redirect_url);
                 window.location = new_redirect_url;
                 return true;
@@ -836,7 +836,7 @@
         }
         if (redirect_prev_url !== "") {
             actionHandlers.push(['previoustrack', () => {
-                let new_redirect_url = build_redirect_url(redirect_prev_url);
+                let new_redirect_url = build_redirect_url(redirect_prev_url, url_params_previous);
                 console.log('Sending to', new_redirect_url);
                 window.location = new_redirect_url;
                 return true;
@@ -909,7 +909,7 @@
         if (localStorage.getItem('vidar-autoplay-next') === "true") {
             if (redirect_next_url !== "") {
                 url_params.append("method", "auto");
-                let new_redirect_url = build_redirect_url(redirect_next_url) + "#next_prev_bar";
+                let new_redirect_url = build_redirect_url(redirect_next_url, url_params_next) + "#next_prev_bar";
                 console.log('Sending to', new_redirect_url);
                 window.location = new_redirect_url;
                 return true;
@@ -917,7 +917,7 @@
         } else if (localStorage.getItem('vidar-autoplay-previous') === "true") {
             if (redirect_prev_url !== "") {
                 url_params.append("method", "auto");
-                let new_redirect_url = build_redirect_url(redirect_prev_url) + "#next_prev_bar";
+                let new_redirect_url = build_redirect_url(redirect_prev_url, url_params_previous) + "#next_prev_bar";
                 console.log('Sending to', new_redirect_url);
                 window.location = new_redirect_url;
                 return true;
