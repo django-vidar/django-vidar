@@ -44,6 +44,7 @@
             {% if perms.vidar.change_playlist %}<a href="{% url 'vidar:playlist-edit' pk=playlist.pk %}" class="btn btn-info">edit</a>{% endif %}
             {% if perms.vidar.change_playlist and playlist.provider_object_id %}<a href="{% url 'vidar:playlist-scan' pk=playlist.pk %}" class="btn btn-primary">scan</a>{% endif %}
             {% if perms.vidar.add_playlistitem and not playlist.provider_object_id %}<a href="{% url 'vidar:playlist-add-by-search' playlist.id %}" class="btn btn-info">Add Videos</a>{% endif %}
+            {% if playlist.crontab %}<a href="{% url 'vidar:schedule' %}?playlist={{ playlist.pk }}" class="btn btn-primary">Schedule</a>{% endif %}
             <br />
             Last Scanned: {{ playlist.last_scanned|default_if_none:"Never" }}
         </div>
