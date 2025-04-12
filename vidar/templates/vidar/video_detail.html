@@ -186,7 +186,7 @@
                 <h5>
                     {{ video|get_playlist_position:playlist }} / {{ playlist.videos.count }} -
                     {% link_to_playlist_page playlist video as playlist_page_num %}
-                    <a href="{{ playlist.get_absolute_url }}{% if playlist_page_num > 1 %}?page={{ playlist_page_num }}{% endif %}">
+                    <a href="{{ playlist.get_absolute_url }}?highlight={{ video.pk }}{% if playlist_page_num > 1 %}&page={{ playlist_page_num }}{% endif %}">
                         {{ playlist.title }}
                     </a>
                 </h5>

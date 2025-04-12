@@ -588,3 +588,119 @@ class PlaylistWatchLaterViewTests(TestCase):
         resp = self.client.get(self.url)
         wl = models.Playlist.objects.get_user_watch_later(user=self.user)
         self.assertEqual(wl, resp.context_data["object"])
+
+
+class ScheduleViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission = Permission.objects.get(codename="view_channel")
+        self.user.user_permissions.add(self.permission)
+
+        self.url = reverse('vidar:schedule')
+
+        self.client.force_login(self.user)
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+    def test_channels_param_shows_channels_only(self):
+        channel1 = models.Channel.objects.create(scanner_crontab="0 9 * * *")
+        channel2 = models.Channel.objects.create(scanner_crontab="0 9 * * *")
+
+        playlist1 = models.Playlist.objects.create(crontab="0 9 * * *", provider_object_id="obj-1")
+        playlist2 = models.Playlist.objects.create(crontab="0 9 * * *", provider_object_id="obj-2")
+
+        resp = self.client.get(self.url + f"?channels")
+        self.assertEqual(2, resp.context_data["total_scans_per_day"])
+
+        schedule = resp.context_data["todays_schedule"]
+        channels = next(iter(schedule.values()))
+
+        self.assertIn(channel1, channels)
+        self.assertIn(channel2, channels)
+
+    def test_playlists_param_shows_playlists_only(self):
+        channel1 = models.Channel.objects.create(scanner_crontab="0 9 * * *")
+        channel2 = models.Channel.objects.create(scanner_crontab="0 9 * * *")
+
+        playlist1 = models.Playlist.objects.create(crontab="0 9 * * *", provider_object_id="obj-1")
+        playlist2 = models.Playlist.objects.create(crontab="0 9 * * *", provider_object_id="obj-2")
+
+        resp = self.client.get(self.url + f"?playlists")
+        self.assertEqual(2, resp.context_data["total_scans_per_day"])
+
+        schedule = resp.context_data["todays_schedule"]
+        playlists = next(iter(schedule.values()))
+
+        self.assertIn(playlist1, playlists)
+        self.assertIn(playlist2, playlists)
+
+    def test_channel_filtering_adds_channel_to_context_data(self):
+        channel1 = models.Channel.objects.create(scanner_crontab="0 9 * * *")
+        channel2 = models.Channel.objects.create()
+
+        resp = self.client.get(self.url + f"?channel={channel1.pk}")
+        self.assertIn("channel", resp.context_data)
+        self.assertEqual(channel1, resp.context_data["channel"])
+
+    def test_channel_filtering_only_shows_one_channel(self):
+        channel1 = models.Channel.objects.create(scanner_crontab="0 9 * * *")
+
+        next_day = timezone.now() + timezone.timedelta(days=1)
+        channel2 = models.Channel.objects.create(scanner_crontab=f"0 9 * * {next_day.day}")
+
+        resp = self.client.get(self.url + f"?channel={channel1.pk}")
+        schedule = resp.context_data["todays_schedule"]
+        self.assertEqual(1, len(schedule))
+
+        channels = next(iter(schedule.values()))
+
+        self.assertIn(channel1, channels)
+
+    def test_channel_filtering_total_scans_per_day_shows_one(self):
+        channel1 = models.Channel.objects.create(scanner_crontab="0 9 * * *")
+
+        next_day = timezone.now() + timezone.timedelta(days=1)
+        channel2 = models.Channel.objects.create(scanner_crontab=f"0 9 * * {next_day.day}")
+
+        resp = self.client.get(self.url + f"?channel={channel1.pk}")
+        self.assertEqual(1, resp.context_data["total_scans_per_day"])
+
+    def test_playlist_filtering_adds_playlist_to_context_data(self):
+        playlist1 = models.Playlist.objects.create(crontab="0 9 * * *", provider_object_id="object-id-1")
+        playlist2 = models.Playlist.objects.create(provider_object_id="object-id-2")
+
+        resp = self.client.get(self.url + f"?playlist={playlist1.pk}")
+        self.assertIn("playlist", resp.context_data)
+        self.assertEqual(playlist1, resp.context_data["playlist"])
+
+    def test_playlist_filtering_only_shows_one_playlist(self):
+        playlist1 = models.Playlist.objects.create(crontab="0 9 * * *", provider_object_id="object-id-1")
+
+        next_day = timezone.now() + timezone.timedelta(days=1)
+        playlist2 = models.Playlist.objects.create(crontab=f"0 9 * * {next_day.day}", provider_object_id="object-id-2")
+
+        resp = self.client.get(self.url + f"?playlist={playlist1.pk}")
+        schedule = resp.context_data["todays_schedule"]
+        self.assertEqual(1, len(schedule))
+
+        playlists = next(iter(schedule.values()))
+
+        self.assertIn(playlist1, playlists)
+
+    def test_playlist_filtering_total_scans_per_day_shows_one(self):
+        playlist1 = models.Playlist.objects.create(crontab="0 9 * * *", provider_object_id="object-id-1")
+
+        next_day = timezone.now() + timezone.timedelta(days=1)
+        playlist2 = models.Playlist.objects.create(crontab=f"0 9 * * {next_day.day}", provider_object_id="object-id-2")
+
+        resp = self.client.get(self.url + f"?playlist={playlist1.pk}")
+        self.assertEqual(1, resp.context_data["total_scans_per_day"])

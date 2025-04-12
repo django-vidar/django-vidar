@@ -2268,22 +2268,21 @@ class ScheduleView(PermissionRequiredMixin, TemplateView):
     template_name = "vidar/schedule.html"
 
     def get_context_data(self, **kwargs):
-        kwargs["schedule"] = {}
         todays_schedule = {}
 
         if channel_id := self.request.GET.get("channel"):
-            kwargs["channel"] = get_object_or_404(Channel, id=channel_id)
-            channel_qs = Channel.objects.filter(id=channel_id)
-            playlist_qs = Playlist.objects.filter(id=0)
+            kwargs["channel"] = get_object_or_404(Channel, pk=channel_id)
+            channel_qs = Channel.objects.filter(pk=channel_id)
+            playlist_qs = Playlist.objects.filter(pk=0)
 
         elif playlist_id := self.request.GET.get("playlist"):
-            kwargs["playlist"] = get_object_or_404(Playlist, id=playlist_id)
-            playlist_qs = Playlist.objects.filter(id=playlist_id)
-            channel_qs = Channel.objects.filter(id=0)
+            kwargs["playlist"] = get_object_or_404(Playlist, pk=playlist_id)
+            playlist_qs = Playlist.objects.filter(pk=playlist_id)
+            channel_qs = Channel.objects.filter(pk=0)
 
         else:
-            channel_qs = Channel.objects.exclude(scanner_crontab="")
-            playlist_qs = Playlist.objects.exclude(crontab="")
+            channel_qs = Channel.objects.all()
+            playlist_qs = Playlist.objects.all()
             if "sparse" in self.request.GET:
                 channel_qs = channel_qs.exclude(scanner_crontab__endswith="* * *")
                 playlist_qs = playlist_qs.exclude(crontab__endswith="* * *")
@@ -2302,7 +2301,7 @@ class ScheduleView(PermissionRequiredMixin, TemplateView):
             now = timezone.localtime().replace(year=int(year), month=int(month), day=int(day))
             kwargs["date_selected"] = f"{date_str} - "
 
-        for c in channel_qs:
+        for c in channel_qs.exclude(scanner_crontab=""):
             channels_crontab_executions = crontab_services.calculate_schedule(
                 crontab=c.scanner_crontab,
                 now=now,
@@ -2313,7 +2312,7 @@ class ScheduleView(PermissionRequiredMixin, TemplateView):
                 todays_schedule[dt].append(c)
                 total_scans_per_day += 1
 
-        for p in playlist_qs:
+        for p in playlist_qs.exclude(crontab=""):
             playlists_crontab_executions = crontab_services.calculate_schedule(
                 crontab=p.crontab,
                 now=now,

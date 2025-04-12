@@ -173,7 +173,7 @@
         <tbody>
         {% for playlist_item in playlist_videos %}
             {% with playlist_item.video as video %}
-                <tr data-video-id="{{ video.pk }}">
+                <tr data-video-id="{{ video.pk }}" {% if request.GET.highlight == video.pk|stringformat:"i" %}style="border: 5px solid;"{% endif %}>
                     <td>
                         <span title="I:{{ video.inserted }}<br />U:{{ video.updated }}<br />DA:{{ video.date_added_to_system }}{% if video.date_downloaded %}<br />DDL:{{ video.date_downloaded }}{% endif %}<br />{% if video.quality %}Q: {{ video.get_quality_display }} {% endif %}{% if video.file_size %}FS:{{ video.file_size|filesizeformat }}{% endif %}<br />S:{{ video.privacy_status }}" data-html="true" data-toggle="tooltip">
                             {% if video.upload_date.year != now.year %}
