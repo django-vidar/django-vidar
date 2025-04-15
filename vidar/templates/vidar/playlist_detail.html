@@ -138,16 +138,16 @@
                         <td>Videos Playback Ordering</td>
                         <td>{{ playlist.get_videos_playback_ordering_display }}</td>
                     </tr>
-                    {% if playlist.next_playlist %}
-                        <tr>
-                            <td>Next Playlist</td>
-                            <td><a href="{{ playlist.next_playlist.get_absolute_url }}">{{ playlist.next_playlist }}</a></td>
-                        </tr>
-                    {% endif %}
                     {% if playlist.previous_playlist %}
                         <tr>
                             <td>Parent Playlist</td>
                             <td><a href="{{ playlist.previous_playlist.get_absolute_url }}">{{ playlist.previous_playlist }}</a></td>
+                        </tr>
+                    {% endif %}
+                    {% if playlist.next_playlist %}
+                        <tr>
+                            <td>Next Playlist</td>
+                            <td><a href="{{ playlist.next_playlist.get_absolute_url }}">{{ playlist.next_playlist }}</a></td>
                         </tr>
                     {% endif %}
                 </tbody>
