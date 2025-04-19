@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.shortcuts import reverse
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 
 from vidar import models
 
@@ -294,3 +295,52 @@ class GeneralUtilitiesViewTests(TestCase):
             wait_period=10,
         )
 
+
+class WatchHistoryListViewTests(TestCase):
+
+    def setUp(self):
+        # Create a user and assign necessary permissions
+        self.user = User.objects.create_user(username="testuser", password="password")
+        self.permission = Permission.objects.get(codename="view_userplaybackhistory")
+        self.user.user_permissions.add(self.permission)
+
+        self.url = reverse('vidar:watch-history')
+
+        self.client.force_login(self.user)
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+    def test_filtering_by_playlist(self):
+        playlist = models.Playlist.objects.create()
+
+        video1 = models.Video.objects.create(duration=100)
+        video2 = models.Video.objects.create(duration=100)
+
+        playlist.playlistitem_set.create(video=video1)
+
+        models.UserPlaybackHistory.objects.create(user=self.user, seconds=5, video=video1)
+        models.UserPlaybackHistory.objects.create(user=self.user, seconds=5, video=video2)
+
+        models.UserPlaybackHistory.objects.create(
+            user=self.user,
+            seconds=5,
+            video=video1,
+            playlist=playlist,
+        )
+
+        resp = self.client.get(self.url)
+        object_list = resp.context_data["object_list"]
+        self.assertEqual(3, object_list.count())
+
+        resp = self.client.get(self.url + f"?playlist={playlist.pk}")
+        object_list = resp.context_data["object_list"]
+        self.assertEqual(1, object_list.count())
+        hist = object_list.get()
+        self.assertEqual(video1, hist.video)

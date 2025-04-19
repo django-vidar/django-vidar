@@ -2070,7 +2070,17 @@ class WatchHistoryListView(PermissionRequiredMixin, RestrictQuerySetToAuthorized
             qs = qs.filter(video_id=vid)
         if cid := self.request.GET.get("channel"):
             qs = qs.filter(video__channel_id=cid)
+        if pid := self.request.GET.get("playlist"):
+            qs = qs.filter(playlist_id=pid)
         return qs
+
+    def get_context_data(self, *args, **kwargs):
+        kwargs = super().get_context_data(*args, **kwargs)
+        if cid := self.request.GET.get("channel"):
+            kwargs["channel"] = get_object_or_404(Channel, pk=cid)
+        if pid := self.request.GET.get("playlist"):
+            kwargs["playlist"] = get_object_or_404(Playlist, pk=pid)
+        return kwargs
 
 
 class WatchHistoryDelete(PermissionRequiredMixin, RestrictQuerySetToAuthorizedUserMixin, DeleteView):

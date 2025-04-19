@@ -7,6 +7,12 @@
 
     <ul class="breadcrumb">
         <li class="breadcrumb-item"><a href="{% url 'vidar:index' %}">Vidar</a></li>
+        {% if channel %}
+            <li class="breadcrumb-item"><a href="{{ channel.get_absolute_url }}">{{ channel }}</a></li>
+        {% endif %}
+        {% if playlist %}
+            <li class="breadcrumb-item"><a href="{{ playlist.get_absolute_url }}">{{ playlist }}</a></li>
+        {% endif %}
         <li class="breadcrumb-item active">Watch History</li>
     </ul>
 
