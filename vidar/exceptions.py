@@ -1,26 +1,30 @@
-class DownloadedInfoJsonFileNotFoundError(Exception):
+class VidarException(Exception):
     pass
 
 
-class FilenameSchemaInvalidError(Exception):
+class DownloadedInfoJsonFileNotFoundError(VidarException):
     pass
 
 
-class DirectorySchemaInvalidError(Exception):
+class FilenameSchemaInvalidError(VidarException):
     pass
 
 
-class UnauthorizedVideoDeletionError(Exception):
+class DirectorySchemaInvalidError(VidarException):
     pass
 
 
-class ConversionOutputFileNotFoundError(Exception):
+class UnauthorizedVideoDeletionError(VidarException):
     pass
 
 
-class FileStorageBackendHasNoMoveError(Exception):
+class ConversionOutputFileNotFoundError(VidarException):
     pass
 
 
-class YTDLPCalledDuringTests(Exception):
+class FileStorageBackendHasNoMoveError(VidarException):
+    pass
+
+
+class YTDLPCalledDuringTests(VidarException):
     pass
