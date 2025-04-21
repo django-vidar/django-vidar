@@ -61,7 +61,7 @@
                             <td>
                                 {% if item.playlist %}
                                     {% link_to_playlist_page item.playlist item.video as playlist_page_num %}
-                                    <a href="{{ item.playlist.get_absolute_url }}{% if playlist_page_num > 1 %}?page={{ playlist_page_num }}{% endif %}" title="{{ item.playlist }}" data-toggle="tooltip">{{ item.updated }}</a>
+                                    <a href="{{ item.playlist.get_absolute_url }}?highlight={{ item.video.pk }}{% if playlist_page_num > 1 %}&page={{ playlist_page_num }}{% endif %}" title="{{ item.playlist }}" data-toggle="tooltip">{{ item.updated }}</a>
                                 {% else %}
                                     {{ item.updated }}
                                 {% endif %}
