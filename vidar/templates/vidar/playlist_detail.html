@@ -40,11 +40,12 @@
 
     <div class="row">
         <div class="col"><h1 class="small-uppercase"><a href="{{ playlist.get_absolute_url }}">{{ playlist.title }}</a></h1></div>
-        <div class="col-sm-3 text-right">
+        <div class="col-sm-4 text-right">
             {% if perms.vidar.change_playlist %}<a href="{% url 'vidar:playlist-edit' pk=playlist.pk %}" class="btn btn-info">edit</a>{% endif %}
             {% if perms.vidar.change_playlist and playlist.provider_object_id %}<a href="{% url 'vidar:playlist-scan' pk=playlist.pk %}" class="btn btn-primary">scan</a>{% endif %}
             {% if perms.vidar.add_playlistitem and not playlist.provider_object_id %}<a href="{% url 'vidar:playlist-add-by-search' playlist.id %}" class="btn btn-info">Add Videos</a>{% endif %}
             {% if playlist.crontab %}<a href="{% url 'vidar:schedule' %}?playlist={{ playlist.pk }}" class="btn btn-primary">Schedule</a>{% endif %}
+            <a href="{% url "vidar:watch-history" %}?playlist={{ playlist.pk }}" class="btn btn-primary">History</a>
             <br />
             Last Scanned: {{ playlist.last_scanned|default_if_none:"Never" }}
         </div>
@@ -252,10 +253,6 @@
         {% if not playlist.provider_object_id and playlist.channel_provider_object_id %}
             <a href="https://www.youtube.com/channel/{{ playlist.channel_provider_object_id }}" rel="noreferrer" target="_blank">Original Channel</a>
         {% endif %}
-    </p>
-
-    <p>
-        <a href="{% url "vidar:watch-history" %}?playlist={{ playlist.pk }}">Watch History</a>
     </p>
 
 {% endblock %}
