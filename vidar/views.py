@@ -1791,24 +1791,6 @@ class PlaylistDetailView(PermissionRequiredMixin, DetailView):
     model = Playlist
     permission_required = ["vidar.view_playlist"]
 
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()  # type: Playlist
-        if "convert-to-custom" in request.POST and self.object.provider_object_id:
-            self.object.description = f"{self.object.description}\nOld YouTube ID: {self.object.provider_object_id}"
-            self.object.provider_object_id_old = self.object.provider_object_id
-            self.object.provider_object_id = ""
-            self.object.save()
-            self.object.playlistitem_set.update(manually_added=True)
-        if "download-video-comments" in request.POST:
-            countdown = 0
-            for video in self.object.videos.all():
-                download_all_comments = "download_all_comments" in request.POST
-                tasks.download_provider_video_comments.apply_async(
-                    args=[video.pk, download_all_comments], countdown=countdown
-                )
-                countdown += 67
-        return redirect(self.object)
-
     def get_context_data(self, **kwargs):
         kwargs = super().get_context_data(**kwargs)
 
@@ -2002,6 +1984,39 @@ class PlaylistWatchLaterView(PlaylistDetailView):
 
     def get_object(self, queryset=None):
         return Playlist.objects.get_user_watch_later(user=self.request.user)
+
+
+class PlaylistManageView(PermissionRequiredMixin, DetailView):
+    model = Playlist
+    template_name = "vidar/playlist_manage.html"
+    permission_required = ["vidar.change_playlist"]
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()  # type: Playlist
+        if "convert-to-custom" in request.POST and self.object.provider_object_id:
+            self.object.description = f"{self.object.description}\nOld YouTube ID: {self.object.provider_object_id}"
+            self.object.provider_object_id_old = self.object.provider_object_id
+            self.object.provider_object_id = ""
+            self.object.save()
+            self.object.playlistitem_set.update(manually_added=True)
+        if "download-video-comments" in request.POST:
+            countdown = 0
+            for video in self.object.videos.all():
+                download_all_comments = "download_all_comments" in request.POST
+                tasks.download_provider_video_comments.apply_async(
+                    args=[video.pk, download_all_comments], countdown=countdown
+                )
+                countdown += 67
+        if "apply-playback-speed" in request.POST:
+            self.object.videos.all().update(playback_speed=self.object.playback_speed)
+        if "remove-playback-speed" in request.POST:
+            self.object.videos.all().update(playback_speed="")
+        if "apply-playback-volume" in request.POST:
+            self.object.videos.all().update(playback_volume=self.object.playback_volume)
+        if "remove-playback-volume" in request.POST:
+            self.object.videos.all().update(playback_volume="")
+
+        return redirect("vidar:playlist-manage", pk=self.object.pk)
 
 
 class VideoHistoryListView(PermissionRequiredMixin, ListView):

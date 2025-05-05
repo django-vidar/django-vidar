@@ -51,16 +51,6 @@
 
     <hr>
 
-    {% if form.instance.id and playlist.provider_object_id %}
-    <p class="text-right m-4">
-        <form action="{{ object.get_absolute_url }}" method="post" class="text-right">{% csrf_token %}
-            <input type="submit" name="convert-to-custom"
-                   value="Convert to a custom playlist. There is no undo. It will no longer be scannable."
-                   class="btn btn-sm btn-primary">
-        </form>
-    </p>
-    {% endif %}
-
 {% endblock %}
 
 {% block footer %}

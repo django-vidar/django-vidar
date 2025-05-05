@@ -8,17 +8,18 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 
 from vidar import models, forms
+from vidar.helpers import model_helpers
 
 User = get_user_model()
 
 
-class PlaylistDetailViewTests(TestCase):
+class PlaylistManageViewTests(TestCase):
 
     def setUp(self):
         # Create a user and assign necessary permissions
         self.user = User.objects.create_user(username="testuser", password="password")
         self.user.user_permissions.add(
-            Permission.objects.get(codename="view_playlist"),
+            Permission.objects.get(codename="change_playlist"),
         )
 
         self.client.force_login(self.user)
@@ -26,12 +27,14 @@ class PlaylistDetailViewTests(TestCase):
         self.playlist = models.Playlist.objects.create(
             title="Playlist 1",
             provider_object_id="test-id",
+            playback_speed=model_helpers.PlaybackSpeed.ONE_SEVENTY_FIVE,
+            playback_volume=model_helpers.PlaybackVolume.SEVENTY_FIVE,
         )
 
         self.video1 = self.playlist.videos.create(title="test video 1")
         self.video2 = self.playlist.videos.create(title="test video 2")
 
-        self.url = self.playlist.get_absolute_url()
+        self.url = reverse("vidar:playlist-manage", args=[self.playlist.pk])
 
     def test_permission_required(self):
         """Ensure users without the necessary permissions cannot access the view."""
@@ -78,6 +81,48 @@ class PlaylistDetailViewTests(TestCase):
             call(args=[self.video1.pk, True], countdown=67),
             call(args=[self.video2.pk, True], countdown=0),
         ], any_order=True)
+
+    def test_apply_and_remove_playlist_playback_speed(self):
+        self.client.post(self.url, {
+            "apply-playback-speed": True,
+        })
+
+        self.video1.refresh_from_db()
+        self.video2.refresh_from_db()
+
+        self.assertEqual(self.playlist.playback_speed, self.video1.playback_speed)
+        self.assertEqual(self.playlist.playback_speed, self.video2.playback_speed)
+
+        self.client.post(self.url, {
+            "remove-playback-speed": True,
+        })
+
+        self.video1.refresh_from_db()
+        self.video2.refresh_from_db()
+
+        self.assertFalse(self.video1.playback_speed)
+        self.assertFalse(self.video2.playback_speed)
+
+    def test_apply_and_remove_playlist_playback_volume(self):
+        self.client.post(self.url, {
+            "apply-playback-volume": True,
+        })
+
+        self.video1.refresh_from_db()
+        self.video2.refresh_from_db()
+
+        self.assertEqual(self.playlist.playback_volume, self.video1.playback_volume)
+        self.assertEqual(self.playlist.playback_volume, self.video2.playback_volume)
+
+        self.client.post(self.url, {
+            "remove-playback-volume": True,
+        })
+
+        self.video1.refresh_from_db()
+        self.video2.refresh_from_db()
+
+        self.assertFalse(self.video1.playback_volume)
+        self.assertFalse(self.video2.playback_volume)
 
 
 class PlaylistDeleteViewTests(TestCase):

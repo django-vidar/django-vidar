@@ -90,6 +90,7 @@ urlpatterns = [
     path("playlists/create/custom/", views.PlaylistCustomCreateView.as_view(), name="playlist-create-custom"),
     path("playlists/<int:pk>/", views.PlaylistDetailView.as_view(), name="playlist-detail"),
     path("playlists/<int:pk>/edit/", views.PlaylistEditView.as_view(), name="playlist-edit"),
+    path("playlists/<int:pk>/manage/", views.PlaylistManageView.as_view(), name="playlist-manage"),
     path("playlists/<int:pk>/delete/", views.PlaylistDeleteView.as_view(), name="playlist-delete"),
     path("playlists/<int:pk>/scan/", views.PlaylistScanView.as_view(), name="playlist-scan"),
     path("playlists/<int:pk>/swap/", views.PlaylistBooleanSwapper.as_view(), name="playlist-swap-booleans"),
