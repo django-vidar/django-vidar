@@ -1997,24 +1997,36 @@ class PlaylistManageView(PermissionRequiredMixin, DetailView):
             self.object.description = f"{self.object.description}\nOld YouTube ID: {self.object.provider_object_id}"
             self.object.provider_object_id_old = self.object.provider_object_id
             self.object.provider_object_id = ""
+            self.object.crontab = ""
             self.object.save()
             self.object.playlistitem_set.update(manually_added=True)
+            messages.success(request, "Playlist converted to custom playlist.")
         if "download-video-comments" in request.POST:
             countdown = 0
+            total = 0
             for video in self.object.videos.all():
                 download_all_comments = "download_all_comments" in request.POST
+                total += 1
                 tasks.download_provider_video_comments.apply_async(
                     args=[video.pk, download_all_comments], countdown=countdown
                 )
                 countdown += 67
+            messages.success(request, f"{total} videos comments queued for download.")
         if "apply-playback-speed" in request.POST:
-            self.object.videos.all().update(playback_speed=self.object.playback_speed)
+            changed = self.object.videos.all().update(playback_speed=self.object.playback_speed)
+            msg = f"{changed} videos Playback Speed updated to {self.object.get_playback_speed_display()}"
+            messages.success(request, msg)
         if "remove-playback-speed" in request.POST:
-            self.object.videos.all().update(playback_speed="")
+            changed = self.object.videos.all().update(playback_speed="")
+            messages.success(request, f"{changed} videos Playback Speed reset to system default")
         if "apply-playback-volume" in request.POST:
-            self.object.videos.all().update(playback_volume=self.object.playback_volume)
+            changed = self.object.videos.all().update(playback_volume=self.object.playback_volume)
+            msg = f"{changed} videos Playback Speed Volume to {self.object.get_playback_volume_display()}"
+            messages.success(request, msg)
         if "remove-playback-volume" in request.POST:
-            self.object.videos.all().update(playback_volume="")
+            changed = self.object.videos.all().update(playback_volume="")
+            msg = f"{changed} videos Playback Volume reset to system default"
+            messages.success(request, msg)
 
         return redirect("vidar:playlist-manage", pk=self.object.pk)
 

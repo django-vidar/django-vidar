@@ -41,21 +41,6 @@
             </form>
         </div>
 
-        {% if playlist.provider_object_id %}
-            <div class="col">
-                <form method="post" class="form">{% csrf_token %}
-                    <div class="form-group">
-                        <p>Custom playlist videos can be re-ordered, removed, added.
-                            However, it cannot be tied to a live playlist.</p>
-                        <p>There is no undo. It will no longer be indexable.</p>
-                        <input type="submit" name="convert-to-custom"
-                               value="Convert to a custom playlist."
-                               class="btn btn-danger">
-                    </div>
-                </form>
-            </div>
-        {% endif %}
-
         {% if playlist.playback_speed %}
             <div class="col">
                 <form method="post">{% csrf_token %}
@@ -84,6 +69,27 @@
                 <form method="post">{% csrf_token %}
                     <p>Remove Playback Volume from all attached videos. It will be reset to system default.</p>
                     <input type="submit" name="remove-playback-volume" class="btn btn-info" value="Remove Playback Volume">
+                </form>
+            </div>
+        {% endif %}
+
+    </div>
+
+    <hr />
+
+    <div class="row">
+
+        {% if playlist.provider_object_id %}
+            <div class="col-3">
+                <form method="post" class="form">{% csrf_token %}
+                    <div class="form-group">
+                        <p>Custom playlist videos can be re-ordered, removed, added.
+                            However, it cannot be tied to a live playlist.</p>
+                        <p>There is no undo. It will no longer be indexable.</p>
+                        <input type="submit" name="convert-to-custom"
+                               value="Convert to a custom playlist."
+                               class="btn btn-danger">
+                    </div>
                 </form>
             </div>
         {% endif %}
