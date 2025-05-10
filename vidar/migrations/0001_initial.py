@@ -234,7 +234,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='video',
             name='playlists',
-            field=models.ManyToManyField(blank=True, related_name='videos', through='vidar.PlaylistItem', to='vidar.playlist'),
+            field=models.ManyToManyField(
+                blank=True,
+                related_name='videos',
+                through='vidar.PlaylistItem',
+                through_fields=("video", "playlist"),
+                to='vidar.playlist'
+            ),
         ),
         migrations.CreateModel(
             name='VideoDownloadError',
