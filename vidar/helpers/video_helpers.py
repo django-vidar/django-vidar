@@ -27,7 +27,8 @@ def get_video_upload_to_directory(instance):
 
     else:
         if schema_services.video_uses_custom_directory_schema(video=instance):
-            path = schema_services.video_directory_name(video=instance)
+            custom_dir = schema_services.video_directory_name(video=instance)
+            path = pathlib.PurePosixPath(custom_dir)
         else:
             path = pathlib.PurePosixPath("public")
 

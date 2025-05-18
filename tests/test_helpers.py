@@ -295,6 +295,19 @@ class VideoHelpersTests(TestCase):
         output = video_helpers.get_video_upload_to_directory(instance=video)
         self.assertEqual(f'Test Channel/{timezone.now().year}', str(output))
 
+    def test_video_playlist_custom_directory_schema_returns_pathlib(self):
+        video = models.Video.objects.create(
+            provider_object_id="video-id-1",
+            title="test video 1",
+        )
+        playlist = models.Playlist.objects.create(
+            directory_schema="test playlist dir/"
+        )
+        playlist.playlistitem_set.create(video=video)
+        output = video_helpers.get_video_upload_to_directory(instance=video)
+        self.assertEqual(pathlib.PurePosixPath, type(output))
+        self.assertEqual(pathlib.PurePosixPath("test playlist dir/"), output)
+
     def test_video_upload_to_side_by_side(self):
         video = models.Video.objects.create(title="Test Video 1")
         output = video_helpers.video_upload_to_side_by_side(instance=video, filename="test.mp4")
