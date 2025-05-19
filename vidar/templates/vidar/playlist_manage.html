@@ -73,6 +73,16 @@
             </div>
         {% endif %}
 
+        <div class="col">
+            <form method="post" class="form">{% csrf_token %}
+                <p>If you changed the playlists filename or directory schema, you can use this button to
+                    trigger a rename of all attached files.</p>
+                <input type="submit" name="rename-video-files"
+                       value="Rename Video Files."
+                       class="btn btn-primary">
+            </form>
+        </div>
+
     </div>
 
     <hr />

@@ -2027,7 +2027,9 @@ class PlaylistManageView(PermissionRequiredMixin, DetailView):
             changed = self.object.videos.all().update(playback_volume="")
             msg = f"{changed} videos Playback Volume reset to system default"
             messages.success(request, msg)
-
+        if "rename-video-files" in request.POST:
+            for video in self.object.videos.exclude(file=""):
+                tasks.rename_video_files.delay(pk=video.pk)
         return redirect("vidar:playlist-manage", pk=self.object.pk)
 
 
