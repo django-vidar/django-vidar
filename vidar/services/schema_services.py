@@ -56,27 +56,31 @@ def video_directory_name(video):
 
         log.critical(f"{video.pk=} has an invalid value in {video.directory_schema=}.")
 
-    if video.channel and video.channel.video_directory_schema:
-        if rendered_value := _render_string_using_object_data(
-            video.channel.video_directory_schema,
-            self=video,
-            video=video,
-            channel=video.channel,
-        ):
-            return rendered_value
+    if video.channel:
+        if video.channel.video_directory_schema:
+            if rendered_value := _render_string_using_object_data(
+                video.channel.video_directory_schema,
+                self=video,
+                video=video,
+                channel=video.channel,
+            ):
+                return rendered_value
 
-        log.critical(f"{video.pk=} {video.channel=} has an invalid value in {video.channel.video_directory_schema=}.")
+            log.critical(
+                f"{video.pk=} {video.channel=} has an invalid value in {video.channel.video_directory_schema=}."
+            )
+    else:
 
-    if playlist := video.playlists.exclude(directory_schema="").order_by("pk").first():
-        if rendered_value := _render_string_using_object_data(
-            playlist.directory_schema,
-            self=video,
-            video=video,
-            playlist=playlist,
-        ):
-            return rendered_value
+        if playlist := video.playlists.exclude(directory_schema="").order_by("pk").first():
+            if rendered_value := _render_string_using_object_data(
+                playlist.directory_schema,
+                self=video,
+                video=video,
+                playlist=playlist,
+            ):
+                return rendered_value
 
-        log.critical(f"{playlist.pk=} {video.pk=} has an invalid value in {playlist.directory_schema=}.")
+            log.critical(f"{playlist.pk=} {video.pk=} has an invalid value in {playlist.directory_schema=}.")
 
     if rendered_value := _render_string_using_object_data(app_settings.VIDEO_DIRECTORY_SCHEMA, self=video, video=video):
         return rendered_value
@@ -100,14 +104,17 @@ def video_file_name(video, ext):
         if not rendered_value:
             log.critical(f"{video.pk=} has an invalid value in {video.filename_schema=}.")
 
-    if not rendered_value and video.channel and video.channel.video_filename_schema:
-        rendered_value = _render_string_using_object_data(
-            video.channel.video_filename_schema, self=video, video=video, channel=video.channel
-        )
-        if not rendered_value:
-            log.critical(f"{video.pk=} {video.channel=} has an invalid schema {video.channel.video_filename_schema=}.")
+    if not rendered_value and video.channel:
+        if video.channel.video_filename_schema:
+            rendered_value = _render_string_using_object_data(
+                video.channel.video_filename_schema, self=video, video=video, channel=video.channel
+            )
+            if not rendered_value:
+                log.critical(
+                    f"{video.pk=} {video.channel=} has an invalid schema {video.channel.video_filename_schema=}."
+                )
 
-    if not rendered_value:
+    elif not rendered_value:
         if playlist := video.playlists.exclude(filename_schema="").order_by("pk").first():
             rendered_value = _render_string_using_object_data(
                 playlist.filename_schema, self=video, video=video, playlist=playlist
@@ -133,16 +140,20 @@ def video_file_name(video, ext):
 def video_uses_custom_filename_schema(video):
     if video.filename_schema:
         return video.filename_schema
-    if video.channel and video.channel.video_filename_schema:
-        return video.channel.video_filename_schema
-    if playlist := video.playlists.exclude(filename_schema="").order_by("pk").first():
-        return playlist.filename_schema
+    if video.channel:
+        if video.channel.video_filename_schema:
+            return video.channel.video_filename_schema
+    else:
+        if playlist := video.playlists.exclude(filename_schema="").order_by("pk").first():
+            return playlist.filename_schema
 
 
 def video_uses_custom_directory_schema(video):
     if video.directory_schema:
         return video.directory_schema
-    if video.channel and video.channel.video_directory_schema:
-        return video.channel.video_directory_schema
-    if playlist := video.playlists.exclude(directory_schema="").order_by("pk").first():
-        return playlist.directory_schema
+    if video.channel:
+        if video.channel.video_directory_schema:
+            return video.channel.video_directory_schema
+    else:
+        if playlist := video.playlists.exclude(directory_schema="").order_by("pk").first():
+            return playlist.directory_schema

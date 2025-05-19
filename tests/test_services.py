@@ -2540,6 +2540,17 @@ class SchemaServicesTests(TestCase):
         output = schema_services.video_directory_name(video=video)
         self.assertEqual("overridden dir schema 1", output)
 
+    def test_video_directory_name_with_channel_and_playlist_schema_does_not_apply_playlist_setting(self):
+        playlist = models.Playlist.objects.create(
+            title="test playlist",
+            directory_schema="overridden dir schema 1"
+        )
+        channel = models.Channel.objects.create()
+        video = models.Video.objects.create(title="test video", channel=channel)
+        playlist.playlistitem_set.create(video=video)
+        output = schema_services.video_directory_name(video=video)
+        self.assertEqual("- test video []", output, "Video with channel and playlist should not apply playlist schemas")
+
     def test_video_file_name_playlist_video_schema_overrides_default(self):
         playlist = models.Playlist.objects.create(
             title="test playlist",
@@ -2549,6 +2560,17 @@ class SchemaServicesTests(TestCase):
         playlist.playlistitem_set.create(video=video)
         output = schema_services.video_file_name(video=video, ext='mp3')
         self.assertEqual("overridden filename schema 1.mp3", output)
+
+    def test_video_file_name_with_channel_and_playlist_video_schema_does_not_apply_playlist_setting(self):
+        playlist = models.Playlist.objects.create(
+            title="test playlist",
+            filename_schema="overridden filename schema 1"
+        )
+        channel = models.Channel.objects.create()
+        video = models.Video.objects.create(title="test video", channel=channel)
+        playlist.playlistitem_set.create(video=video)
+        output = schema_services.video_file_name(video=video, ext='mp3')
+        self.assertEqual("- test video [].mp3", output, "Video with channel and playlist should not apply playlist schemas")
 
     def test_video_file_name_first_playlist_video_schema_overrides_default(self):
         playlist1 = models.Playlist.objects.create(
@@ -2685,6 +2707,42 @@ class SchemaServicesTests(TestCase):
         video = models.Video.objects.create()
         playlist.playlistitem_set.create(video=video)
         self.assertEqual("playlist file schema", schema_services.video_uses_custom_directory_schema(video=video))
+
+    def test_video_attached_to_channel_and_playlist_with_custom_dir_does_not_use_playlist(self):
+        channel = models.Channel.objects.create()
+        playlist = models.Playlist.objects.create(directory_schema="test playlist dir/")
+        video1 = models.Video.objects.create(channel=channel)
+        video2 = models.Video.objects.create()
+        playlist.playlistitem_set.create(video=video1)
+        playlist.playlistitem_set.create(video=video2)
+        self.assertIsNone(
+            schema_services.video_uses_custom_directory_schema(video=video1),
+            "Video tied to channel should not use playlist directory_schema"
+        )
+
+        self.assertEqual(
+            "test playlist dir/",
+            schema_services.video_uses_custom_directory_schema(video=video2),
+            "Video tied to channel should not use playlist directory_schema"
+        )
+
+    def test_video_attached_to_channel_and_playlist_with_custom_filename_does_not_use_playlist(self):
+        channel = models.Channel.objects.create()
+        playlist = models.Playlist.objects.create(filename_schema="filename schema in playlist")
+        video1 = models.Video.objects.create(channel=channel)
+        video2 = models.Video.objects.create()
+        playlist.playlistitem_set.create(video=video1)
+        playlist.playlistitem_set.create(video=video2)
+        self.assertIsNone(
+            schema_services.video_uses_custom_filename_schema(video=video1),
+            "Video tied to channel should not use playlist filename_schema"
+        )
+
+        self.assertEqual(
+            "filename schema in playlist",
+            schema_services.video_uses_custom_filename_schema(video=video2),
+            "Video tied to channel should not use playlist filename_schema"
+        )
 
 
 class YtdlpServicesDLPFormatsTest(SimpleTestCase):
