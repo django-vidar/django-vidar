@@ -40,13 +40,14 @@ def redirect_next_or_obj(request, other, *args, **kwargs):
 def json_safe_kwargs(kwargs):
     # auto convert datetime into isoformat
     output = {}
+    skip = ["progress_hooks", "cookies"]
     for k, v in kwargs.items():
         if hasattr(v, "isoformat"):
             output[k] = v.isoformat()
         elif isinstance(v, io.IOBase):
             v.seek(0)
             output[k] = v.read()
-        elif k != "progress_hooks":
+        elif k not in skip:
             output[k] = v
 
     return output
