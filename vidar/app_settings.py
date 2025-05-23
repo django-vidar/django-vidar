@@ -424,7 +424,7 @@ class AppSettings(object):
         proxies = self._setting(
             "PROXIES",
             [],
-        )
+        ) or []
 
         if isinstance(proxies, (list, tuple, set)):
             return proxies
