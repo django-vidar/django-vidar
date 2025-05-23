@@ -49,8 +49,10 @@ def update_channel_banners(self, pk):
 
     log.info(f"Getting channel banners for {channel=}")
 
+    dl_kwargs = ytdlp_services.get_ytdlp_args()
+
     try:
-        output = interactor.channel_details(url=f"{channel.base_url}/about", instance=channel)
+        output = interactor.channel_details(url=f"{channel.base_url}/about", instance=channel, **dl_kwargs)
     except yt_dlp.DownloadError as exc:
         if channel_services.apply_exception_status(channel=channel, exc=exc):
             self.update_state(state=states.FAILURE, meta=f"Channel status changed to {channel.status=}")
@@ -277,7 +279,9 @@ def fully_index_channel(self, pk, limit=None):
         log.info("No targets for full indexing")
         return
 
-    msg_logger = partial(utils.OutputCapturer, callback_func=redis_services.channel_indexing, channel=channel)
+    dl_kwargs = ytdlp_services.get_ytdlp_args()
+
+    msg_logger = partial(utils.OutputCapturer, callback_func=redis_services.channel_indexing, channel=channel, **dl_kwargs)
 
     for target_name, target_data in targets.items():
         chan = interactor.func_with_retry(url=target_data["url"], limit=limit, logger=msg_logger())
@@ -333,7 +337,7 @@ def scan_channel_for_new_content(
     self, channel, url, limit=None, download_video=False, is_video=False, is_short=False, is_livestream=False
 ):
 
-    dl_kwargs = {}
+    dl_kwargs = ytdlp_services.get_ytdlp_args()
 
     msg_logger = partial(utils.OutputCapturer, callback_func=redis_services.channel_indexing, channel=channel)
 
@@ -1142,7 +1146,8 @@ def subscribe_to_channel(self, channel_id, sleep=True):
 
     obj = Channel.objects.get(provider_object_id=channel_id)
 
-    output = interactor.channel_details(f"{obj.base_url}/about", instance=obj)
+    dl_kwargs = ytdlp_services.get_ytdlp_args()
+    output = interactor.channel_details(f"{obj.base_url}/about", instance=obj, **dl_kwargs)
 
     channel_services.set_channel_details_from_ytdlp(
         channel=obj,
@@ -1207,11 +1212,14 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
 
     msg_logger = partial(utils.OutputCapturer, callback_func=redis_services.playlist_indexing, playlist=playlist)
 
+    dl_kwargs = ytdlp_services.get_ytdlp_args()
+
     output = interactor.playlist_details(
         playlist.url,
         logger=msg_logger(),
         detailed_video_data=detailed_video_data,
         instance=playlist,
+        **dl_kwargs,
     )
 
     if not output:
@@ -1549,7 +1557,7 @@ def update_video_details(self, pk, download_file=False, dlp_output=None, mode="m
 
     log.info(f"Checking status and details of {video=}")
 
-    dl_kwargs = {}
+    dl_kwargs = ytdlp_services.get_ytdlp_args(video=video)
     if app_settings.SAVE_INFO_JSON_FILE and video.file:
         dl_kwargs["writeinfojson"] = True
 
