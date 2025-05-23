@@ -35,11 +35,15 @@ class GeneralHelpersTests(TestCase):
             "timezone": dt,
             "io": io.StringIO("test io"),
             "untouched": "here",
+            "cookiefile": "cookie file here",
+            "cookies": "",
         }
 
         output = json_safe_kwargs(kwargs)
 
         self.assertNotIn("progress_hooks", output)
+        self.assertNotIn("cookiefile", output)
+        self.assertNotIn("cookies", output)
 
         self.assertIn("timezone", output)
         self.assertEqual(str, type(output["timezone"]))
@@ -52,6 +56,20 @@ class GeneralHelpersTests(TestCase):
         self.assertIn("untouched", output)
         self.assertEqual(str, type(output["untouched"]))
         self.assertEqual("here", output["untouched"])
+
+    def test_json_safe_kwargs_with_dicts(self):
+        kwargs = {
+            "subdict": {
+                "io": io.StringIO("test 2 io"),
+            }
+        }
+
+        output = json_safe_kwargs(kwargs)
+
+        self.assertIn("subdict", output)
+        self.assertIn("io", output["subdict"])
+        self.assertEqual(str, type(output["subdict"]["io"]))
+        self.assertEqual("test 2 io", output["subdict"]["io"])
 
     def test_next_day_of_week_is_valid(self):
         self.assertEqual(1, helpers.convert_to_next_day_of_week(0))

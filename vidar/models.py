@@ -1004,6 +1004,8 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
     def save_system_notes(self, kwargs, commit=True):
 
+        kwargs = json_safe_kwargs(kwargs)
+
         if "proxy" in kwargs:
             proxies_attempted = self.system_notes.get("proxies_attempted", [])
             proxies_attempted.append(kwargs["proxy"])

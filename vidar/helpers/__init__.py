@@ -1,5 +1,6 @@
 import io
 import logging
+import pathlib
 
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
@@ -40,13 +41,17 @@ def redirect_next_or_obj(request, other, *args, **kwargs):
 def json_safe_kwargs(kwargs):
     # auto convert datetime into isoformat
     output = {}
-    skip = ["progress_hooks", "cookies"]
+    skip = ["progress_hooks", "cookies", "cookiefile"]
     for k, v in kwargs.items():
         if hasattr(v, "isoformat"):
             output[k] = v.isoformat()
-        elif isinstance(v, io.IOBase):
+        elif isinstance(v, io.IOBase) and k not in skip:
             v.seek(0)
             output[k] = v.read()
+        elif isinstance(v, pathlib.Path):
+            output[k] = str(v)
+        elif isinstance(v, dict):
+            output[k] = json_safe_kwargs(v)
         elif k not in skip:
             output[k] = v
 
