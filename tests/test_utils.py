@@ -278,6 +278,13 @@ class UtilTest(TestCase):
         self.assertEqual("proxy3", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy4']))
         self.assertEqual("default proxy", utils.get_proxy(previous_proxies=['proxy1', 'proxy2', 'proxy3', 'proxy4']))
 
+    @override_settings(VIDAR_PROXIES='')
+    def test_get_proxy_proxies_is_blank_string_returns_list(self):
+        try:
+            utils.get_proxy()
+        except ImportError:
+            self.fail("VIDAR_PROXIES='' produced an ImportError")
+
     @override_settings(VIDAR_PROXIES=test_functions.proxies_user_defined)
     def test_get_proxy_with_proxies_user_defined_function(self):
         self.assertEqual(test_functions.proxies_user_defined, app_settings.PROXIES)

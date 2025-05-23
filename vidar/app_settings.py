@@ -421,10 +421,13 @@ class AppSettings(object):
 
         VIDAR_PROXIES = my_custom_vidar_get_proxy
         """
-        proxies = self._setting(
-            "PROXIES",
-            [],
-        ) or []
+        proxies = (
+            self._setting(
+                "PROXIES",
+                [],
+            )
+            or []
+        )
 
         if isinstance(proxies, (list, tuple, set)):
             return proxies
