@@ -2268,14 +2268,20 @@ class YtdlpServicesTests(TestCase):
     def test_get_ytdlp_args_includes_cookies(self, mock_get, mock_check):
         mock_check.return_value = True
         mock_get.return_value = "here in tests"
-        video = models.Video.objects.create(title='video 1')
-        output = ytdlp_services.get_ytdlp_args(
-            video=video
-        )
+        output = ytdlp_services.get_ytdlp_args()
         mock_check.assert_called_once()
         mock_get.assert_called_once()
         self.assertIn("cookiefile", output)
         self.assertEqual("here in tests", output["cookiefile"].read())
+
+    @override_settings(VIDAR_DOWNLOAD_SPEED_RATE_LIMIT=1024)
+    @patch("vidar.app_settings.AppSettings.COOKIES_CHECKER")
+    def test_get_ytdlp_args_includes_ratelimit(self, mock_check):
+        mock_check.return_value = False
+        output = ytdlp_services.get_ytdlp_args()
+        mock_check.assert_called_once()
+        self.assertIn("ratelimit", output)
+        self.assertEqual(1048576, output["ratelimit"])
 
     def test_fix_quality_values(self):
         self.assertEqual(360, ytdlp_services.fix_quality_values(352))
