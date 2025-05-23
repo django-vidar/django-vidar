@@ -2277,8 +2277,8 @@ class YtdlpServicesTests(TestCase):
         )
         mock_check.assert_called_once()
         mock_get.assert_called_once()
-        self.assertIn("cookies", output)
-        self.assertEqual("here in tests", output["cookies"].read())
+        self.assertIn("cookiefile", output)
+        self.assertEqual("here in tests", output["cookiefile"].read())
 
     def test_fix_quality_values(self):
         self.assertEqual(360, ytdlp_services.fix_quality_values(352))
