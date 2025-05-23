@@ -1,4 +1,3 @@
-import io
 import logging
 
 from vidar import app_settings, utils
@@ -26,7 +25,7 @@ def get_ytdlp_args(rate_limit=None, proxies_attempted=None, retries=0, video=Non
 
     if app_settings.COOKIES_CHECKER(video=video, attempt=retries):
         if cookies := app_settings.COOKIES_GETTER(video=video):
-            kwargs.setdefault("cookiefile", io.StringIO(cookies))
+            kwargs.setdefault("cookiefile", cookies)
 
     return kwargs
 

@@ -1,4 +1,5 @@
 # flake8: noqa
+import io
 import json
 import logging
 import pathlib
@@ -1798,7 +1799,9 @@ class VideoServicesTests(TestCase):
     @override_settings(VIDAR_COOKIES="system wide cookies")
     def test_get_cookies_using_system_level(self):
         video = models.Video.objects.create(needs_cookies=True)
-        self.assertEqual("system wide cookies", video_services.get_cookies(video=video))
+        output = video_services.get_cookies(video=video)
+        self.assertEqual(io.StringIO, type(output))
+        self.assertEqual("system wide cookies", output.getvalue())
 
     def test_get_cookies_none_default(self):
         video = models.Video.objects.create(needs_cookies=True)
@@ -1807,12 +1810,12 @@ class VideoServicesTests(TestCase):
     @override_settings(VIDAR_COOKIES_FILE="tests/fixtures/cookies.txt")
     def test_get_cookies_using_string_file(self):
         video = models.Video.objects.create(needs_cookies=True)
-        self.assertEqual("cookies.txt cookies here\n", video_services.get_cookies(video=video))
+        self.assertEqual("tests/fixtures/cookies.txt", video_services.get_cookies(video=video))
 
     @override_settings(VIDAR_COOKIES_FILE=pathlib.Path("tests/fixtures/cookies.txt"))
     def test_get_cookies_using_pathlib_file(self):
         video = models.Video.objects.create(needs_cookies=True)
-        self.assertEqual("cookies.txt cookies here\n", video_services.get_cookies(video=video))
+        self.assertEqual(pathlib.Path("tests/fixtures/cookies.txt"), video_services.get_cookies(video=video))
 
     @override_settings(VIDAR_COOKIES_GETTER="tests.test_functions.get_cookies_user_func")
     def test_user_override_get_cookies(self):
@@ -1828,16 +1831,16 @@ class VideoServicesTests(TestCase):
 
     @override_settings(VIDAR_COOKIES_ALWAYS_REQUIRED=True)
     def test_cookies_always_required_without_cookies_raises_valueerror(self):
-        video = models.Video.objects.create()
-        self.assertTrue(app_settings.COOKIES_CHECKER(video=video))
+        self.assertTrue(app_settings.COOKIES_CHECKER())
         with self.assertRaises(ValueError) as em:
-            app_settings.COOKIES_GETTER(video=video)
+            app_settings.COOKIES_GETTER()
 
     @override_settings(VIDAR_COOKIES_ALWAYS_REQUIRED=True, VIDAR_COOKIES="system cookies")
     def test_cookies_always_required_with_cookies_does_not_raise_valueerror(self):
-        video = models.Video.objects.create()
-        self.assertTrue(app_settings.COOKIES_CHECKER(video=video))
-        self.assertEqual("system cookies", app_settings.COOKIES_GETTER(video=video))
+        self.assertTrue(app_settings.COOKIES_CHECKER())
+        output = app_settings.COOKIES_GETTER()
+        self.assertEqual(io.StringIO, type(output))
+        self.assertEqual("system cookies", output.getvalue())
 
     def test_metadata_artist(self):
         v1 = models.Video.objects.create()
@@ -2272,7 +2275,7 @@ class YtdlpServicesTests(TestCase):
         mock_check.assert_called_once()
         mock_get.assert_called_once()
         self.assertIn("cookiefile", output)
-        self.assertEqual("here in tests", output["cookiefile"].read())
+        self.assertEqual("here in tests", output["cookiefile"])
 
     @override_settings(VIDAR_DOWNLOAD_SPEED_RATE_LIMIT=1024)
     @patch("vidar.app_settings.AppSettings.COOKIES_CHECKER")

@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 import pathlib
@@ -564,14 +565,10 @@ def should_use_cookies(video: models.Video = None, attempt=0):
 def get_cookies(video: models.Video = None):
 
     if system_cookies := app_settings.COOKIES:
-        return system_cookies
+        return io.StringIO(system_cookies)
 
     if cookies_file := app_settings.COOKIES_FILE:
-        if hasattr(cookies_file, "open"):
-            with cookies_file.open() as fo:
-                return fo.read()
-        with open(cookies_file) as fo:
-            return fo.read()
+        return cookies_file
 
     if app_settings.COOKIES_ALWAYS_REQUIRED:
         raise ValueError("VIDAR_COOKIES_ALWAYS_REQUIRED=True but no cookies were returned.")

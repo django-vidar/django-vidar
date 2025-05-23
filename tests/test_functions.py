@@ -12,11 +12,11 @@ def date_to_aware_date(value):
     return timezone.make_aware(timezone.datetime(y, m, d))
 
 
-def get_cookies_user_func(video):
+def get_cookies_user_func(video=None):
     return "user func cookies here"
 
 
-def cookies_checker_user_func(video, attempt=0):
+def cookies_checker_user_func(video=None, attempt=0):
     return f"user func cookies checker {attempt=}"
 
 
