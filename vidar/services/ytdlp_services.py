@@ -20,8 +20,9 @@ def get_ytdlp_args(rate_limit=None, proxies_attempted=None, retries=0, video=Non
     # if download fails because the video is blocked in the country
     # of that proxy, use another proxy.
     proxy_to_use = utils.get_proxy(proxies_attempted, instance=video, attempt=retries)
-    kwargs["proxy"] = proxy_to_use
-    log.info(f'Setting proxy "{proxy_to_use}" on yt-dlp download connection.')
+    if proxy_to_use:
+        kwargs["proxy"] = proxy_to_use
+        log.info(f'Setting proxy "{proxy_to_use}" on yt-dlp download connection.')
 
     if app_settings.COOKIES_CHECKER(video=video, attempt=retries):
         if cookies := app_settings.COOKIES_GETTER(video=video):

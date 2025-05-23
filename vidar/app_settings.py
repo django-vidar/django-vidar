@@ -214,7 +214,7 @@ class AppSettings(object):
     def DOWNLOAD_SPEED_RATE_LIMIT(self):
         return self._setting(
             "DOWNLOAD_SPEED_RATE_LIMIT",
-            5000,
+            None,
         )
 
     @property

@@ -1986,7 +1986,21 @@ class Download_provider_video_comments_tests(TestCase):
         self.assertIn("comments_downloaded", self.video.system_notes)
 
     @patch("vidar.interactor.video_comments")
-    def test_ytdlp_downloaderror(self, mock_inter):
+    def test_ytdlp_downloaderror_without_proxy(self, mock_inter):
+        mock_inter.side_effect = yt_dlp.DownloadError("tests failure")
+
+        with self.assertRaises(yt_dlp.DownloadError):
+            tasks.download_provider_video_comments.delay(self.video.pk).get()
+
+        self.assertEqual(4, mock_inter.call_count)
+
+        self.video.refresh_from_db()
+
+        self.assertNotIn("proxies_attempted_comment_grabber", self.video.system_notes)
+
+    @override_settings(VIDAR_PROXIES="http://test.url")
+    @patch("vidar.interactor.video_comments")
+    def test_ytdlp_downloaderror_with_proxy(self, mock_inter):
         mock_inter.side_effect = yt_dlp.DownloadError("tests failure")
 
         with self.assertRaises(yt_dlp.DownloadError):

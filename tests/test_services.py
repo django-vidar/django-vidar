@@ -2233,7 +2233,7 @@ class YtdlpServicesTests(TestCase):
             get_comments=False,
             cache_folder="tests-here",
         )
-        self.assertIn('proxy', output)
+        self.assertNotIn('proxy', output)
         self.assertNotIn('getcomments', output)
         self.assertIn("outtmpl", output)
         self.assertIn("tests-here/", output["outtmpl"])
@@ -2247,10 +2247,7 @@ class YtdlpServicesTests(TestCase):
         self.assertEqual('here', output['proxy'])
 
         output = ytdlp_services.get_video_downloader_args(video=video, retries=2)
-        self.assertIn('proxy', output)
-
-        output = ytdlp_services.get_video_downloader_args(video=video, retries=3)
-        self.assertEqual('', output['proxy'])
+        self.assertNotIn('proxy', output)
 
     @override_settings(VIDAR_PROXIES=['here'], VIDAR_PROXIES_DEFAULT='default proxy')
     def test_get_video_downloader_args_many_retries_with_different_default(self):

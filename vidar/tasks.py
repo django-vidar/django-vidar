@@ -281,7 +281,9 @@ def fully_index_channel(self, pk, limit=None):
 
     dl_kwargs = ytdlp_services.get_ytdlp_args()
 
-    msg_logger = partial(utils.OutputCapturer, callback_func=redis_services.channel_indexing, channel=channel, **dl_kwargs)
+    msg_logger = partial(
+        utils.OutputCapturer, callback_func=redis_services.channel_indexing, channel=channel, **dl_kwargs
+    )
 
     for target_name, target_data in targets.items():
         chan = interactor.func_with_retry(url=target_data["url"], limit=limit, logger=msg_logger())
