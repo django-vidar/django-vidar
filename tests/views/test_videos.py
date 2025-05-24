@@ -1070,7 +1070,7 @@ class VideoWatchedViewViewTests(TestCase):
         playlist = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
         playlist.playlistitem_set.create(video=self.video)
 
-        self.client.post(self.url)
+        self.client.post(self.url + f"?playlist={playlist.pk}")
 
         self.assertFalse(playlist.playlistitem_set.exists())
 
@@ -1081,3 +1081,27 @@ class VideoWatchedViewViewTests(TestCase):
         self.client.post(self.url)
 
         self.assertTrue(playlist.playlistitem_set.exists())
+
+    def test_video_not_removed_from_playlist_when_url_param_playlist_supplied(self):
+        playlist = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
+        playlist.playlistitem_set.create(video=self.video)
+
+        playlist2 = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
+        playlist2.playlistitem_set.create(video=self.video)
+
+        self.client.post(self.url + f"?playlist={playlist.pk}")
+
+        self.assertFalse(playlist.playlistitem_set.exists())
+        self.assertTrue(playlist2.playlistitem_set.exists())
+
+    def test_video_not_removed_from_playlist_when_url_param_playlist_not_supplied(self):
+        playlist = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
+        playlist.playlistitem_set.create(video=self.video)
+
+        playlist2 = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
+        playlist2.playlistitem_set.create(video=self.video)
+
+        self.client.post(self.url)
+
+        self.assertTrue(playlist.playlistitem_set.exists())
+        self.assertTrue(playlist2.playlistitem_set.exists())

@@ -1153,8 +1153,9 @@ class VideoWatchedView(PermissionRequiredMixin, DetailView):
         self.object = self.get_object()
         self.object.watched = timezone.now()
         self.object.save()
-        for p in self.object.playlists.filter(remove_video_from_playlist_on_watched=True):
-            p.videos.remove(self.object)
+        if pid := request.GET.get("playlist"):
+            for p in self.object.playlists.filter(remove_video_from_playlist_on_watched=True, pk=pid):
+                p.videos.remove(self.object)
         return HttpResponse("success")
 
 

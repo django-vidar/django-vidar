@@ -587,8 +587,17 @@
             return false;
         }
 
+        var watched_params = new URLSearchParams();
+        var watched_url = "{% url 'vidar:video-watched' pk=video.pk %}";
+
+        if (current_url_params.has('playlist') === true) {
+            watched_params.append("playlist", current_url_params.get("playlist"));
+
+            watched_url = watched_url + "?" + watched_params.toString()
+        }
+
         var xmlHttp = new XMLHttpRequest();
-        xmlHttp.open( "POST", "{% url 'vidar:video-watched' pk=video.pk %}", true ); // false for synchronous request
+        xmlHttp.open( "POST", watched_url, true ); // false for synchronous request
         xmlHttp.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
         xmlHttp.send( null );
         console.log('mark_as_watched.sending watch time');
@@ -955,8 +964,18 @@
         }
         previous_cur_time = cur_time;
         console.log('send_watch_time called', source, cur_time);
+
+        var watch_time_params = new URLSearchParams();
+        var watch_time_url = "{% url 'vidar:video-save-user-view-time' video.id %}";
+
+        if (current_url_params.has('playlist') === true) {
+            watch_time_params.append("playlist", current_url_params.get("playlist"));
+
+            watch_time_url = watch_time_url + "?" + watch_time_params.toString()
+        }
+
         $.ajax({
-            url: "{% url 'vidar:video-save-user-view-time' video.id %}",
+            url: watch_time_url,
             type: 'post',
             data: {
                 "current_time": cur_time,
