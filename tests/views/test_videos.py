@@ -1105,3 +1105,139 @@ class VideoWatchedViewViewTests(TestCase):
 
         self.assertTrue(playlist.playlistitem_set.exists())
         self.assertTrue(playlist2.playlistitem_set.exists())
+
+
+class VideoSaveWatchTimeTests(TestCase):
+
+    def setUp(self) -> None:
+        self.video = models.Video.objects.create(provider_object_id='mBuHO8p0wS0', duration=120)
+        self.user = User.objects.create(username='test 1', email='email 1', is_superuser=True)
+        self.user.user_permissions.add(
+            Permission.objects.get(codename="view_video"),
+        )
+
+        self.client.force_login(self.user)
+
+        self.url = reverse('vidar:video-save-user-view-time', args=[self.video.pk])
+
+    def test_permission_required(self):
+        """Ensure users without the necessary permissions cannot access the view."""
+        resp = self.client.get(self.url)
+        self.assertEqual(200, resp.status_code)
+
+        self.client.logout()
+        resp = self.client.get(self.url)
+        self.assertEqual(302, resp.status_code)
+
+    def test_save_watch_history(self):
+        self.client.post(self.url, {'current_time': '5'})
+        self.assertEqual(1, self.video.user_playback_history.count())
+
+    def test_save_watch_history_updates_existing(self):
+        self.client.post(self.url, {'current_time': '5'})
+        self.assertEqual(1, self.video.user_playback_history.count())
+
+        self.assertEqual(5, models.UserPlaybackHistory.objects.get().seconds)
+
+        self.client.post(self.url, {'current_time': '10'})
+        self.assertEqual(1, self.video.user_playback_history.count())
+        self.assertEqual(10, models.UserPlaybackHistory.objects.get().seconds)
+
+    def test_save_watch_history_create_second_entry_if_time_is_lesser_than_before(self):
+        dt = timezone.now() - timezone.timedelta(hours=2)
+        with patch.object(timezone, 'now', return_value=dt):
+            self.client.post(self.url, {'current_time': '300'})
+        self.assertEqual(1, self.video.user_playback_history.count())
+
+        self.client.post(self.url, {'current_time': '10'})
+        self.assertEqual(2, self.video.user_playback_history.count())
+
+        self.assertEqual(300, models.UserPlaybackHistory.objects.last().seconds)
+        self.assertEqual(10, models.UserPlaybackHistory.objects.latest().seconds)
+
+    def test_save_watch_history_does_not_create_entry_jumping_forward_beyond_diff_value(self):
+
+        # Enter a history entry as if it were 2 hours ago.
+        with patch.object(timezone, 'now', return_value=timezone.now() - timezone.timedelta(hours=2)):
+            self.client.post(self.url, {'current_time': '300'})
+        self.assertEqual(1, self.video.user_playback_history.count())
+
+        latest = models.UserPlaybackHistory.objects.latest()
+        self.assertEqual(300, latest.seconds)
+
+        self.client.post(self.url, {'current_time': '43'})
+        self.assertEqual(2, self.video.user_playback_history.count(),
+                         "Two hours later and greater than 120 seconds behind the last history entry. "
+                         "It should have created a second entry.")
+
+        latest = models.UserPlaybackHistory.objects.latest()
+        self.assertEqual(43, latest.seconds)
+
+        self.client.post(self.url, {'current_time': '500'})
+        self.assertEqual(2, self.video.user_playback_history.count(),
+                         'Jumping into the future should not create another history entry')
+        latest = models.UserPlaybackHistory.objects.latest()
+        self.assertEqual(500, latest.seconds)
+
+        self.client.post(self.url, {'current_time': '120'})
+        self.assertEqual(2, self.video.user_playback_history.count(),
+                         'Jumping into the past should not create another history entry within the time limit')
+        latest = models.UserPlaybackHistory.objects.latest()
+        self.assertEqual(120, latest.seconds)
+
+    def test_video_removed_from_playlist_when_option_true(self):
+        playlist = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
+        playlist.playlistitem_set.create(video=self.video)
+
+        self.client.post(self.url + f"?playlist={playlist.pk}", {'current_time': self.video.duration})
+
+        self.assertFalse(playlist.playlistitem_set.exists())
+
+    def test_video_not_removed_from_playlist_when_option_false(self):
+        playlist = models.Playlist.objects.create(remove_video_from_playlist_on_watched=False)
+        playlist.playlistitem_set.create(video=self.video)
+
+        self.client.post(self.url, {'current_time': self.video.duration})
+
+        self.assertTrue(playlist.playlistitem_set.exists())
+
+    def test_video_not_removed_from_secondary_playlist_when_url_param_playlist_supplied(self):
+        playlist = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
+        playlist.playlistitem_set.create(video=self.video)
+
+        playlist2 = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
+        playlist2.playlistitem_set.create(video=self.video)
+
+        self.client.post(self.url + f"?playlist={playlist.pk}", {'current_time': self.video.duration})
+
+        self.assertFalse(playlist.playlistitem_set.exists())
+        self.assertTrue(playlist2.playlistitem_set.exists())
+
+    def test_video_not_removed_from_playlist_when_url_param_playlist_not_supplied(self):
+        playlist = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
+        playlist.playlistitem_set.create(video=self.video)
+
+        playlist2 = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
+        playlist2.playlistitem_set.create(video=self.video)
+
+        self.client.post(self.url, {'current_time': self.video.duration})
+
+        self.assertTrue(playlist.playlistitem_set.exists())
+        self.assertTrue(playlist2.playlistitem_set.exists())
+
+    def test_video_not_removed_from_playlist_when_watched_percentage_lower_than_user_selected(self):
+        playlist = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
+        playlist.playlistitem_set.create(video=self.video)
+
+        self.client.post(self.url + f"?playlist={playlist.pk}", {'current_time': '60'})
+
+        self.assertTrue(playlist.playlistitem_set.exists())
+
+    def test_does_not_raise_exception_on_invalid_playlist_pk_value(self):
+        playlist = models.Playlist.objects.create(remove_video_from_playlist_on_watched=True)
+        playlist.playlistitem_set.create(video=self.video)
+
+        try:
+            self.client.post(self.url + f"?playlist=None", {'current_time': '60'})
+        except:
+            self.fail("here")

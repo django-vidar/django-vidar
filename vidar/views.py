@@ -1155,7 +1155,7 @@ class VideoWatchedView(PermissionRequiredMixin, DetailView):
         self.object.save()
         if pid := request.GET.get("playlist"):
             for p in self.object.playlists.filter(remove_video_from_playlist_on_watched=True, pk=pid):
-                p.videos.remove(self.object)
+                p.playlistitem_set.filter(video=self.object).delete()
         return HttpResponse("success")
 
 
@@ -1286,11 +1286,12 @@ def video_sub_to_channel(request, pk):
 @csrf_exempt
 def video_save_user_current_view_time(request, pk):
 
-    seconds = int(request.POST["current_time"])
-    if seconds:
+    if seconds := request.POST.get("current_time"):
+        seconds = int(seconds)
+        video = get_object_or_404(Video, pk=pk)
         qs = UserPlaybackHistory.objects.filter(
-            video_id=pk,
-            user_id=request.user.id,
+            video=video,
+            user=request.user,
             updated__date=timezone.localdate(),
         )
 
@@ -1307,8 +1308,8 @@ def video_save_user_current_view_time(request, pk):
             #   the video file and sent the save-watch-time log entry as 0 seconds despite the video_detail.html
             #   having told the player to load to the currentTime of 500
             if diff_seconds < -120 and diff_time > timezone.timedelta(minutes=10):
-                UserPlaybackHistory.objects.create(
-                    video_id=pk, user_id=request.user.id, seconds=seconds, playlist_id=request.POST.get("playlist")
+                obj = UserPlaybackHistory.objects.create(
+                    video=video, user=request.user, seconds=seconds, playlist_id=request.POST.get("playlist")
                 )
             else:
                 obj.seconds = seconds
@@ -1316,9 +1317,19 @@ def video_save_user_current_view_time(request, pk):
                 obj.save()
 
         except UserPlaybackHistory.DoesNotExist:
-            UserPlaybackHistory.objects.create(
-                video_id=pk, user_id=request.user.id, seconds=seconds, playlist_id=request.POST.get("playlist")
+            obj = UserPlaybackHistory.objects.create(
+                video=video, user=request.user, seconds=seconds, playlist_id=request.POST.get("playlist")
             )
+
+        try:
+            if pid := request.GET.get("playlist"):
+                if request.user.is_authenticated and hasattr(request.user, "vidar_playback_completion_percentage"):
+                    users_selected_percent = video.duration * float(request.user.vidar_playback_completion_percentage)
+                    if obj.seconds > users_selected_percent:
+                        for p in video.playlists.filter(remove_video_from_playlist_on_watched=True, pk=pid):
+                            p.playlistitem_set.filter(video=video).delete()
+        except (AttributeError, ValueError, TypeError):
+            log.exception("Failure to check watched percentage to check if it should be removed from a playlist.")
 
     return HttpResponse("ok")
 
