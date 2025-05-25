@@ -795,6 +795,8 @@ def download_provider_video(
 
     video.save_download_kwargs(dl_kwargs)
 
+    signals.video_download_started.send(sender=Video, instance=video, dl_kwargs=dl_kwargs)
+
     try:
         info, used_dl_kwargs = interactor.video_download(
             url=video.url, local_url=video.get_absolute_url(), instance=video, **dl_kwargs
@@ -812,14 +814,18 @@ def download_provider_video(
             cache_folder=cache_folder,
             retries=self.request.retries,
         ):
+            signals.video_download_failed.send(sender=Video, instance=video, dl_kwargs=dl_kwargs, exc=exc)
             return
+
+        signals.video_download_retry.send(sender=Video, instance=video, dl_kwargs=dl_kwargs, exc=exc)
 
         # Retry in 1 minutes.
         raise self.retry(countdown=1 * 60)
 
-    except:  # noqa: E722
+    except Exception as exc:  # noqa: E722
         # All other exceptions needs to unlock the video.
         celery_helpers.object_lock_release(obj=video)
+        signals.video_download_failed.send(sender=Video, instance=video, dl_kwargs=dl_kwargs, exc=exc)
         raise
 
     video.set_details_from_yt_dlp_response(info)
@@ -869,6 +875,8 @@ def download_provider_video(
         download_finished=timezone.now(),
         task_source=task_source,
     )
+
+    signals.video_download_finished.send(sender=Video, instance=video, dl_kwargs=dl_kwargs)
 
     post_download_processing.apply_async(
         kwargs=dict(

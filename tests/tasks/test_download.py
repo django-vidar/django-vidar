@@ -226,3 +226,58 @@ class Download_provider_video_tests(TestCase):
         self.assertFalse(video.force_download)
         self.assertIn("downloads", video.system_notes)
         self.assertEqual("tests.test_download_sets_requested_by", video.download_requested_by)
+
+    @patch("vidar.signals.video_download_failed")
+    @patch("vidar.services.video_services.download_exception")
+    @patch("vidar.interactor.video_download")
+    def test_ytdlp_downloaderror_handled_no_retries_sends_failed_signal(self, mock_dl, mock_dl_exc, mock_signal):
+        mock_dl.side_effect = yt_dlp.DownloadError("Live event will be ready in x time.")
+        mock_dl_exc.return_value = True
+
+        video = models.Video.objects.create()
+        tasks.download_provider_video.delay(pk=video.pk).get()
+
+        mock_signal.send.assert_called_once()
+
+    @patch("vidar.signals.video_download_retry")
+    @patch("vidar.services.video_services.download_exception")
+    @patch("vidar.interactor.video_download")
+    def test_ytdlp_downloaderror_not_handled_has_retries_sends_retry_signal(self, mock_dl, mock_dl_exc, mock_signal):
+        mock_dl.side_effect = yt_dlp.DownloadError("Unknown error occurs")
+        mock_dl_exc.return_value = False
+
+        video = models.Video.objects.create()
+
+        with self.assertRaises(MaxRetriesExceededError):
+            tasks.download_provider_video.delay(pk=video.pk).get()
+
+        self.assertEqual(4, mock_signal.send.call_count)
+
+    @patch("vidar.signals.video_download_started")
+    @patch("vidar.signals.video_download_finished")
+    @patch("vidar.tasks.post_download_processing")
+    @patch("vidar.services.video_services.save_infojson_file")
+    @patch("vidar.services.ytdlp_services.is_video_at_highest_quality_from_dlp_response")
+    @patch("vidar.services.ytdlp_services.get_video_downloaded_quality_from_dlp_response")
+    @patch("vidar.interactor.video_download")
+    def test_download_sends_started_finished_signals(self, mock_dl, mock_quality_dld, mock_is_amq, mock_save_json, mock_proc, mock_signal_finished, mock_signal_started):
+        filepath = app_settings.MEDIA_CACHE / "test.mp4"
+        mock_quality_dld.return_value = 1080
+        mock_is_amq.return_value = True
+        mock_dl.return_value = {
+            "title": "Test Video",
+            "id": "video-id",
+            "description": "Video desc",
+            "format_id": "612",
+            "format_note": "1080p",
+            "requested_downloads": [{
+                "filepath": filepath,
+            },]
+        }, {}
+
+        video = models.Video.objects.create(quality=480)
+
+        tasks.download_provider_video.delay(pk=video.pk).get()
+
+        mock_signal_started.send.assert_called_once()
+        mock_signal_finished.send.assert_called_once()
