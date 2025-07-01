@@ -62,6 +62,11 @@ class VideoDetailViewTest(TestCase):
         resp = self.client.get(video.get_absolute_url())
         self.assertIn(f"album: '{video.metadata_album()}',".encode('utf8'), resp.content)
 
+    def test_non_existing_playlist_in_url_still_returns_video(self):
+        url = f"{self.url}?next=playlist&playlist=4"
+        resp = self.client.get(url)
+        self.assertEqual(200, resp.status_code)
+
 
 class VideoRequestViewTests(TestCase):
 

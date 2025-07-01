@@ -1126,7 +1126,10 @@ class VideoDetailView(PermissionRequiredMixin, DetailView):
         kwargs["highlights"] = self.object.highlights.filter(source=Highlight.Sources.USER)
         kwargs["chapters"] = self.object.highlights.filter(source=Highlight.Sources.CHAPTERS)
         if playlist_id := self.request.GET.get("playlist"):
-            kwargs["playlist"] = get_object_or_404(Playlist, id=playlist_id)
+            try:
+                kwargs["playlist"] = Playlist.objects.get(pk=playlist_id)
+            except Playlist.DoesNotExist:
+                pass
         if self.request.user.is_authenticated:
             time = timezone.now() - timezone.timedelta(days=14)
             qs = UserPlaybackHistory.objects.filter(user=self.request.user, video=self.object, inserted__gt=time)
