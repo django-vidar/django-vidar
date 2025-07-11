@@ -11,6 +11,7 @@ from functools import partial
 
 from django.db import transaction
 from django.db.models import Case, Count, F, Q, When
+from django.db.utils import DataError
 from django.utils import timezone
 
 import yt_dlp
@@ -1285,7 +1286,13 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
             log.info("video is blocked.")
             continue
 
-        video, video_created = Video.objects.get_or_create_from_ytdlp_response(video_data)
+        try:
+            video, video_created = Video.objects.get_or_create_from_ytdlp_response(video_data)
+        except DataError:
+            log.exception(
+                f"Failure to save video {video_data['id']} to system as a DataError occurred using {video_data=}"
+            )
+            continue
 
         if video_created:
             new_videos += 1
