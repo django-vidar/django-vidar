@@ -950,6 +950,18 @@ class VideoTests(TestCase):
         v1 = models.Video.objects.create()
         self.assertEqual("user assigned func for album", v1.metadata_album())
 
+    def test_set_details_from_yt_dlp_response_title_invalid_from_youtube(self):
+        video = models.Video.objects.create(
+            title="here",
+            description="old desc",
+            provider_object_id="abcdefgh",
+        )
+        video.set_details_from_yt_dlp_response(data={
+            "title": "youtube video #abcdefgh",
+        })
+
+        self.assertEqual("here", video.title)
+
 
 class VideoObjectsManagerTests(TestCase):
 

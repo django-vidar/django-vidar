@@ -876,10 +876,12 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
         if not self.title:
             if title := data.get("title"):
-                self.title = title
+                if title != f"youtube video #{self.provider_object_id}":
+                    self.title = title
         elif not self.title_locked:
             if title := data.get("title"):
-                self.title = title
+                if title != f"youtube video #{self.provider_object_id}":
+                    self.title = title
 
         if not self.description:
             if description := data.get("description"):
