@@ -1,7 +1,9 @@
+{% load playlist_tools %}
 <a href="{% url 'vidar:video-playlists' video.pk %}"><h5>Playlists:</h5></a>
 <ul class="list-group">
     {% for playlist_item in video.playlistitem_set.all %}
-        <a href="{{ playlist_item.playlist.get_absolute_url }}?highlight={{ video.pk }}" class="list-group-item list-group-item-action">
+        {% link_to_playlist_page playlist_item.playlist video as playlist_page_num %}
+        <a href="{{ playlist_item.playlist.get_absolute_url }}?highlight={{ video.pk }}{% if playlist_page_num > 1 %}&page={{ playlist_page_num }}{% endif %}" class="list-group-item list-group-item-action">
             {{ playlist_item.playlist.title }}
             {% if not playlist_item.download %}<i class="fa-solid fa-ban ml-2"></i>{% endif %}
         </a>
