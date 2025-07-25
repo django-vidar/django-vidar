@@ -1358,8 +1358,6 @@ def delete_channel(pk, keep_archived_videos=False, delete_playlists=True):
     deleted_videos = 0
     total_videos = channel.videos.count()
 
-    channel_services.delete_files(channel=channel)
-
     if delete_playlists:
         for playlist in channel.playlists.all():
             playlist_services.delete_playlist_videos(playlist=playlist)
@@ -1376,6 +1374,9 @@ def delete_channel(pk, keep_archived_videos=False, delete_playlists=True):
             continue
         video_services.delete_video(video=video)
         deleted_videos += 1
+
+    channel_services.delete_files(channel=channel)
+
     channel.delete()
     log.info(f"Deleted {deleted_videos}/{total_videos} videos from channel along with channel itself {channel}")
 

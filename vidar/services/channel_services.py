@@ -190,4 +190,7 @@ def delete_files(channel):
 
     for storage, directories in deletable_directories.items():
         for directory in directories:
-            storage.delete(directory)
+            try:
+                storage.delete(directory)
+            except OSError:
+                log.exception(f"Failure to delete channel {directory=}")

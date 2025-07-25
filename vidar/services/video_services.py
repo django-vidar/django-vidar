@@ -324,7 +324,10 @@ def delete_files(video, save=False):
 
     for storage, directories in deletable_directories.items():
         for directory in directories:
-            storage.delete(directory)
+            try:
+                storage.delete(directory)
+            except OSError:
+                log.exception(f"Failure to delete video {directory=}")
 
 
 def delete_video(video, keep_record=False):
