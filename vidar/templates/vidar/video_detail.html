@@ -756,6 +756,19 @@
         redirect_prev_url = "{{ previous_by_starred_value.get_absolute_url|default:"" }}";
         redirect_prev_name = "{{ previous_by_starred_value }}";
 
+    {% elif request.GET.next == 'unwatched' %}
+        {% previous_by_unwatched video request.GET.view as previous_by_unwatched_value %}
+        {% next_by_unwatched video request.GET.view as next_by_unwatched_value %}
+        url_params.append("next", "unwatched");
+
+        // next_by_unwatched
+        redirect_next_url = "{{ next_by_unwatched_value.get_absolute_url|default:"" }}";
+        redirect_next_name = "{{ next_by_unwatched_value }}";
+
+        // previous_by_unwatched
+        redirect_prev_url = "{{ previous_by_unwatched_value.get_absolute_url|default:"" }}";
+        redirect_prev_name = "{{ previous_by_unwatched_value }}";
+
     {% elif playlist %}
         {% previous_by_playlist playlist video request.GET.view as previous_by_playlist_value %}
         {% next_by_playlist playlist video request.GET.view as next_by_playlist_value %}

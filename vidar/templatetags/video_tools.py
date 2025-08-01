@@ -400,6 +400,94 @@ def next_by_starred(video: Video, view=""):
     )
 
 
+@register.simple_tag(takes_context=True)
+def previous_by_unwatched(context, video: Video, view=""):
+
+    if not video.channel_id:
+        return
+
+    channel = video.channel
+    qs = channel.videos.exclude(file="")
+
+    user = context["request"].user
+    if not user.is_authenticated or not hasattr(user, "vidar_playback_completion_percentage"):
+        return
+
+    watched_video_ids = list(
+        UserPlaybackHistory.objects.annotate(
+            percentage_of_video=F("video__duration") * float(user.vidar_playback_completion_percentage)
+        )
+        .filter(seconds__gte=F("percentage_of_video"), user=user, video__channel=video.channel)
+        .values_list("video_id", flat=True)
+    )
+    qs = qs.exclude(id__in=watched_video_ids)
+
+    if view == "audio":
+        return (
+            qs.order_by("-upload_date", "-inserted")
+            .filter(
+                upload_date__gte=video.upload_date,
+                inserted__gte=video.inserted,
+            )
+            .exclude(Q(pk=video.id) | Q(audio=""))
+            .last()
+        )
+
+    return (
+        qs.order_by("-upload_date", "-inserted")
+        .filter(
+            upload_date__gte=video.upload_date,
+            inserted__gte=video.inserted,
+        )
+        .exclude(pk=video.id)
+        .last()
+    )
+
+
+@register.simple_tag(takes_context=True)
+def next_by_unwatched(context, video: Video, view=""):
+
+    if not video.channel_id:
+        return
+
+    channel = video.channel
+    qs = channel.videos.exclude(file="")
+
+    user = context["request"].user
+    if not user.is_authenticated or not hasattr(user, "vidar_playback_completion_percentage"):
+        return
+
+    watched_video_ids = list(
+        UserPlaybackHistory.objects.annotate(
+            percentage_of_video=F("video__duration") * float(user.vidar_playback_completion_percentage)
+        )
+        .filter(seconds__gte=F("percentage_of_video"), user=user, video__channel=video.channel)
+        .values_list("video_id", flat=True)
+    )
+    qs = qs.exclude(id__in=watched_video_ids)
+
+    if view == "audio":
+        return (
+            qs.order_by("-upload_date", "-inserted")
+            .filter(
+                upload_date__lte=video.upload_date,
+                inserted__lte=video.inserted,
+            )
+            .exclude(Q(pk=video.id) | Q(audio=""))
+            .first()
+        )
+
+    return (
+        qs.order_by("-upload_date", "-inserted")
+        .filter(
+            upload_date__lte=video.upload_date,
+            inserted__lte=video.inserted,
+        )
+        .exclude(pk=video.id)
+        .first()
+    )
+
+
 @register.simple_tag
 def is_on_watch_later(video: Video, user):
     playlist = Playlist.objects.get_user_watch_later(user=user)

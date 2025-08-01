@@ -106,7 +106,7 @@
                             </div>
                             <div class="col-lg-8 col-md-8 col-12">
                                 {% if video.file and perms.vidar.play_videos %}
-                                    <a href="{{ video.get_absolute_url }}">{{ video.title }}</a>
+                                    <a href="{{ video.get_absolute_url }}{% if "unwatched" in request.GET %}?next=unwatched{% endif %}">{{ video.title }}</a>
                                 {% elif perms.vidar.change_channel and perms.vidar.add_video %}
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" value="{{ video.pk }}" name="video-{{ video.pk }}" id="video-{{ video.pk }}">

@@ -30,6 +30,7 @@
                         <a href="{{ video.get_absolute_url }}{% if not request.GET.q %}?next={% spaceless %}
                                 {% if 'downloaded' in request.get_full_path %}downloaded
                                 {% elif 'starred' in request.get_full_path %}starred
+                                {% elif 'unwatched' in request.get_full_path %}unwatched
                                 {% else %}uploaded{% endif %}{% endspaceless %}{% endif %}">
                             {{ video|truncatechars:70 }}
                         </a>
@@ -44,6 +45,7 @@
                         (<a href="{{ video.get_absolute_url }}?view=audio{% if not request.GET.q %}&next={% spaceless %}
                                 {% if 'downloaded' in request.get_full_path %}downloaded
                                 {% elif 'starred' in request.get_full_path %}starred
+                                {% elif 'unwatched' in request.get_full_path %}unwatched
                                 {% else %}uploaded{% endif %}{% endspaceless %}{% endif %}">Audio</a>)
                     {% endif %}
                     </div>

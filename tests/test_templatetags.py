@@ -1044,6 +1044,71 @@ class TemplateTagsVideoToolsWithCustomUserFieldsTests(TestCase):
         output = video_tools.user_watched_video(context=context, video=video1)
         self.assertTrue(output, "User fully watch video at 96%")
 
+    def test_next_and_previous_by_unwatched(self):
+        channel = models.Channel.objects.create(name='Test Channel')
+
+        video1 = models.Video.objects.create(title='video 1', channel=channel, upload_date='2025-01-01', duration=100, file='test')
+        video2 = models.Video.objects.create(title='video 2', channel=channel, upload_date='2025-01-02', duration=100, file='test')
+        video3 = models.Video.objects.create(title='video 3', channel=channel, upload_date='2025-01-03', duration=100, file='test')
+        video4 = models.Video.objects.create(title='video 4', channel=channel, upload_date='2025-01-04', duration=100, file='test')
+        video5 = models.Video.objects.create(title='video 5', channel=channel, upload_date='2025-01-05', duration=100, file='test')
+        video6 = models.Video.objects.create(title='video 6', channel=channel, upload_date='2025-01-06', duration=100)
+
+        class Req:
+            user = UserModel.objects.create(
+                username='test',
+                vidar_playback_completion_percentage='0.50',
+            )
+
+        context = {"request": Req()}
+
+        models.UserPlaybackHistory.objects.create(video=video3, user=Req.user, seconds=90)
+
+        self.assertEqual(video2, video_tools.previous_by_unwatched(context, video1))
+        self.assertEqual(video4, video_tools.previous_by_unwatched(context, video2))
+        self.assertEqual(video5, video_tools.previous_by_unwatched(context, video4))
+        self.assertIsNone(video_tools.previous_by_unwatched(context, video5))
+
+        self.assertIsNone(video_tools.next_by_unwatched(context, video1))
+        self.assertEqual(video1, video_tools.next_by_unwatched(context, video2))
+        self.assertEqual(video2, video_tools.next_by_unwatched(context, video4))
+        self.assertEqual(video4, video_tools.next_by_unwatched(context, video5))
+
+    def test_next_and_previous_by_unwatched_audio(self):
+        channel = models.Channel.objects.create(name='Test Channel')
+
+        video1 = models.Video.objects.create(title='video 1', channel=channel, upload_date='2025-01-01', duration=100, file='test')
+        video2 = models.Video.objects.create(title='video 2', channel=channel, upload_date='2025-01-02', duration=100, file='test', audio="test")
+        video3 = models.Video.objects.create(title='video 3', channel=channel, upload_date='2025-01-03', duration=100, file='test', audio="test")
+        video4 = models.Video.objects.create(title='video 4', channel=channel, upload_date='2025-01-04', duration=100, file='test', audio="test")
+        video5 = models.Video.objects.create(title='video 5', channel=channel, upload_date='2025-01-05', duration=100, file='test')
+        video6 = models.Video.objects.create(title='video 6', channel=channel, upload_date='2025-01-06', duration=100)
+
+        class Req:
+            user = UserModel.objects.create(
+                username='test',
+                vidar_playback_completion_percentage='0.50',
+            )
+
+        context = {"request": Req()}
+
+        models.UserPlaybackHistory.objects.create(video=video3, user=Req.user, seconds=90)
+
+        self.assertEqual(video2, video_tools.previous_by_unwatched(context, video1, "audio"))
+        self.assertEqual(video4, video_tools.previous_by_unwatched(context, video2, "audio"))
+        self.assertIsNone(video_tools.previous_by_unwatched(context, video4, "audio"))
+
+        self.assertIsNone(video_tools.next_by_unwatched(context, video2, "audio"))
+        self.assertEqual(video2, video_tools.next_by_unwatched(context, video4, "audio"))
+        self.assertEqual(video4, video_tools.next_by_unwatched(context, video5, "audio"))
+        self.assertEqual(video4, video_tools.next_by_unwatched(context, video6, "audio"))
+
+    def test_next_and_previous_by_unwatched_returns_none_without_channel(self):
+        video = models.Video.objects.create(title='video 6', upload_date='2025-01-06', duration=100)
+
+        self.assertIsNone(video_tools.previous_by_unwatched(None, video))
+        self.assertIsNone(video_tools.next_by_unwatched(None, video))
+
 
 class PaginationHelperTests(TestCase):
 
