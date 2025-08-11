@@ -114,7 +114,8 @@ class PlaylistAdderForm(forms.ModelForm):
             'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'monthly\')">monthly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\')">bi-yearly</a> '
-            'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> ',
+            'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'clear\')">clear</a> ',
         }
 
     def __init__(self, *args, **kwargs):
@@ -172,7 +173,8 @@ class PlaylistEditForm(forms.ModelForm):
             'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'monthly\')">monthly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\')">bi-yearly</a> '
-            'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> ',
+            'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'clear\')">clear</a> ',
         }
 
     def __init__(self, *args, **kwargs):
@@ -379,7 +381,8 @@ class ChannelSubGeneralOptionsForm(forms.ModelForm):
             'or <a href="javascript:;" onclick="assign_crontab(\'weekly\')">weekly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'monthly\')">monthly</a> '
             'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\')">bi-yearly</a> '
-            'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> ',
+            'or <a href="javascript:;" onclick="assign_crontab(\'yearly\')">yearly</a> '
+            'or <a href="javascript:;" onclick="assign_crontab(\'clear\')">clear</a> ',
         }
         widgets = {
             "title_forces": forms.Textarea(attrs={"rows": 2}),
@@ -714,6 +717,7 @@ class BulkChannelForm(forms.ModelForm):
             f'or <a href="javascript:;" onclick="assign_crontab(\'monthly\', {cid})">monthly</a> '
             f'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\', {cid})">bi-yearly</a> '
             f'or <a href="javascript:;" onclick="assign_crontab(\'yearly\', {cid})">yearly</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'clear\', {cid})">clear</a> '
         )
 
         self.fields["scanner_crontab"].widget.attrs["class"] = f"form-control channel-{cid}"
@@ -738,6 +742,7 @@ class BulkPlaylistForm(forms.ModelForm):
             f'or <a href="javascript:;" onclick="assign_crontab(\'monthly\', {pid})">monthly</a> '
             f'or <a href="javascript:;" onclick="assign_crontab(\'biyearly\', {pid})">bi-yearly</a> '
             f'or <a href="javascript:;" onclick="assign_crontab(\'yearly\', {pid})">yearly</a> '
+            f'or <a href="javascript:;" onclick="assign_crontab(\'clear\', {pid})">clear</a> '
         )
 
         self.fields["crontab"].widget.attrs["class"] = f"form-control playlist-{pid}"

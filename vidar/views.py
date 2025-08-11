@@ -756,6 +756,9 @@ def generate_crontab(request):
     elif request.GET.get("type") == "every_other_day":
         return HttpResponse(crontab_services.generate_every_other_day(hour=hours))
 
+    elif request.GET.get("type") == "clear":
+        return HttpResponse("")
+
     return HttpResponse(crontab_services.generate_daily(hour=hours))
 
 

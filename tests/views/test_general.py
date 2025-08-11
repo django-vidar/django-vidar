@@ -189,6 +189,11 @@ class Generate_crontab_tests(TestCase):
             resp = self.client.get(self.make_url(type="hourly"))
             self.assertRegex(resp.content, br'^(0|10|20|30|40|50) 6-22/4 \* \* \*$')
 
+    def test_clear(self):
+        resp = self.client.get(self.make_url(type="clear"))
+        self.assertEqual(200, resp.status_code)
+        self.assertFalse(resp.content)
+
 
 class GeneralUtilitiesViewTests(TestCase):
 
