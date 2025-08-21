@@ -28,7 +28,7 @@
                         {% if subbed_playlist %}
                             <strong><a href="{{ subbed_playlist.get_absolute_url }}">View Locally</a></strong>
                         {% elif perms.vidar.add_playlist %}
-                            <a href="{% url 'vidar:playlist-create' %}?youtube_id={{ playlist.id|urlencode }}">Subscribe</a>
+                            <a href="{% url 'vidar:playlist-create' %}?youtube_id={{ playlist.id|urlencode }}&channel={{ channel.pk }}">Subscribe</a>
                         {% endif %}
                     </td>
                 </tr>

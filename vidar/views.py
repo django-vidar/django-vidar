@@ -1863,8 +1863,12 @@ class PlaylistCreateView(PermissionRequiredMixin, CreateView):
 
     def get_initial(self):
         youtube_id = self.request.GET.get("youtube_id", self.provider_id) or ""
+        channel = None
+        if cid := self.request.GET.get("channel"):
+            channel = get_object_or_404(Channel, pk=cid)
         return {
             "provider_object_id": f"https://www.youtube.com/playlist?list={youtube_id}",
+            "channel": channel,
         }
 
     def form_valid(self, form):

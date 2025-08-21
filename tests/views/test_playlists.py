@@ -307,6 +307,13 @@ class PlaylistCreateViewTests(TestCase):
         self.assertEqual(302, resp.status_code)
         self.assertEqual(playlist.get_absolute_url(), resp.url)
 
+    def test_channel_id_in_querystring_is_copied_to_initial(self):
+        channel = models.Channel.objects.create()
+        resp = self.client.get(self.url + f"?channel={channel.pk}")
+        form = resp.context_data['form']
+        self.assertIn("channel", form.initial)
+        self.assertEqual(channel, form.initial["channel"])
+
 
 class PlaylistEditViewTests(TestCase):
 
