@@ -21,7 +21,7 @@ from django_celery_results.models import TaskResult
 
 from vidar import app_settings, helpers, interactor, oneoffs, renamers, signals, utils
 from vidar.exceptions import FileStorageBackendHasNoMoveError
-from vidar.helpers import celery_helpers, channel_helpers, file_helpers, statistics_helpers
+from vidar.helpers import celery_helpers, channel_helpers, file_helpers, statistics_helpers, video_helpers
 from vidar.models import Channel, Comment, Playlist, PlaylistItem, Video
 from vidar.services import (
     channel_services,
@@ -953,10 +953,16 @@ def write_file_to_storage(filepath, pk, field_name):
         log.debug(f"after delete {video.audio}")
 
         if app_settings.MEDIA_HARDLINK:
+
+            upload_to = video_helpers.upload_to_file
+            if field_name == "audio":
+                upload_to = video_helpers.upload_to_audio
+
             new_full_filepath, new_storage_path = video_services.generate_filepaths_for_storage(
                 video=video,
                 ext=ext,
                 ensure_new_dir_exists=True,
+                upload_to=upload_to,
             )
             try:
                 log.info(f'Hard linking "{filepath=}" to "{new_full_filepath=}"')
