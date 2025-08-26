@@ -11,7 +11,7 @@ from vidar.templatetags.vidar_utils import smooth_timedelta
 log = logging.getLogger(__name__)
 
 
-def send_message(message, title=None):
+def _send_gotify_message(message, title=None):
     """
     Gotify message with priority >= 5
 
@@ -25,31 +25,50 @@ def send_message(message, title=None):
         For "nice to know" information
 
     """
+    data = {"message": message, "priority": app_settings.GOTIFY_PRIORITY}
+    if title:
+        data["title"] = title
+    try:
+        return requests.post(
+            f"{app_settings.GOTIFY_URL}/message?token={app_settings.GOTIFY_TOKEN}",
+            json=data,
+            verify=app_settings.GOTIFY_URL_VERIFY,
+        )
+    except requests.exceptions.RequestException:
+        log.exception("Failed to send gotify notification")
+
+
+def _send_discord_message(message, title=None):
+    if title:
+        message = f"{title}\n{message}"
+    try:
+        return requests.post(
+            app_settings.DISCORD_URL,
+            json={
+                "content": message,
+            },
+        )
+    except requests.exceptions.RequestException:
+        log.exception("Failed to send discord notification")
+
+
+def send_message(message, title=None):
 
     if not app_settings.NOTIFICATIONS_SEND:
         return
 
-    url_base = app_settings.GOTIFY_URL
-    if not url_base:
-        return
-
-    data = {
-        "message": message,
-        "priority": app_settings.GOTIFY_PRIORITY,
-    }
-
     if title:
-        if pt := app_settings.GOTIFY_TITLE_PREFIX:
+        if pt := app_settings.NOTIFICATIONS_TITLE_PREFIX:
             title = f"{pt}{title}"
-        data["title"] = title
 
-    token = app_settings.GOTIFY_TOKEN
-    verify = app_settings.GOTIFY_URL_VERIFY
+    messages = []
+    if app_settings.GOTIFY_URL:
+        messages.append(_send_gotify_message(message=message, title=title))
+    if app_settings.DISCORD_URL:
+        messages.append(_send_discord_message(message=message, title=title))
 
-    try:
-        return requests.post(f"{url_base}/message?token={token}", json=data, verify=verify)
-    except requests.exceptions.RequestException:
-        log.exception("Failed to send gotify notification")
+    if not messages:
+        log.info("Notification not sent, no servers configured.")
 
 
 def video_downloaded(video):

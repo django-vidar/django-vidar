@@ -211,6 +211,10 @@ class AppSettings(object):
         )
 
     @property
+    def DISCORD_URL(self):
+        return self._setting("DISCORD_URL", None)
+
+    @property
     def DOWNLOAD_SPEED_RATE_LIMIT(self):
         return self._setting(
             "DOWNLOAD_SPEED_RATE_LIMIT",
@@ -226,10 +230,6 @@ class AppSettings(object):
     @property
     def GOTIFY_PRIORITY(self):
         return self._setting("GOTIFY_PRIORITY", 5)
-
-    @property
-    def GOTIFY_TITLE_PREFIX(self):
-        return self._setting("GOTIFY_TITLE_PREFIX", "")
 
     @property
     def GOTIFY_TOKEN(self):
@@ -322,6 +322,10 @@ class AppSettings(object):
     @property
     def NOTIFICATIONS_SEND(self):
         return self._setting("NOTIFICATIONS_SEND", True)
+
+    @property
+    def NOTIFICATIONS_TITLE_PREFIX(self):
+        return self._setting("NOTIFICATIONS_TITLE_PREFIX", "")
 
     @property
     def NOTIFICATIONS_VIDEO_DOWNLOADED(self):

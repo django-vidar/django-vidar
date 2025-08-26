@@ -3327,17 +3327,30 @@ class NotificationServicesTests(TestCase):
         self.assertIsNone(notification_services.send_message("message", "title"))
 
     @patch("requests.post")
-    @override_settings(VIDAR_GOTIFY_URL="here", VIDAR_GOTIFY_TITLE_PREFIX="[prefix] ")
+    @override_settings(VIDAR_GOTIFY_URL="here")
     def test_send_message_works(self, mock_post):
         notification_services.send_message("test message", "test title")
         mock_post.assert_called_once()
 
     @patch("requests.post")
-    @override_settings(VIDAR_GOTIFY_URL="here", VIDAR_GOTIFY_TITLE_PREFIX="[prefix] ")
+    @override_settings(VIDAR_GOTIFY_URL="here")
     def test_send_message_requests_exception_not_raise(self, mock_post):
         mock_post.side_effect = requests.exceptions.RequestException()
-        notification_services.send_message("test message", "test title")
+        try:
+            notification_services.send_message("test message", "test title")
+        except requests.exceptions.RequestException:
+            self.fail("Notifications should not raise a requests based exception.")
         mock_post.assert_called_once()
+
+    @patch("requests.post")
+    @override_settings(VIDAR_GOTIFY_URL="here", VIDAR_NOTIFICATIONS_TITLE_PREFIX="[prefix] ")
+    def test_send_message_prefixes_title(self, mock_post):
+        notification_services.send_message("test message", "test title")
+        mock_post.assert_called_once_with("here/message?token=None", json={
+            "message": "test message",
+            "priority": 5,
+            "title": "[prefix] test title"
+        }, verify=True)
 
     @patch("requests.post")
     @override_settings(VIDAR_NOTIFICATIONS_VIDEO_DOWNLOADED=True)

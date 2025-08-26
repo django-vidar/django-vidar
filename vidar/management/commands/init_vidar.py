@@ -144,9 +144,9 @@ class Command(BaseCommand):
             app_settings.CRONTAB_CHECK_INTERVAL_MAX_IN_DAYS
             app_settings.DELETE_DOWNLOAD_CACHE
             app_settings.DEFAULT_QUALITY
+            app_settings.DISCORD_URL
             app_settings.DOWNLOAD_SPEED_RATE_LIMIT
             app_settings.GOTIFY_PRIORITY
-            app_settings.GOTIFY_TITLE_PREFIX
             app_settings.GOTIFY_TOKEN
             app_settings.GOTIFY_URL
             app_settings.GOTIFY_URL_VERIFY
@@ -167,6 +167,7 @@ class Command(BaseCommand):
             app_settings.NOTIFICATIONS_CHANNEL_STATUS_CHANGED
             app_settings.NOTIFICATIONS_CONVERT_TO_MP4_COMPLETED
             app_settings.NOTIFICATIONS_SEND
+            app_settings.NOTIFICATIONS_TITLE_PREFIX
             app_settings.NOTIFICATIONS_VIDEO_DOWNLOADED
             app_settings.NOTIFICATIONS_FULL_ARCHIVING_COMPLETED
             app_settings.NOTIFICATIONS_FULL_ARCHIVING_STARTED

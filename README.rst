@@ -337,6 +337,8 @@ settings.py and will bypass the settings getter system.
     Used during the creation of channels and playlists as a default option.
     Also becomes the default on the manual video download form.
 
+``VIDAR_DISCORD_URL`` (default: ``None``)
+
 ``VIDAR_DOWNLOAD_SPEED_RATE_LIMIT`` (default: ``5000``)
     See `yt-dlp Download Option <https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#download-options>`_ ``--limit-rate``
 
@@ -362,10 +364,6 @@ settings.py and will bypass the settings getter system.
         I see notification on PC, if I happen to be on computer
         I see notification, if I manually open gotify on Android
         For "nice to know" information
-
-``VIDAR_GOTIFY_TITLE_PREFIX`` (default: ``""``)
-    If you want the notification titles to be prepended with something like "Vidar: Video downloaded ..."
-    You would then supply ``VIDAR_GOTIFY_TITLE_PREFIX = "Vidar: "``
 
 ``VIDAR_GOTIFY_TOKEN`` (default: ``None``)
 
@@ -416,6 +414,10 @@ settings.py and will bypass the settings getter system.
 ``VIDAR_NOTIFICATIONS_CONVERT_TO_MP4_COMPLETED`` (default: ``True``)
 
 ``VIDAR_NOTIFICATIONS_SEND`` (default: ``True``)
+
+``VIDAR_NOTIFICATIONS_TITLE_PREFIX`` (default: ``""``)
+    If you want the notification titles to be prepended with something like "Vidar: Video downloaded ..."
+    You would then supply ``VIDAR_NOTIFICATIONS_TITLE_PREFIX = "Vidar: "``
 
 ``VIDAR_NOTIFICATIONS_VIDEO_DOWNLOADED`` (default: ``True``)
 
