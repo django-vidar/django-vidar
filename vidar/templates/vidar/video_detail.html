@@ -393,14 +393,22 @@
                         <div class="form-group">
                             <label for="highlight_start_point">Start Point</label>
                             <input type="text" placeholder="Start Point" class="form-control" name="point" id="highlight_start_point">
-                            <small class="form-text text-muted">Seconds or HH:MM:SS within video
-                            <a href="javascript:;" onclick="copyPlayerCurrentTimeToStartPoint();" tabindex="-1">copy</a></small>
+                            <small class="form-text text-muted">
+                                Seconds or HH:MM:SS within video
+                                <a href="javascript:;" onclick="highlightCopyPlayerCurrentTimeToStartPoint();" tabindex="-1">copy</a>
+                                <a href="javascript:;" onclick="highlightIncDecPoint('#highlight_start_point', 5);" class="mx-2"><i class="fa-solid fa-plus mr-1"></i>5s</a>
+                                <a href="javascript:;" onclick="highlightIncDecPoint('#highlight_start_point', -5);" class="mx-2"><i class="fa-solid fa-minus mr-1"></i>5s</a>
+                            </small>
                         </div>
                         <div class="form-group">
                             <label for="highlight_end_point">End Point</label>
                             <input type="text" placeholder="End Point (Optional)" name="end_point" id="highlight_end_point" class="form-control">
-                            <small class="form-text text-muted">Seconds or HH:MM:SS within video
-                            <a href="javascript:;" onclick="copyPlayerCurrentTimeToEndPoint();" tabindex="-1">copy</a></small>
+                            <small class="form-text text-muted">
+                                Seconds or HH:MM:SS within video
+                                <a href="javascript:;" onclick="highlightCopyPlayerCurrentTimeToEndPoint();" tabindex="-1">copy</a>
+                                <a href="javascript:;" onclick="highlightIncDecPoint('#highlight_end_point', 5);" class="mx-2"><i class="fa-solid fa-plus mr-1"></i>5s</a>
+                                <a href="javascript:;" onclick="highlightIncDecPoint('#highlight_end_point', -5);" class="mx-2"><i class="fa-solid fa-minus mr-1"></i>5s</a>
+                            </small>
                         </div>
 
                         <div class="form-group">
@@ -512,10 +520,10 @@
         if (player !== null) {
             if (start_point_elem !== null && start_point_elem.value === "") {
                 console.log('Setting start_point');
-                copyPlayerCurrentTimeToStartPoint();
+                highlightCopyPlayerCurrentTimeToStartPoint();
             } else if (end_point_elem !== null && end_point_elem.value === "") {
                 console.log('Setting end_point');
-                copyPlayerCurrentTimeToEndPoint();
+                highlightCopyPlayerCurrentTimeToEndPoint();
             }
         }
     });
@@ -525,10 +533,21 @@
             // https://stackoverflow.com/questions/1322732/convert-seconds-to-hh-mm-ss-with-javascript
             return new Date(seconds * 1000).toISOString().slice(11, 19);
         }
-        return "";
+        return number;
     }
 
-    function copyPlayerCurrentTimeToStartPoint() {
+    function convert_hhmmss_to_seconds(hhmmss) {
+        if (typeof hhmmss == "string") {
+            // https://stackoverflow.com/questions/9640266/convert-hhmmss-string-to-seconds-only-in-javascript
+            var a = hhmmss.split(':'); // split it at the colons
+
+            // minutes are worth 60 seconds. Hours are worth 60 minutes.
+            return (+a[0]) * 60 * 60 + (+a[1]) * 60 + (+a[2]);
+        }
+        return 0;
+    }
+
+    function highlightCopyPlayerCurrentTimeToStartPoint() {
         let start_point_elem = document.querySelector('#highlight_start_point');
         if (player !== null && start_point_elem !== null) {
             let player_current_time_value = parseInt(player.currentTime) - 1;
@@ -540,7 +559,7 @@
         }
     }
 
-    function copyPlayerCurrentTimeToEndPoint() {
+    function highlightCopyPlayerCurrentTimeToEndPoint() {
         let start_point_elem = document.querySelector('#highlight_start_point');
         let end_point_elem = document.querySelector('#highlight_end_point');
         if (player !== null && end_point_elem !== null) {
@@ -561,6 +580,23 @@
 
             end_point_elem.value = convert_seconds_to_hhmmss(player_current_time_value);
             end_point_elem.dataset.seconds = player_current_time_value.toString();
+        }
+    }
+
+    function highlightIncDecPoint(element_selector, seconds) {
+        let point_elem = document.querySelector(element_selector);
+        if (player !== null && point_elem !== null) {
+            let current_time_value = point_elem.value;
+            if (current_time_value.indexOf(":") > 0) {
+                current_time_value = convert_hhmmss_to_seconds(current_time_value);
+            } else {
+                current_time_value = parseInt(current_time_value);
+            }
+            if (isNaN(current_time_value)) { current_time_value = 0; }
+            current_time_value += seconds;
+            if (current_time_value < 0) { current_time_value = 0; }
+            point_elem.value = convert_seconds_to_hhmmss(current_time_value);
+            point_elem.dataset.seconds = current_time_value.toString();
         }
     }
     {% endif %}
