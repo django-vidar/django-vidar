@@ -291,6 +291,10 @@
                             </a>
                         </td>
                     </tr>
+                    <tr>
+                        <td>Fully Indexed</td>
+                        <td><i class="fa fa-lg {{ channel.fully_indexed|yesno:"fa-check,fa-xmark" }}"></i></td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -341,6 +345,10 @@
                                 <i class="fa fa-lg {{ channel.delete_shorts_after_watching|yesno:"fa-check,fa-xmark" }}"></i>
                             </a>
                         </td>
+                    </tr>
+                    <tr>
+                        <td>Fully Indexed</td>
+                        <td><i class="fa fa-lg {{ channel.fully_indexed_shorts|yesno:"fa-check,fa-xmark" }}"></i></td>
                     </tr>
                 </tbody>
             </table>
@@ -404,6 +412,10 @@
                                 <i class="fa fa-lg {{ channel.delete_livestreams_after_watching|yesno:"fa-check,fa-xmark" }}"></i>
                             </a>
                         </td>
+                    </tr>
+                    <tr>
+                        <td>Fully Indexed</td>
+                        <td><i class="fa fa-lg {{ channel.fully_indexed_livestreams|yesno:"fa-check,fa-xmark" }}"></i></td>
                     </tr>
                 </tbody>
             </table>
