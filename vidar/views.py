@@ -2127,6 +2127,7 @@ class WatchHistoryListView(PermissionRequiredMixin, RestrictQuerySetToAuthorized
 
     def get_context_data(self, *args, **kwargs):
         kwargs = super().get_context_data(*args, **kwargs)
+        kwargs["total_duration_watched"] = self.get_queryset().aggregate(sumd=Sum("seconds"))["sumd"] or 0
         if cid := self.request.GET.get("channel"):
             kwargs["channel"] = get_object_or_404(Channel, pk=cid)
         if pid := self.request.GET.get("playlist"):
