@@ -1453,14 +1453,19 @@ class VideoRelatedVideosView(PermissionRequiredMixin, RequestBasedCustomQueryset
 
         self.object = self.get_object()  # type: Video
 
-        selected_video = Video.objects.get(pk=self.request.POST["related_id"])
+        if "related_id" in self.request.POST:
+            selected_video = Video.objects.get(pk=self.request.POST["related_id"])
 
-        if selected_video in self.object.related.all():
-            self.object.related.remove(selected_video)
-        else:
-            self.object.related.add(selected_video)
+            if selected_video in self.object.related.all():
+                self.object.related.remove(selected_video)
+            else:
+                self.object.related.add(selected_video)
 
-        return self.get(*args, **kwargs)
+        elif "rescan-description" in self.request.POST:
+
+            self.object.search_description_for_related_videos()
+
+        return redirect("vidar:video-related", pk=self.object.pk)
 
     def get_context_data(self, *args, **kwargs):
         kwargs = super().get_context_data(*args, **kwargs)

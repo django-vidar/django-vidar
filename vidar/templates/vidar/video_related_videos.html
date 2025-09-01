@@ -36,6 +36,10 @@
             <a href="?show-all" class="hidden">Show All</a>
             <a href="?related" class="btn btn-primary">Show Related Only</a>
 
+            <form method="post">{% csrf_token %}
+                <input type="submit" name="rescan-description" class="btn btn-info" value="Rescan Description">
+            </form>
+
         </div>
     </div>
 
