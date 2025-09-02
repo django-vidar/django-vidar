@@ -16,11 +16,11 @@
     </ul>
 
     <div class="row">
-        <div class="col">
+        <div class="col-lg-4 col-md-4 col-sm-12 text-lg-left text-md-left text-center">
             <h1><a href="{% url 'vidar:playlist-index' %}">{{ paginator.count }} Playlists</a></h1>
         </div>
 
-        <div class="col text-center">
+        <div class="col-lg-4 col-md-4 col-sm-12 text-center">
 
             <input type="text" name="q"
                 hx-get="{% url 'vidar:playlist-index' %}{% if request.GET.channel %}?channel={{ request.GET.channel }}{% endif %}"
@@ -34,7 +34,7 @@
 
         </div>
 
-        <div class="col-justify-right">
+        <div class="col-lg-4 col-md-4 col-sm-12 text-center text-lg-right text-md-right mt-2">
             {% if perms.vidar.add_playlist %}
                 <a href="{% url 'vidar:playlist-create' %}" class="btn btn-primary">New</a>
                 <a href="{% url 'vidar:playlist-create-custom' %}{% if request.GET.channel %}?channel={{ request.GET.channel }}{% endif %}" class="btn btn-primary">New Custom</a>
