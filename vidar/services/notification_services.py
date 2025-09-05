@@ -46,6 +46,7 @@ def _send_discord_message(message, title=None):
             app_settings.DISCORD_URL,
             json={
                 "content": message,
+                "username": "Vidar",
             },
         )
     except requests.exceptions.RequestException:
