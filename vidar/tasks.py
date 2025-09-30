@@ -849,8 +849,8 @@ def download_provider_video(
     if not automated_quality_upgrade:
         video.date_downloaded = timezone.now()
     video.download_errors.all().delete()
-    video.format_id = info["format_id"]
-    video.format_note = info["format_note"]
+    video.format_id = info.get("format_id", "")
+    video.format_note = info.get("format_note", "")
     video.force_download = False
 
     # requested_downloads will have multiple entries if multiple formats are requested.
