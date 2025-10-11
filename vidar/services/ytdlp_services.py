@@ -115,7 +115,8 @@ def get_comment_downloader_extractor_args(
 
 def convert_format_note_to_int(format_note):
     format_note_digits_only = "".join([x for x in format_note if x.isdigit()])
-    return int(format_note_digits_only)
+    if format_note_digits_only:
+        return int(format_note_digits_only)
 
 
 def get_displayable_video_quality_from_dlp_format(dlp_format):
@@ -163,7 +164,8 @@ def get_possible_qualities_from_dlp_formats(formats):
         if f.get("format_note"):
             format_note = get_displayable_video_quality_from_dlp_format(f)
             format_note_int = convert_format_note_to_int(format_note)
-            possible_formats.add(format_note_int)
+            if format_note_int is not None:
+                possible_formats.add(format_note_int)
     return sorted(possible_formats)
 
 

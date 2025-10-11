@@ -2820,6 +2820,9 @@ class YtdlpServicesDLPFormatsTest(SimpleTestCase):
         self.assertEqual(360, ytdlp_services.convert_format_note_to_int('360p'))
         self.assertEqual(36060, ytdlp_services.convert_format_note_to_int('360p60'))
 
+    def test_convert_format_note_to_int_bracketed_default_returns_none(self):
+        self.assertIsNone(ytdlp_services.convert_format_note_to_int('(default)'))
+
 
 class YtdlpServicesDLPResponseTest(SimpleTestCase):
 
