@@ -538,6 +538,23 @@ class PlaylistServicesTests(TestCase):
             call(video=v3, keep_record=False),
         ], any_order=True)
 
+    def test_delete_playlist_videos_defaults_channel_mirror_setting(self):
+        c = models.Channel.objects.create(
+            mirror_playlists=True,
+            mirror_playlists_hidden=True,
+            mirror_playlists_crontab="blah",
+            mirror_playlists_restrict=True,
+        )
+        p = models.Playlist.objects.create(channel=c)
+        playlist_services.delete_playlist(playlist=p)
+
+        c.refresh_from_db()
+
+        self.assertFalse(c.mirror_playlists)
+        self.assertFalse(c.mirror_playlists_hidden)
+        self.assertFalse(c.mirror_playlists_restrict)
+        self.assertFalse(c.mirror_playlists_crontab)
+
 
 class ChannelServicesTests(TestCase):
 

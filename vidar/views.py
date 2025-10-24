@@ -1941,20 +1941,16 @@ class PlaylistDeleteView(PermissionRequiredMixin, DeleteView):
     permission_required = ["vidar.delete_playlist"]
 
     def form_valid(self, form):
-
-        if form.cleaned_data["delete_videos"]:
-            total_videos = self.object.videos.count()
-
-            deleted_videos = playlist_services.delete_playlist_videos(playlist=self.object)
-
-            if deleted_videos:
-                messages.success(
-                    self.request,
-                    f"{deleted_videos}/{total_videos} videos deleted from the system. "
-                    f"Remaining videos were protected.",
-                )
-
-        return super().form_valid(form=form)
+        success_url = self.get_success_url()
+        deleted_videos_count = playlist_services.delete_playlist(
+            playlist=self.object, delete_videos=form.cleaned_data["delete_videos"]
+        )
+        if deleted_videos_count:
+            messages.success(
+                self.request,
+                f"{deleted_videos_count} videos deleted from the system. " f"Remaining videos were protected.",
+            )
+        return HttpResponseRedirect(success_url)
 
 
 class PlaylistScanView(PublicOrLoggedInUserMixin, DetailView):

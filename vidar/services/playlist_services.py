@@ -7,6 +7,32 @@ from vidar.services import video_services
 crontab_hours = [14, 15, 16, 17]
 
 
+def delete_playlist(playlist, delete_videos=False):
+
+    deleted_videos = None
+    if delete_videos:
+        deleted_videos = delete_playlist_videos(playlist=playlist)
+
+    if playlist.channel and playlist.channel.mirror_playlists:
+        channel = playlist.channel
+        channel.mirror_playlists = False
+        channel.mirror_playlists_hidden = False
+        channel.mirror_playlists_crontab = ""
+        channel.mirror_playlists_restrict = False
+        channel.save(
+            update_fields=[
+                "mirror_playlists",
+                "mirror_playlists_hidden",
+                "mirror_playlists_crontab",
+                "mirror_playlists_restrict",
+            ]
+        )
+
+    playlist.delete()
+
+    return deleted_videos
+
+
 def delete_playlist_videos(playlist):
 
     total_deleted = 0

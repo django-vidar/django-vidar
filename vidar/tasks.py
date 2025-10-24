@@ -1366,8 +1366,7 @@ def delete_channel(pk, keep_archived_videos=False, delete_playlists=True):
 
     if delete_playlists:
         for playlist in channel.playlists.all():
-            playlist_services.delete_playlist_videos(playlist=playlist)
-            playlist.delete()
+            playlist_services.delete_playlist(playlist=playlist, delete_videos=True)
 
     for video in channel.videos.all():
         if (keep_archived_videos and video.file) or video.playlists.exists():
