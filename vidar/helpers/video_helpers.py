@@ -60,25 +60,7 @@ def upload_to_infojson(instance, filename):
 
 
 def upload_to_audio(instance, filename):
-    root = None
-    if instance.channel_id:
-        root = schema_services.channel_directory_name(channel=instance.channel)
-    if not root:
-        root = "public"
-
-    path = pathlib.PurePosixPath(root)
-
-    path /= "audio"
-
-    if instance.upload_date:
-        year = instance.upload_date.year
-    else:
-        year = timezone.localdate().year
-
-    path /= str(year)
-    path /= filename
-
-    return path
+    return video_upload_to_side_by_side(instance, filename)
 
 
 def upload_to_thumbnail(instance, filename):

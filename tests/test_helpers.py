@@ -371,12 +371,12 @@ class VideoHelpersTests(TestCase):
     def test_upload_to_audio_without_channel_with_upload_date(self):
         video = models.Video.objects.create(title="test video 1", upload_date=date_to_aware_date('2023-01-01'))
         output = video_helpers.upload_to_audio(instance=video, filename="test.mp3")
-        self.assertEqual('public/audio/2023/test.mp3', str(output))
+        self.assertEqual('public/2023/test.mp3', str(output))
 
     def test_upload_to_audio_without_channel_nor_upload_date(self):
         video = models.Video.objects.create(title="test video 1")
         output = video_helpers.upload_to_audio(instance=video, filename="test.mp3")
-        self.assertEqual(f'public/audio/{timezone.now().year}/test.mp3', str(output))
+        self.assertEqual(f'public/{timezone.now().year}/test.mp3', str(output))
 
     def test_upload_to_audio_with_channel_with_upload_date(self):
         channel = models.Channel.objects.create(name="Test Channel")
@@ -386,13 +386,13 @@ class VideoHelpersTests(TestCase):
             upload_date=date_to_aware_date('2023-01-01'),
         )
         output = video_helpers.upload_to_audio(instance=video, filename="test.mp3")
-        self.assertEqual('Test Channel/audio/2023/test.mp3', str(output))
+        self.assertEqual('Test Channel/2023/2023-01-01 - test video 1 []/test.mp3', str(output))
 
     def test_upload_to_audio_with_channel_nor_upload_date(self):
         channel = models.Channel.objects.create(name="Test Channel")
         video = models.Video.objects.create(title="test video 1", channel=channel)
         output = video_helpers.upload_to_audio(instance=video, filename="test.mp3")
-        self.assertEqual(f'Test Channel/audio/{timezone.now().year}/test.mp3', str(output))
+        self.assertEqual(f'Test Channel/{timezone.now().year}/- test video 1 []/test.mp3', str(output))
 
 
 class ExtraFileHelpersTests(TestCase):
