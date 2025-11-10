@@ -59,4 +59,9 @@ urlpatterns = [
         views.TestModelFieldFilteringMixinOnlyFieldsView.as_view(),
         name="mixin-TestModelFieldFilteringMixinOnlyFieldsView",
     ),
+    path(
+        "mixin-TestViewWatchLaterContextDataMixin/",
+        views.TestViewWatchLaterContextDataMixin.as_view(),
+        name="mixin-TestViewWatchLaterContextDataMixin",
+    ),
 ]

@@ -5,6 +5,8 @@ from django.core.exceptions import FieldDoesNotExist, FieldError
 from django.db.models import Q
 from django.shortcuts import Http404, HttpResponse, get_object_or_404
 
+from vidar.models import Playlist
+
 
 log = logging.getLogger(__name__)
 
@@ -214,3 +216,12 @@ class FieldFilteringMixin:
         if excludings:
             qs = qs.exclude(**excludings)
         return qs
+
+
+class WatchLaterContextDataMixin:
+    def get_context_data(self, **kwargs):
+        kwargs = super().get_context_data(**kwargs)
+        if self.request.user.is_authenticated:
+            wlp = Playlist.objects.get_user_watch_later(user=self.request.user)
+            kwargs["watch_later_videos"] = wlp.videos.values_list("pk", flat=True)
+        return kwargs

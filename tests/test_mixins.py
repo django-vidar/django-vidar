@@ -215,3 +215,27 @@ class HTMXIconBooleanSwapperViewMixinTests(TestCase):
         tm = TestModel.objects.create(boolean_field=True)
         resp = self.client.post(reverse('exampleapp:mixin-TestModelHTMXIconBooleanSwapperView-raises', args=[tm.pk]))
         self.assertEqual(404, resp.status_code)
+
+
+class WatchLaterContextDataMixinTests(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = UserModel.objects.create(username='test')
+        cls.tm1u = TestModel.objects.create(user=cls.user)
+        cls.tm2u = TestModel.objects.create(user=cls.user)
+        cls.tm3 = TestModel.objects.create()
+        cls.tm4 = TestModel.objects.create()
+
+    def test_unauthed_user_has_no_watch_later_videos_context_data(self):
+        resp = self.client.get(reverse('exampleapp:mixin-TestViewWatchLaterContextDataMixin'))
+        self.assertEqual(200, resp.status_code)
+
+        self.assertNotIn("watch_later_videos", resp.context_data)
+
+    def test_authed_user_has_watch_later_videos_context_data(self):
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse('exampleapp:mixin-TestViewWatchLaterContextDataMixin'))
+        self.assertEqual(200, resp.status_code)
+
+        self.assertIn("watch_later_videos", resp.context_data)

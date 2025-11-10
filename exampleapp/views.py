@@ -7,7 +7,8 @@ from vidar.mixins import (
     HTMXIconBooleanSwapper,
     PublicOrLoggedInUserMixin,
     RequestBasedQuerysetFilteringMixin,
-    RestrictQuerySetToAuthorizedUserMixin
+    RestrictQuerySetToAuthorizedUserMixin,
+    WatchLaterContextDataMixin,
 )
 
 
@@ -64,3 +65,7 @@ class TestModelFieldFilteringMixinSkippedFieldsView(FieldFilteringMixin, ListVie
 class TestModelFieldFilteringMixinOnlyFieldsView(FieldFilteringMixin, ListView):
     model = TestModel
     FILTERING_ONLY_FIELDS = ["search_field"]
+
+
+class TestViewWatchLaterContextDataMixin(WatchLaterContextDataMixin, ListView):
+    model = TestModel

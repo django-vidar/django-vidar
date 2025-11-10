@@ -27,6 +27,7 @@ from vidar.mixins import (
     RequestBasedQuerysetFilteringMixin,
     RestrictQuerySetToAuthorizedUserMixin,
     UseProviderObjectIdMatchingMixin,
+    WatchLaterContextDataMixin,
 )
 from vidar.models import (
     Channel,
@@ -220,7 +221,12 @@ class ChannelBooleanSwapper(
     permission_required = ["vidar.change_channel"]
 
 
-class ChannelDetailView(PermissionRequiredMixin, UseProviderObjectIdMatchingMixin, DetailView):
+class ChannelDetailView(
+    PermissionRequiredMixin,
+    UseProviderObjectIdMatchingMixin,
+    WatchLaterContextDataMixin,
+    DetailView,
+):
     model = Channel
     permission_required = ["vidar.view_channel"]
     paginate_by = 10
@@ -849,7 +855,13 @@ class ChannelVideosManagerView(PermissionRequiredMixin, UseProviderObjectIdMatch
         return kwargs
 
 
-class VideoListView(PermissionRequiredMixin, FieldFilteringMixin, RequestBasedQuerysetFilteringMixin, ListView):
+class VideoListView(
+    PermissionRequiredMixin,
+    FieldFilteringMixin,
+    RequestBasedQuerysetFilteringMixin,
+    WatchLaterContextDataMixin,
+    ListView,
+):
     model = Video
     permission_required = ["vidar.access_vidar"]
     paginate_by = 10
@@ -862,10 +874,6 @@ class VideoListView(PermissionRequiredMixin, FieldFilteringMixin, RequestBasedQu
 
     def get_context_data(self, *args, **kwargs):
         kwargs = super().get_context_data(*args, **kwargs)
-
-        if self.request.user.is_authenticated:
-            wlp = Playlist.objects.get_user_watch_later(user=self.request.user)
-            kwargs["watch_later_videos"] = wlp.videos.values_list("pk", flat=True)
 
         qs = self.get_queryset()
         kwargs["total_videos_count"] = qs.count()

@@ -1,0 +1,9 @@
+{% if video.file and perms.vidar.access_watch_later_playlist %}
+    <a href="javascript:;"
+       hx-get="{% url 'vidar:video-add-watch-later' video.id %}"
+       title="{% if video.pk in watch_later_videos %}Remove From{% else %}Add to{% endif %} Watch Later"
+       data-toggle="tooltip"
+    >
+        <i class="fa {% if video.pk in watch_later_videos %}fa-xl fa-minus{% else %}fa-2xl fa-plus{% endif %}"></i>
+    </a>
+{% endif %}
