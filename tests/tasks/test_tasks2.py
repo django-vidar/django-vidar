@@ -1121,6 +1121,67 @@ class Sync_playlist_data_tests(TestCase):
 
         mock_notif.assert_called_once()
 
+    @patch("vidar.services.notification_services.video_added_to_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_scan_history_increases(self, mock_inter, mock_notif):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [
+                {
+                    "uploader_id": "uploader-id",
+                    "channel_id": "channel-id",
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ],
+        }
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        self.assertFalse(playlist.scan_history.exists())
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        self.assertEqual(1, playlist.scan_history.count())
+        self.assertEqual(1, playlist.scan_history.first().videos_downloaded)
+
+    @patch("vidar.services.notification_services.video_added_to_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_scan_history_unchanged_on_existing_videos(self, mock_inter, mock_notif):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [
+                {
+                    "uploader_id": "uploader-id",
+                    "channel_id": "channel-id",
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ],
+        }
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        self.assertFalse(playlist.scan_history.exists())
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        self.assertEqual(1, playlist.scan_history.count())
+        self.assertEqual(1, playlist.scan_history.first().videos_downloaded)
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        self.assertEqual(2, playlist.scan_history.count())
+        self.assertEqual(0, playlist.scan_history.first().videos_downloaded)
+
     @patch("vidar.services.notification_services.video_readded_to_playlist")
     @patch("vidar.interactor.playlist_details")
     def test_video_was_missing_but_now_found_live_clears_flag(self, mock_inter, mock_notif):

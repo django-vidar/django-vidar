@@ -1227,6 +1227,8 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
 
     playlist = Playlist.objects.get(pk=pk)
 
+    playlist_scan_history = playlist.scan_history.create()
+
     msg_logger = partial(utils.OutputCapturer, callback_func=redis_services.playlist_indexing, playlist=playlist)
 
     dl_kwargs = ytdlp_services.get_ytdlp_args()
@@ -1352,7 +1354,8 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
                 pli.save()
                 notification_services.video_removed_from_playlist(video=video, playlist=playlist, removed=False)
 
-    playlist.scan_history.create(videos_downloaded=new_videos)
+    playlist_scan_history.videos_downloaded = new_videos
+    playlist_scan_history.save()
 
     return True
 
