@@ -124,7 +124,7 @@ class PlaylistAdderForm(forms.ModelForm):
 
     def clean_provider_object_id(self):
         data = self.cleaned_data.get("provider_object_id")
-        video_id = utils.get_video_id_from_url(data, playlist=True)
+        video_id = utils.get_playlist_id_from_url(data)
 
         if Playlist.objects.filter(Q(provider_object_id=video_id) | Q(provider_object_id_old=video_id)).exists():
             raise forms.ValidationError("Playlist already exists.")

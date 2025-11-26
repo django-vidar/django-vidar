@@ -79,7 +79,7 @@ class UtilTest(TestCase):
             ]
         ]
         for expected, url in link_formats:
-            self.assertEqual(expected, utils.get_video_id_from_url(url, playlist=True), url)
+            self.assertEqual(expected, utils.get_playlist_id_from_url(url), url)
 
     def test_non_youtube_link(self):
         self.assertIsNone(

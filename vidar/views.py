@@ -1866,7 +1866,7 @@ class PlaylistCreateView(PermissionRequiredMixin, CreateView):
 
         self.provider_id = None
         if youtube_url := self.request.GET.get("url"):
-            if provider_id := utils.get_video_id_from_url(youtube_url, playlist=True):
+            if provider_id := utils.get_playlist_id_from_url(youtube_url):
                 self.provider_id = provider_id
                 if obj := Playlist.objects.already_exists(provider_id):
                     messages.info(self.request, "Already subscribed to playlist")

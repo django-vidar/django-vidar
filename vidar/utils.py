@@ -38,6 +38,10 @@ def contains_one_of_many(value, matches, strip_matches=True):
             return True
 
 
+def get_playlist_id_from_url(url):
+    return get_video_id_from_url(url, playlist=True)
+
+
 def get_video_id_from_url(url, playlist=False):
 
     key = "list" if playlist else "v"
