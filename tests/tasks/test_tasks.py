@@ -918,6 +918,22 @@ class Scan_channel_for_new_videos_tests(TestCase):
         self.assertEqual("video title", video.title)
         self.assertEqual("video description", video.description)
 
+    @patch("vidar.signals.video_indexed")
+    @patch("vidar.tasks.download_provider_video_comments")
+    @patch("vidar.tasks.download_provider_video")
+    @patch("vidar.interactor.func_with_retry")
+    def test_video_indexed_signal_called(self, mock_inter, mock_download, mock_comments, mock_signal):
+        mock_inter.return_value = {"entries": [{
+            "uploader_id": self.channel.uploader_id,
+            "channel_id": self.channel.provider_object_id,
+            "id": "video-id",
+            "title": "video title",
+            "description": "video description",
+            "upload_date": "20250405",
+        },]}
+        tasks.scan_channel_for_new_videos.delay(pk=self.channel.pk).get()
+        mock_signal.send.assert_called_once()
+
     @patch("vidar.tasks.download_provider_video_comments")
     @patch("vidar.tasks.download_provider_video")
     @patch("vidar.interactor.func_with_retry")
@@ -1919,6 +1935,64 @@ class Fully_index_channel_test(TestCase):
 
         self.channel.refresh_from_db()
         self.assertEqual(ts, self.channel.last_scanned_livestreams)
+
+    @patch("vidar.signals.video_indexed")
+    @patch("vidar.interactor.func_with_retry")
+    def test_creation_of_video_sends_indexed_signal(self, mock_inter, mock_signal):
+        self.channel.index_videos = True
+        self.channel.index_shorts = False
+        self.channel.index_livestreams = False
+        self.channel.save()
+
+        mock_inter.return_value = {
+            "entries": [
+                {
+                    "uploader_id": self.channel.uploader_id,
+                    "channel_id": self.channel.provider_object_id,
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ]
+        }
+
+        tasks.fully_index_channel.delay(pk=self.channel.pk).get()
+
+        mock_signal.send.assert_called_once()
+
+    @patch("vidar.signals.video_indexed")
+    @patch("vidar.interactor.func_with_retry")
+    def test_creation_of_multiple_video_sends_indexed_signals(self, mock_inter, mock_signal):
+        self.channel.index_videos = True
+        self.channel.index_shorts = False
+        self.channel.index_livestreams = False
+        self.channel.save()
+
+        mock_inter.return_value = {
+            "entries": [
+                {
+                    "uploader_id": self.channel.uploader_id,
+                    "channel_id": self.channel.provider_object_id,
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                },
+                {
+                    "uploader_id": self.channel.uploader_id,
+                    "channel_id": self.channel.provider_object_id,
+                    "id": "video-id-2",
+                    "title": "video title 2",
+                    "description": "video description 2",
+                    "upload_date": "20250405",
+                }
+            ]
+        }
+
+        tasks.fully_index_channel.delay(pk=self.channel.pk).get()
+
+        self.assertEqual(2, mock_signal.send.call_count)
 
 
 class Video_downloaded_successfully_tests(TestCase):

@@ -1121,6 +1121,66 @@ class Sync_playlist_data_tests(TestCase):
 
         mock_notif.assert_called_once()
 
+    @patch("vidar.signals.video_indexed")
+    @patch("vidar.services.notification_services.video_added_to_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_creates_videos_sends_indexed_signal(self, mock_inter, mock_notif, mock_signal):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [
+                {
+                    "uploader_id": "uploader-id",
+                    "channel_id": "channel-id",
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                }
+            ],
+        }
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        mock_signal.send.assert_called_once()
+
+    @patch("vidar.signals.video_indexed")
+    @patch("vidar.services.notification_services.video_added_to_playlist")
+    @patch("vidar.interactor.playlist_details")
+    def test_creates_multiple_videos_sends_multiple_indexed_signal(self, mock_inter, mock_notif, mock_signal):
+        mock_inter.return_value = {
+            "title": "Test Playlist",
+            "description": "Test Desc",
+            "channel_id": "channel-id",
+            "entries": [
+                {
+                    "uploader_id": "uploader-id",
+                    "channel_id": "channel-id",
+                    "id": "video-id",
+                    "title": "video title",
+                    "description": "video description",
+                    "upload_date": "20250405",
+                },
+                {
+                    "uploader_id": "uploader-id",
+                    "channel_id": "channel-id2",
+                    "id": "video-id-2",
+                    "title": "video title 2",
+                    "description": "video description 2",
+                    "upload_date": "20250405",
+                }
+            ],
+        }
+
+        playlist = models.Playlist.objects.create(crontab="* * * * *")
+
+        tasks.sync_playlist_data.delay(pk=playlist.pk).get()
+
+        self.assertEqual(2, mock_signal.send.call_count)
+
     @patch("vidar.services.notification_services.video_added_to_playlist")
     @patch("vidar.interactor.playlist_details")
     def test_scan_history_increases(self, mock_inter, mock_notif):

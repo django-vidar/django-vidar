@@ -304,6 +304,9 @@ def fully_index_channel(self, pk, limit=None):
 
             video, created = Video.objects.get_or_create_from_ytdlp_response(video_data, **params)
 
+            if created:
+                signals.video_indexed.send(sender=Video, instance=video)
+
             if video.upload_date:
                 video.inserted = video.inserted.replace(
                     year=video.upload_date.year,
@@ -385,6 +388,9 @@ def scan_channel_for_new_content(
             is_livestream=is_livestream,
         )
         log.info(f"Checking video {video=}")
+
+        if created:
+            signals.video_indexed.send(sender=Video, instance=video)
 
         if video.file:
             log.info("Video already has file, skipping.")
@@ -1304,6 +1310,7 @@ def sync_playlist_data(self, pk, detailed_video_data=False, initial_sync=False):
 
         if video_created:
             new_videos += 1
+            signals.video_indexed.send(sender=Video, instance=video)
 
         if video in videos_existing:
             videos_existing.remove(video)
