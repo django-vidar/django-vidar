@@ -379,6 +379,70 @@ class ChannelTests(TestCase):
         self.assertFalse(channel.fully_indexed_shorts)
         self.assertFalse(channel.fully_indexed_livestreams)
 
+    def test_is_indexing_all_false(self):
+        channel = models.Channel.objects.create(
+            index_videos=False,
+            index_shorts=False,
+            index_livestreams=False,
+        )
+        self.assertFalse(channel.is_indexing())
+
+    def test_is_indexing_videos(self):
+        channel = models.Channel.objects.create(
+            index_videos=True,
+            index_shorts=False,
+            index_livestreams=False,
+        )
+        self.assertTrue(channel.is_indexing())
+
+    def test_is_indexing_shorts(self):
+        channel = models.Channel.objects.create(
+            index_videos=False,
+            index_shorts=True,
+            index_livestreams=False,
+        )
+        self.assertTrue(channel.is_indexing())
+
+    def test_is_indexing_livestreams(self):
+        channel = models.Channel.objects.create(
+            index_videos=False,
+            index_shorts=False,
+            index_livestreams=True,
+        )
+        self.assertTrue(channel.is_indexing())
+
+    def test_is_downloading_all_false(self):
+        channel = models.Channel.objects.create(
+            download_videos=False,
+            download_shorts=False,
+            download_livestreams=False,
+        )
+        self.assertFalse(channel.is_downloading())
+
+    def test_is_downloading_videos(self):
+        channel = models.Channel.objects.create(
+            download_videos=True,
+            download_shorts=False,
+            download_livestreams=False,
+        )
+        self.assertTrue(channel.is_downloading())
+
+    def test_is_downloading_shorts(self):
+        channel = models.Channel.objects.create(
+            download_videos=False,
+            download_shorts=True,
+            download_livestreams=False,
+        )
+        self.assertTrue(channel.is_downloading())
+
+    def test_is_downloading_livestreams(self):
+        channel = models.Channel.objects.create(
+            download_videos=False,
+            download_shorts=False,
+            download_livestreams=True,
+        )
+        self.assertTrue(channel.is_downloading())
+
 
 class VideoTests(TestCase):
 
