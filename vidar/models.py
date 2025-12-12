@@ -586,6 +586,12 @@ class Channel(models.Model):
 
         return statuses
 
+    def is_indexing(self):
+        return self.index_videos or self.index_shorts or self.index_livestreams
+
+    def is_downloading(self):
+        return self.download_videos or self.download_shorts or self.download_livestreams
+
 
 class VideoObjectsManager(models.Manager):
 
