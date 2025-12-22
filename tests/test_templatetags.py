@@ -546,12 +546,9 @@ class TemplateTagsVideoToolsTests(TestCase):
         playlist = models.Playlist.objects.create(title='Test Playlist')
         playlist.videos.add(video1)
 
-        class Req:
-            user = UserModel.objects.create(username='test')
+        user = UserModel.objects.create(username='test')
 
-        context = {"request": Req()}
-
-        output = video_tools.get_playback_volume(context=context, video=video1, playlist=playlist)
+        output = video_tools.get_playback_volume(user=user, video=video1, playlist=playlist)
         self.assertEqual(1.0, output, "Volume should be from default 1.0")
 
     def test_convert_seconds_to_hh_mm_ss(self):
@@ -758,12 +755,9 @@ class TemplateTagsVideoToolsWithCustomUserFieldsTests(TestCase):
         channel = models.Channel.objects.create(name='Test Channel')
         video1 = models.Video.objects.create(title='video 1', channel=channel, file='test', playback_volume='1.5')
 
-        class Req:
-            user = UserModel.objects.create(username='test', vidar_playback_volume='0.25')
+        user = UserModel.objects.create(username='test', vidar_playback_volume='0.25')
 
-        context = {"request": Req()}
-
-        output = video_tools.get_playback_volume(context=context, video=video1)
+        output = video_tools.get_playback_volume(user=user, video=video1)
         self.assertEqual(1.5, output, "Volume should be from video")
 
     def test_get_playback_volume_from_playlist(self):
@@ -773,24 +767,18 @@ class TemplateTagsVideoToolsWithCustomUserFieldsTests(TestCase):
         playlist = models.Playlist.objects.create(title='Test Playlist', playback_volume='0.5')
         playlist.videos.add(video1)
 
-        class Req:
-            user = UserModel.objects.create(username='test', vidar_playback_volume='0.25')
+        user = UserModel.objects.create(username='test', vidar_playback_volume='0.25')
 
-        context = {"request": Req()}
-
-        output = video_tools.get_playback_volume(context=context, video=video1, playlist=playlist)
+        output = video_tools.get_playback_volume(user=user, video=video1, playlist=playlist)
         self.assertEqual(0.5, output, "Volume should be from playlist")
 
     def test_get_playback_volume_from_channel(self):
         channel = models.Channel.objects.create(name='Test Channel', playback_volume='1.0')
         video1 = models.Video.objects.create(title='video 1', channel=channel, file='test')
 
-        class Req:
-            user = UserModel.objects.create(username='test', vidar_playback_volume='0.25')
+        user = UserModel.objects.create(username='test', vidar_playback_volume='0.25')
 
-        context = {"request": Req()}
-
-        output = video_tools.get_playback_volume(context=context, video=video1)
+        output = video_tools.get_playback_volume(user=user, video=video1)
         self.assertEqual(1.0, output, "Volume should be from channel")
 
     def test_get_playback_speed_from_playlist(self):
@@ -902,12 +890,9 @@ class TemplateTagsVideoToolsWithCustomUserFieldsTests(TestCase):
         channel = models.Channel.objects.create(name='Test Channel')
         video1 = models.Video.objects.create(title='video 1', channel=channel, file='test')
 
-        class Req:
-            user = UserModel.objects.create(username='test', vidar_playback_volume='0.25')
+        user = UserModel.objects.create(username='test', vidar_playback_volume='0.25')
 
-        context = {"request": Req()}
-
-        output = video_tools.get_playback_volume(context=context, video=video1)
+        output = video_tools.get_playback_volume(user=user, video=video1)
         self.assertEqual(0.25, output, "Volume should be from user")
 
     def test_get_playback_speed_from_user(self):

@@ -1201,7 +1201,7 @@
             //  this ends up meaning the player could be at 50% and the users headphones
             //  might be at 100% and still not loud enough.
             if (isMobile === false) {
-                player.volume = {% get_playback_volume video playlist %};
+                player.volume = {% get_playback_volume request.user video playlist %};
             }
 
             if (current_url_params.has('highlight') === true) {

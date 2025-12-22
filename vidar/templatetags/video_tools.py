@@ -129,7 +129,7 @@ def get_playback_speed(user, video: Video, playlist: Playlist = None, audio=Fals
         if cv := float(video.channel.playback_speed):
             return cv
 
-    if user.is_authenticated and hasattr(user, "vidar_playback_speed"):
+    if user and user.is_authenticated and hasattr(user, "vidar_playback_speed"):
         if audio:
             if user.vidar_playback_speed_audio:
                 if uav := float(user.vidar_playback_speed_audio):
@@ -167,9 +167,8 @@ def get_lowest_playback_volume(context, video: Video, playlist: Playlist = None)
     return 1.0
 
 
-@register.simple_tag(takes_context=True)
-def get_playback_volume(context, video: Video, playlist: Playlist = None):
-    request = context["request"]
+@register.simple_tag()
+def get_playback_volume(user, video: Video, playlist: Playlist = None):
 
     if video.playback_volume:
         if vv := float(video.playback_volume):
@@ -183,10 +182,9 @@ def get_playback_volume(context, video: Video, playlist: Playlist = None):
         if cv := float(video.channel.playback_volume):
             return cv
 
-    if request.user.is_authenticated:
-        if hasattr(request.user, "vidar_playback_volume") and request.user.vidar_playback_volume:
-            if uav := float(request.user.vidar_playback_volume):
-                return uav
+    if user and user.is_authenticated and hasattr(user, "vidar_playback_volume") and user.vidar_playback_volume:
+        if uav := float(user.vidar_playback_volume):
+            return uav
 
     return 1.0
 
