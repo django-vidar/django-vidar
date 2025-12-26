@@ -1111,6 +1111,7 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
             or "terminated" in exc_msg
             or ("closed" in exc_msg and "account" in exc_msg)
             or ("removed" in exc_msg and "harassment" in exc_msg)
+            or ("removed" in exc_msg and "violating" in exc_msg)
             or ("removed" in exc_msg and "bullying" in exc_msg)
         ):
             self.privacy_status = Video.VideoPrivacyStatuses.DELETED
