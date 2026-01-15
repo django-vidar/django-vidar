@@ -194,6 +194,8 @@ class PlaylistCustomForm(forms.ModelForm):
             "convert_to_audio",
             "channel",
             "quality",
+            "playback_speed",
+            "playback_volume",
             "videos_display_ordering",
             "videos_playback_ordering",
             "video_indexing_add_by_title",
