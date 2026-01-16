@@ -1383,6 +1383,72 @@ class PlaylistTests(TestCase):
         playlist = models.Playlist.objects.create(provider_object_id='test')
         self.assertIsNone(playlist.latest_video_by_upload_date())
 
+    def test_next_playlists_returns_correct_order(self):
+        last_playlist = models.Playlist.objects.create(title="last")
+        middle_playlist = models.Playlist.objects.create(title="middle", next_playlist=last_playlist)
+        first_playlist = models.Playlist.objects.create(title="first", next_playlist=middle_playlist)
+
+        p = first_playlist.next_playlists()
+        self.assertListEqual([middle_playlist, last_playlist], p, "Return order is expected to be [middle, last]")
+
+    def test_next_playlists_from_first_in_chain(self):
+        last_playlist = models.Playlist.objects.create(title="last")
+        middle_playlist = models.Playlist.objects.create(title="middle", next_playlist=last_playlist)
+        first_playlist = models.Playlist.objects.create(title="first", next_playlist=middle_playlist)
+
+        p = first_playlist.next_playlists()
+        self.assertEqual(2, len(p))
+
+    def test_next_playlists_from_middle_in_chain(self):
+        last_playlist = models.Playlist.objects.create(title="last")
+        middle_playlist = models.Playlist.objects.create(title="middle", next_playlist=last_playlist)
+        first_playlist = models.Playlist.objects.create(title="first", next_playlist=middle_playlist)
+
+        p = middle_playlist.next_playlists()
+        self.assertEqual(1, len(p))
+        self.assertIn(last_playlist, p)
+
+    def test_next_playlists_from_last_in_chain(self):
+        last_playlist = models.Playlist.objects.create(title="last")
+        middle_playlist = models.Playlist.objects.create(title="middle", next_playlist=last_playlist)
+        first_playlist = models.Playlist.objects.create(title="first", next_playlist=middle_playlist)
+
+        p = last_playlist.next_playlists()
+        self.assertEqual(0, len(p))
+
+    def test_previous_playlists_returns_correct_order(self):
+        last_playlist = models.Playlist.objects.create(title="last")
+        middle_playlist = models.Playlist.objects.create(title="middle", next_playlist=last_playlist)
+        first_playlist = models.Playlist.objects.create(title="first", next_playlist=middle_playlist)
+
+        p = last_playlist.previous_playlists()
+        self.assertListEqual([first_playlist, middle_playlist], p, "Return order is expected to be [first, middle]")
+
+    def test_previous_playlists_from_first_in_chain(self):
+        last_playlist = models.Playlist.objects.create(title="last")
+        middle_playlist = models.Playlist.objects.create(title="middle", next_playlist=last_playlist)
+        first_playlist = models.Playlist.objects.create(title="first", next_playlist=middle_playlist)
+
+        p = last_playlist.previous_playlists()
+        self.assertEqual(2, len(p))
+
+    def test_previous_playlists_from_middle_in_chain(self):
+        last_playlist = models.Playlist.objects.create(title="last")
+        middle_playlist = models.Playlist.objects.create(title="middle", next_playlist=last_playlist)
+        first_playlist = models.Playlist.objects.create(title="first", next_playlist=middle_playlist)
+
+        p = middle_playlist.previous_playlists()
+        self.assertEqual(1, len(p))
+        self.assertIn(first_playlist, p)
+
+    def test_previous_playlists_from_last_in_chain(self):
+        last_playlist = models.Playlist.objects.create(title="last")
+        middle_playlist = models.Playlist.objects.create(title="middle", next_playlist=last_playlist)
+        first_playlist = models.Playlist.objects.create(title="first", next_playlist=middle_playlist)
+
+        p = first_playlist.previous_playlists()
+        self.assertEqual(0, len(p))
+
 
 class HighlightTests(TestCase):
     def test_get_absolute_url(self):

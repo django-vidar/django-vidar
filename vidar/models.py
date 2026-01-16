@@ -1526,6 +1526,28 @@ class Playlist(models.Model):
 
             now = now + timezone.timedelta(minutes=5)
 
+    def next_playlists(self):
+        obj = self
+        playlists = []
+        try:
+            while obj.next_playlist:
+                playlists.append(obj.next_playlist)
+                obj = obj.next_playlist
+        except Playlist.DoesNotExist:
+            pass
+        return playlists
+
+    def previous_playlists(self):
+        obj = self
+        playlists = []
+        try:
+            while obj.previous_playlist:
+                playlists.append(obj.previous_playlist)
+                obj = obj.previous_playlist
+        except Playlist.DoesNotExist:
+            pass
+        return list(reversed(playlists))
+
 
 class PlaylistItem(models.Model):
     class Meta:

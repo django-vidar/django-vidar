@@ -138,18 +138,32 @@
                         <td>Videos Playback Ordering</td>
                         <td>{{ playlist.get_videos_playback_ordering_display }}</td>
                     </tr>
-                    {% if playlist.previous_playlist %}
+                    {% with playlist.previous_playlists as previous_playlists %}
+                    {% if previous_playlists %}
                         <tr>
-                            <td>Parent Playlist</td>
-                            <td><a href="{{ playlist.previous_playlist.get_absolute_url }}">{{ playlist.previous_playlist }}</a></td>
+                            <td>Parent Playlist{{ previous_playlists|pluralize }}</td>
+                            <td>
+                                {% for x in previous_playlists %}
+                                    <a href="{{ x.get_absolute_url }}">{{ x }}</a>
+                                    {% if not forloop.last %}<br />{% endif %}
+                                {% endfor %}
+                            </td>
                         </tr>
                     {% endif %}
-                    {% if playlist.next_playlist %}
+                    {% endwith %}
+                    {% with playlist.next_playlists as next_playlists %}
+                    {% if next_playlists %}
                         <tr>
-                            <td>Next Playlist</td>
-                            <td><a href="{{ playlist.next_playlist.get_absolute_url }}">{{ playlist.next_playlist }}</a></td>
+                            <td>Next Playlist{{ next_playlists|pluralize }}</td>
+                            <td>
+                                {% for x in next_playlists %}
+                                    <a href="{{ x.get_absolute_url }}">{{ x }}</a>
+                                    {% if not forloop.last %}<br />{% endif %}
+                                {% endfor %}
+                            </td>
                         </tr>
                     {% endif %}
+                    {% endwith %}
                 </tbody>
             </table>
         </div>
