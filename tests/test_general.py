@@ -338,6 +338,7 @@ class RenamerTests(TestCase):
         mock_generator.return_value = 'static value'
         mock_generator.side_effect = [
             ('', pathlib.PurePosixPath('video.mp4')),
+            ('', pathlib.PurePosixPath('audio.mp3')),
             ('', pathlib.PurePosixPath('info.json')),
             ('', pathlib.PurePosixPath('thumbnail.jpg')),
         ]
@@ -347,6 +348,7 @@ class RenamerTests(TestCase):
             channel=channel,
             title='Test Video',
             file='video.mp4',
+            audio='audio.mp3',
             thumbnail='thumbnail.jpg',
             info_json='info.json',
             provider_object_id='test vidar id',
@@ -359,6 +361,7 @@ class RenamerTests(TestCase):
         expected_logs = [
             f"INFO:vidar.renamers:Checking video files are named correctly. commit=True {video=}",
             f"INFO:vidar.renamers:{video.pk=} storage paths already match, video.mp4 does not need renaming.",
+            f"INFO:vidar.renamers:{video.pk=} storage paths already match, audio.mp3 does not need renaming.",
             f"INFO:vidar.renamers:{video.pk=} storage paths already match, info.json does not need renaming.",
             f"INFO:vidar.renamers:{video.pk=} storage paths already match, thumbnail.jpg does not need renaming."
         ]
@@ -368,18 +371,21 @@ class RenamerTests(TestCase):
         mock_move.assert_not_called()
         mock_generator.assert_has_calls((
             call(video=video, ext='mp4'),
+            call(video=video, ext='mp3', upload_to=video_helpers.upload_to_audio),
             call(video=video, ext='info.json', upload_to=video_helpers.upload_to_infojson),
             call(video=video, ext='jpg', upload_to=video_helpers.upload_to_thumbnail),
         ))
         mock_delete.assert_not_called()
 
         self.assertEqual('video.mp4', video.file.name)
+        self.assertEqual('audio.mp3', video.audio.name)
         self.assertEqual('info.json', video.info_json.name)
         self.assertEqual('thumbnail.jpg', video.thumbnail.name)
 
         video.refresh_from_db()
 
         self.assertEqual('video.mp4', video.file.name)
+        self.assertEqual('audio.mp3', video.audio.name)
         self.assertEqual('info.json', video.info_json.name)
         self.assertEqual('thumbnail.jpg', video.thumbnail.name)
 
