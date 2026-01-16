@@ -222,6 +222,33 @@ def video_rename_thumbnail_file(video, commit=True):
     return True
 
 
+def video_rename_local_audio(video, commit=True):
+    """Renames the given Video.audio to update its path and filename."""
+    if not video.audio:
+        log.info(f"{video.audio=} is empty, cannot rename audio that does not exist.")
+        return False
+
+    old_storage_path = pathlib.PurePosixPath(video.audio.name)
+
+    ext = video.audio.name.rsplit(".", 1)[-1]
+
+    _, new_storage_path = video_services.generate_filepaths_for_storage(
+        video=video, ext=ext, upload_to=video_helpers.upload_to_audio
+    )
+
+    if old_storage_path == new_storage_path:
+        log.info(f"{video.pk=} storage paths already match, {video.audio.name} does not need renaming.")
+        return False
+    log.info(f"{video.pk=} renaming {commit=} {video.audio.name}")
+    log.debug(f"{old_storage_path=}")
+    log.debug(f"{new_storage_path=}")
+    video.audio.storage.move(old_storage_path, new_storage_path)
+    video.audio.name = str(new_storage_path)
+    if commit:
+        video.save()
+    return True
+
+
 def video_rename_extra_file(video, extra_file, commit=True):
 
     old_storage_path = pathlib.Path(extra_file.file.name)
@@ -262,6 +289,8 @@ def video_rename_all_files(video, commit=True, remove_empty=True):
     changed = []
     if video_rename_local_file(video=video, commit=commit):
         changed.append("file")
+    if video_rename_local_audio(video=video, commit=commit):
+        changed.append("audio")
     if video_rename_local_info_json(video=video, commit=commit):
         changed.append("info_json")
     if video_rename_thumbnail_file(video=video, commit=commit):
