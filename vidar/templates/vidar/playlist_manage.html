@@ -29,7 +29,7 @@
     <hr />
 
     <div class="row">
-        <div class="col">
+        <div class="col m-4">
             <form method="post" class="form">{% csrf_token %}
                 <div class="form-group">
                     <label for="download_all_comments">Download All Comments On Each Video (override default limit of 100)</label>
@@ -42,38 +42,34 @@
         </div>
 
         {% if playlist.playback_speed %}
-            <div class="col">
+            <div class="col m-4">
                 <form method="post">{% csrf_token %}
-                    <p>Apply Playlist Playback Speed to all attached videos.</p>
-                    <p>If you watch a video without the playlist view, it will still play at the set speed.</p>
-                    <input type="submit" name="apply-playback-speed" class="btn btn-primary" value="Apply Playback Speed">
+                    <p>Apply Playlist Playback Speed to all videos.</p>
+                    <input type="submit" name="apply-playback-speed" class="btn btn-primary" value="Apply Speed: {{ playlist.get_playback_speed_display }}">
                 </form>
-            </div>
-            <div class="col">
-                <form method="post">{% csrf_token %}
-                    <p>Remove Playback Speed from all attached videos. It will be reset to system default.</p>
-                    <input type="submit" name="remove-playback-speed" class="btn btn-info" value="Remove Playback Speed">
+
+                <form method="post" class="mt-2">{% csrf_token %}
+                    <p>Reset Playback Speed on videos to system default.</p>
+                    <input type="submit" name="remove-playback-speed" class="btn btn-info" value="Reset Speed">
                 </form>
             </div>
         {% endif %}
 
         {% if playlist.playback_volume %}
-            <div class="col">
+            <div class="col m-4">
                 <form method="post">{% csrf_token %}
-                    <p>Apply Playlist Playback Volume to all attached videos.</p>
-                    <p>If you watch a video without the playlist view, it will still play at the set volume.</p>
-                    <input type="submit" name="apply-playback-volume" class="btn btn-primary" value="Apply Playback Volume">
+                    <p>Apply Playlist Playback Volume to all videos.</p>
+                    <input type="submit" name="apply-playback-volume" class="btn btn-primary" value="Apply Volume: {{ playlist.get_playback_volume_display }}">
                 </form>
-            </div>
-            <div class="col">
-                <form method="post">{% csrf_token %}
-                    <p>Remove Playback Volume from all attached videos. It will be reset to system default.</p>
-                    <input type="submit" name="remove-playback-volume" class="btn btn-info" value="Remove Playback Volume">
+
+                <form method="post" class="mt-2">{% csrf_token %}
+                    <p>Reset Playback Volume on videos to system default.</p>
+                    <input type="submit" name="remove-playback-volume" class="btn btn-info" value="Reset Volume">
                 </form>
             </div>
         {% endif %}
 
-        <div class="col">
+        <div class="col m-4">
             <form method="post" class="form">{% csrf_token %}
                 <p>If you changed the playlists filename or directory schema, you can use this button to
                     trigger a rename of all attached files.</p>
@@ -83,19 +79,13 @@
             </form>
         </div>
 
-    </div>
-
-    <hr />
-
-    <div class="row">
-
         {% if playlist.provider_object_id %}
-            <div class="col-3">
+            <div class="col m-4">
                 <form method="post" class="form">{% csrf_token %}
                     <div class="form-group">
                         <p>Custom playlist videos can be re-ordered, removed, added.
                             However, it cannot be tied to a live playlist.</p>
-                        <p>There is no undo. It will no longer be indexable.</p>
+                        <p>There is no undo. The playlist will no longer be indexable.</p>
                         <input type="submit" name="convert-to-custom"
                                value="Convert to a custom playlist."
                                class="btn btn-danger">
