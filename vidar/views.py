@@ -1281,7 +1281,7 @@ def add_video_comment(request, pk):
     if request.method == "POST" and request.POST.get("comment"):
         messages.success(request, "Note added Thank-You")
 
-    return redirect(video)
+    return helpers.redirect_next_or_obj(request, video)
 
 
 @user_passes_test(lambda u: u.has_perms(["vidar.add_channel"]))
