@@ -503,13 +503,13 @@
     const skips_count = Object.entries(skips).length;
 
     document.querySelectorAll('.highlights-count').forEach(function(elem) {
-        elem.textContent = highlights_count;
+        elem.textContent = highlights_count.toString();
     })
     document.querySelectorAll('.chapters-count').forEach(function(elem) {
-        elem.textContent = chapters_count;
+        elem.textContent = chapters_count.toString();
     })
     document.querySelectorAll('.skips-count').forEach(function(elem) {
-        elem.textContent = skips_count;
+        elem.textContent = skips_count.toString();
     })
 
     {% if perms.vidar.add_highlight %}
