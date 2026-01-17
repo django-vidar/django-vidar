@@ -533,7 +533,7 @@
             // https://stackoverflow.com/questions/1322732/convert-seconds-to-hh-mm-ss-with-javascript
             return new Date(seconds * 1000).toISOString().slice(11, 19);
         }
-        return number;
+        return seconds;
     }
 
     function convert_hhmmss_to_seconds(hhmmss) {
