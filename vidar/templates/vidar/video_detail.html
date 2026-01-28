@@ -82,7 +82,7 @@
                 <hr />
                 <h1 class="text-center">Video not available to the public.</h1>
                 <hr />
-                <iframe width="853" height="505" src="{{ video.embed_url }}" referrerpolicy="no-referrer"
+                <iframe width="853" height="505" src="{{ video.embed_url }}" referrerpolicy="strict-origin-when-cross-origin"
                         title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
             {% endif %}
         {% else %}
@@ -90,7 +90,7 @@
             {% if perms.vidar.view_videodownloaderror and object.download_errors.exists %}
                 <h2><a href="{% url 'vidar:video-download-error' object.pk %}">Downloading Errors</a></h2>
             {% endif %}
-            <iframe width="853" height="505" src="{{ video.embed_url }}" referrerpolicy="no-referrer"
+            <iframe width="853" height="505" src="{{ video.embed_url }}" referrerpolicy="strict-origin-when-cross-origin"
                     title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
         {% endif %}
     </div>
