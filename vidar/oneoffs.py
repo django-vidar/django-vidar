@@ -249,10 +249,11 @@ def generate_calendar_from_channel_crontabs(date=None, write_to_file="cal.ics", 
                 if verbose:
                     print(f"scanning {index=} {channel=} @ {start}")
                 event = icalendar.Event()
-                event["dtstart"] = start.strftime("%Y%m%dT%H%M%S")
+                event.add("SUMMARY", f"{channel.name} @ {start:%I:%M}")
+
+                event.add("DTSTART", start.strftime("%Y%m%dT%H%M%S"))
                 start_end_5_minutes = start + timezone.timedelta(minutes=5)
-                event["dtend"] = start_end_5_minutes.strftime("%Y%m%dT%H%M%S")
-                event["summary"] = f"{channel.name} @ {start:%I:%M}"
+                event.add("DTEND", start_end_5_minutes.strftime("%Y%m%dT%H%M%S"))
 
                 calendar.add_component(event)
 
