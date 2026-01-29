@@ -738,6 +738,9 @@ class VideoTests(TestCase):
         video.apply_privacy_status_based_on_dlp_exception_message("This video is blocked in yor country")
         self.assertEqual(models.Video.VideoPrivacyStatuses.BLOCKED, video.privacy_status)
 
+        video.apply_privacy_status_based_on_dlp_exception_message("The uploader has not made this video available in your country")
+        self.assertEqual(models.Video.VideoPrivacyStatuses.BLOCKED, video.privacy_status)
+
         video.apply_privacy_status_based_on_dlp_exception_message("This video is private video")
         self.assertEqual(models.Video.VideoPrivacyStatuses.PRIVATE, video.privacy_status)
 

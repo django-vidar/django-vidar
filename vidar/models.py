@@ -1090,7 +1090,9 @@ class Video(model_helpers.CeleryLockableModel, models.Model):
 
     def apply_privacy_status_based_on_dlp_exception_message(self, exception_message):
         exc_msg = str(exception_message).lower()
-        if "blocked" in exc_msg and "country" in exc_msg:
+        if ("blocked" in exc_msg and "country" in exc_msg) or (
+            "not" in exc_msg and "available" in exc_msg and "country" in exc_msg
+        ):
             self.privacy_status = Video.VideoPrivacyStatuses.BLOCKED
             self.last_privacy_status_check = timezone.now()
             self.save()
